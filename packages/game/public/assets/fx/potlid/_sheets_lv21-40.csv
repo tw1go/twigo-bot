@@ -1,0 +1,10 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-potlid-pressure.png,56,55,12,12,yes,28,29,front,Pressure Cooker: steam hissing round the lid while it rattles (loop for the 0.8 s windup); anchor = the lid's centre
+fx-potlid-oil-pool.png,68,44,12,12,yes,34,30,ground,"Hot Oil: the pool where the oil lands, looping while it burns (5 ticks, 2 s); anchor = its centre on the ground"
+fx-potlid-gong-wave.png,55,56,12,12,yes,18,29,front,"Gong Wave: the wave, drawn pushing right; rotate it to the facing (flip for the west side) and move it from the lid along the line at 300 px/s; anchor = the back of the wave"
+fx-potlid-simmer-back.png,121,79,12,12,yes,61,49,ground,"Simmer, back half: behind the player; anchor = the player's feet; loop for the 3 s channel"
+fx-potlid-simmer-front.png,121,79,12,12,yes,61,49,front,"Simmer, front half: in front of the player; same anchor and timing as the back half"
+fx-potlid-searing-drop.png,104,88,11,14,no,52,61,front,"Searing Lid: the lid dropping (frames 0-2, empty after); anchor = the target's feet; the hit lands on frame 3"
+fx-potlid-searing-hit.png,104,88,11,14,no,52,61,ground,Searing Lid: the glowing lid and heat rings under the target (empty for frames 0-2); same anchor and timing
+fx-potlid-searing-steam.png,104,88,11,14,no,52,61,front,Searing Lid: the steam puffing out at the lid's sides; same anchor and timing
+fx-potlid-scream-ring.png,136,72,11,14,no,68,36,ground,Kettle Scream: the sound ring round the player; anchor = the player's feet; the hits land on frame 3

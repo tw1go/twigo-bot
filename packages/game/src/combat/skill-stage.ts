@@ -45,6 +45,10 @@ export interface FxOpts {
   scale?: number;
   /** A colour laid over it ('#rrggbb'): Seed Barrage's green pebbles, the lime shatter ring. */
   tint?: string;
+  /** Kept on enemy n's feet as it moves (Spirit Smoke on its mob); the stage's enemies stand still. */
+  follow?: number;
+  /** Moves with the fighter (a Charge's wedge ahead of them as they slide): the stage only. */
+  withFighter?: boolean;
 }
 
 export interface ShotOpts {
@@ -251,6 +255,8 @@ interface Live {
   length?: number;
   alpha: number;
   scale: number;
+  /** Kept this far off the fighter's spot as they move (withFighter). */
+  rel?: Pt;
   /** For a shot: where it's flying, and the hidden-streak cut. */
   path?: { from: Pt; to: Pt; t1: number; arc: number; turn: boolean; onArrive?: () => void; reveal: boolean; ease?: 'out'; quarter?: number; fadeEnd?: number };
 }
@@ -421,8 +427,8 @@ export class SkillStage {
     let alpha = l.alpha;
     if (l.fadeIn) alpha = Math.min(alpha, t / l.fadeIn);
     if (l.fadeOut && Number.isFinite(l.end)) alpha = Math.min(alpha, (l.end - this.now) / l.fadeOut);
-    let x = l.x;
-    let y = l.y;
+    let x = l.rel ? FEET.x + this.offset.x + l.rel.x : l.x;
+    let y = l.rel ? FEET.y + this.offset.y + l.rel.y : l.y;
     let angle = l.angle;
     let clip = 0; // px of the streak hidden behind the pivot
     if (l.path) {
@@ -490,6 +496,7 @@ export class SkillStage {
       const l: Live = {
         def, img, x: at.x, y: at.y, z: o.z ?? 3, angle: o.angle ?? 0, flip: !!o.flip, t0: stage.now, seq, hold: o.hold, ms,
         fadeIn: o.fadeIn ?? 0, fadeOut: o.fadeOut ?? 0, end: stage.now + life, length: o.length, alpha: o.alpha ?? 1, scale: (o.scale ?? 1) * (r.scale ?? 1),
+        ...(o.withFighter ? { rel: { x: at.x - FEET.x - stage.offset.x, y: at.y - FEET.y - stage.offset.y } } : {}),
       };
       stage.lives.push(l);
       return l;

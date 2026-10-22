@@ -131,6 +131,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
   `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
+- `classes/stats.json`: `agimats.valueAtLevel` (22 Oct 2026, Mac: + `valueAtLevelNote`): the flat stats grow twice as fast
+  (atk 0.2A+1, hp 0.72A+1, mp / def 0.5A+1, stat 0.1A+1) and the rates with level (0.001A, crit damage 0.004A; were a flat
+  1% / 4%): a Lv 20 agimat about twice a Lv 10's.
 - `classes/stats.json`: `rarity.cascade` (20 Oct 2026: every tier pick a cascade, CONTEXT.md; Drop rate's `perChance`).
 - `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
@@ -198,8 +201,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   permanent `witch-hat` / `witch-robe` (`shop`, `event: "halloween"`, `set: "witch"`, no `lastsDays`; Biikko still drops
   the 5-day `witch-hat-5d` / `witch-robe-5d`; Mac, 19 Oct 2026); the manifest's wardrobe entries for them (`cosmeticHats`,
   `fixedColourHats`, `hatClips`, `hatCanvas`, `cosmeticTops`, `cosmeticHidesBottom`) and the new `cosmeticHidesShoes`,
-  `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops`, `cosmeticPosePattern`. The art
-  is the art folder's cosmetics/custom (and its poses/ zip) as it is.
+  `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops` (its `witchrobe` since 21 Oct 2026),
+  `cosmeticPosePattern`. The art is the art folder's cosmetics/custom (and its poses/ zips: witch-robe-poses-v1 too) as it is.
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -502,16 +505,23 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   music (casino-shop-theme, 0.09 × the music volume) fades in, loaded only then; casino sfx: flip-spin (repeats while
   the coin spins), flip-land, casino-win (+ coin), casino-lose, busted (.m4a only: `formats`).
   The Slums (its own page) plays its own music (music-slums "Old Radio", 0.09 × the music volume, looped, loaded only
-  with music on: `startTownSound`'s area, `areaMusic`) in place of the town's, and no crickets; back in town (a page of
-  its own again) the town's music and crickets play as ever.
+  with music on: `startTownSound`'s area, `areaMusic`, `AREA_MUSIC`) in place of the town's, and no crickets; so do the
+  Scrap Warrens (music-warrens "Drip Tunnels"), the Lumang Palengke (music-palengke "Closing Time") and Ang Silong
+  (music-silong "Cold Room"), each 0.09 (22 Oct 2026); back in town (a page of its own again) the town's music and
+  crickets play as ever.
   Combat sets (`playSet`: sfx/<base>-1..3, one at random, never the same twice running; volumes by `SET_VOLUMES`, the
   user's quiet 0.10–0.25): combat-player-hurt and the mobility moves' (skill-dash/-step-back/-charge, skill-blink-out/-in:
   `playMove`'s `sound`) load with every town; on a battle map `loadSoundSets` adds combat-mob-hurt/-death-<kind> (world/
   mobs.ts: a hurt one per mob at most every 150 ms, its death), golem-<attack> (world/golem.ts `GOLEM_SOUNDS`: the slam's
   wind-up as it starts, the slam on its frame, the toss's throw on release and land, the glare as it lights, call-junk,
-  enrage) and skill-<class>-<skill> for each class's first 7 skills (`skillSet`: kebab case of classes.json's name; yours
-  as it fires in `fightTick`, others' with their `mob-hit`). Hearing (`Heard`): yours always; mobs, others' skills and the
-  golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
+  enrage), great-scale-<move> (world/great-scale.ts `GREAT_SCALE_SOUNDS`: the Pan Slam's windup and landing, the
+  Weigh-in's lift, Kulang sa Timbang, its call, enrage and bell; heard as the golem's), skill-<class>-<skill> for each
+  class's 13 damage skills (`skillSet`: kebab case of classes.json's name; yours as it fires in `fightTick`, others' with
+  their `mob-hit`; the channelled and storm ones at 0.11), skill-<class>-buff-cast (each utility as it's cast, 0.12) and
+  skill-stun / -taunt / -debuff (TownScene `MARK_SOUNDS`: from the mob it lands on, one a crowd: `playSet`'s `gapMs`); the
+  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; everything from someone or something else in the world (mobs, the
+  bosses, others' skills, moves, buffs, level-ups and emotes, what lands on a mob, a neighbour's house rising or
+  restyled: TownScene `heardFrom`) only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
   Display | Game, Privacy and Account, Keybinds and Credits across the bottom; one column under 640 px): Music and Sounds volumes
@@ -528,7 +538,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
   Enter (chat), Escape, Tab and the arena's 1–3 stay fixed.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
-  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
+  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited; its sound yours
+  always, someone else's only within hearing (`playFrom`: 12 tiles, a little quieter).
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
   `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
@@ -877,7 +888,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
   `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
   plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
-  with its four posts; the quest map pins you at the Slums' gate to it. Its Slums music for now; title card "Lumang
+  with its four posts; the quest map pins you at the Slums' gate to it. Its own music (music-palengke); title card "Lumang
   Palengke". Measured: 60 fps walking Tarp Row (as the Slums). `sections` are kept as data; `npcs`: the quest NPCs, below.
   Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
   mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
@@ -909,7 +920,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   losing its target); `weigh` (× (1 + perHp × their HP share: `Target.hpShare` from the vitals), `PlayerHit.mult`, orange
   from `flashAt` and a yellow flash on its dial). Mini bosses wear their kind's `miniLook`; the palengke's leveling for
   their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
-  `arena` where it has no pit (`inArena`). No hurt or death sounds yet (`sounds: false`: none asked for). Their FX
+  `arena` where it has no pit (`inArena`). Their hurt and death sets as every mob's (22 Oct 2026). Their FX
   (21 Oct 2026, the art folder's fx/palengke, script-built; manifest fx `fx-payong-*` … `fx-timbangan-*`, loaded on the
   Palengke and Silong maps only: queue.ts `PALENGKE_FX`): each kind's attack effect on its attack frame (world/mobs.ts
   `ATTACK_FX`: the Payong's poke and its open umbrella's shimmer, the Sobber's tear burst, the Jars' clink on their target,
@@ -950,7 +961,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); its FX the art folder's fx-scale-* (21 Oct 2026:
   the pan's warning in each Pan Slam circle and its impact, the Weigh-in ring round the held player, Kulang sa Timbang's
   cone (se / ne art, mirrored for sw / nw) hitting on its frame 3, the Sentinels' call, the enrage at its dial, the bell
-  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. No sounds yet (`sounds: false`). The CMS's Field boss tab shows both bosses and
+  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
   wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
   dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
   cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
@@ -1059,8 +1070,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `ramonBoxFor`, his note once; the note pop-up) and Kuya Jun's "📜 Mang Ramon's note" (`ramon-give` → `ramonGiveFor`:
   a Mid Repair Kit, `quests.flags` ramon-note-done; his three lines); a clear (`silong-cleared`, `silongClearedFor`:
   `quests.flags` silong-cleared) puts the Atchara at half price (shared `dishPrice`, the menu's "Half price"); sounds:
-  the Warrens' on its events (world/silong.ts `MOVE_SOUNDS`, only while the boss is on screen; the Ice Machine's hurt,
-  enrage and death as Barong-Barong's) and the Warrens' (the Slums') music at 70%. Tested in town-silong.test.ts and
+  its own (audio/sound.ts `SILONG_SFX`, sfx/silong-*, `loadSilongSounds` / `playSilong`) on its events (world/silong.ts
+  `MOVE_SOUNDS`, only while the boss is on screen; the cage, the door, the frost melting; the Ice Machine's hurt and
+  death its own sets) and its own music (music-silong). Tested in town-silong.test.ts and
   silong-story.test.ts. Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
@@ -1399,8 +1411,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `cosmeticBodyClip` + `bodyClipPattern` (the Velvet Nightwing's legs: white = no body there). Fight poses: a cosmetic
   top keeps what lies outside the idle body (moved with the top) as well as what's on the pose's body (kit-art
   `drawTrimmed`'s `idleBody`), its topover laid with it, and a body clip cuts the pose's body from the mask's top row
-  down (a stride takes the legs outside the idle mask). The five Sets' tops have pose art instead (CONTEXT.md Combat
-  pose; wardrobe `cosmeticPoseTops` + `cosmeticPosePattern`, the art folder's cosmetics/custom/poses: a sheet per class,
+  down (a stride takes the legs outside the idle mask). The five Sets' tops and the Witch Robe (21 Oct 2026: it took
+  the laid-on path before, broken in its poses) have pose art instead (CONTEXT.md Combat pose; wardrobe `cosmeticPoseTops` + `cosmeticPosePattern`, the art folder's cosmetics/custom/poses: a sheet per class,
   anim and direction, 64x64 cells in the pose's own cell, the body sheet's frame count; tested): drawPose draws its
   frame at the cell's top left in place of the top and topover (kit-art `cosmeticPoseFile`; the laid-on piece only if
   the sheet isn't loaded), shoes and bottom as before, the head laid on as for any look; loaded with the class's poses
@@ -1567,7 +1579,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
   I; 12 places: two bracers, two rings; the stats box, below), class badges on the avatar and before
-  players' names in the chat. Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
+  players' names in the chat (`say` / `party-say` and the remembered lines carry the speaker's `cls`, so one on another map
+  has theirs too). Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
   `bandShift`: a band of the idle body matched to the pose's pixels; the top, bottom and shoes each by their own rows,
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
 - New player guide (CONTEXT.md "Quests and the new player guide"; art: manifest `guide` (ui/guide, fx/guide: main violet,
@@ -1652,16 +1665,34 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   mobDamagePct, slow, taunt; player stats critDamage, evasion (`Target.evasion`), hpDrainPctPerSec (Blood Price, never under
   10% HP). Game: `combat/skill-previews.ts` the 36 scripts (each on attack-quick / -heavy / -cast, Timber! from
   charge-start, in its own frame order: the cosmetic pose sheets still fit; the world plays the script's frames on the
-  character, `Character.strikeFrames`, `skillPoses`), `combat/fx-stand-ins.ts` (each PixelLab FX not made yet → its
-  stand-in, tint, size: the manifest's own entry wins once it lands), the kit's fx `scale` / `tint`, `leap`, `echo`
+  character, `Character.strikeFrames`, `skillPoses`); their FX the art folder's fx/<class> and fx/shared (22 Oct 2026, its
+  `_sheets_lv21-40.csv` copied beside each, a manifest fx entry per row with its `layer`): a split one's `-back` half on
+  the ground and `-front` over everyone at one anchor (the scripts' `pair`), each hit on the frame its art lands it
+  (`frameAt`), the gong wave, fever wave and spirit vine turned to their way, the thunder line laid a cell every 128 px;
+  `combat/fx-stand-ins.ts` empty now (every one landed; the manifest's own entry wins once it does); fx `follow` (an
+  enemy slot: Spirit Smoke's smoke on its mob as it walks); the Skills panel's
+  stage loads every FX its class's scripts name (`skillFx`, a dry run); the kit's fx `scale` / `tint`, `leap`, `echo`
   (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
   the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
   filler never casts a charge-up), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
-  move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` / `mob-stun` / `mob-debuff` (world/mobs.ts
-  `stun` / `debuff`: code-drawn stars and a coloured pip a debuff until their art), a debuff cast at your mob target;
+  move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` (each later hit's number waits for the script's
+  own hit on that mob, 1.5 s at most: `laterCast` / `laterCredit` / `laterHit`), `mob-stun` / `mob-debuff` (world/mobs.ts
+  `stun` / `debuff`: their marks from `combat/utility-looks.ts`, looping and following the mob: the stun stars on its
+  head, each debuff's mark side by side over its head (over its name when that shows), Hamstring's knee ring in crimson
+  at its feet; code-drawn stars and pips while a sheet isn't loaded), a debuff cast at your mob target; the utilities'
+  looks (`BUFF_LOOKS`: `buff-cast`'s `to` = the town ids it reached, each wearing it, a stance as it's taken; Blood Price
+  and Hyper Regen looping for the buff's time, cut short by a knock-out, leaving or your own `buffs`: TownScene
+  `buffLook` / `endLooks`; the Lv 1-20 buffs' too since 22 Oct 2026, the art folder's fx/mobility-buff, Steady Breath as
+  one cycle of Hyper Regen's: `ms`), each LANDING_MS (150) after its caster's burst (`BUFF_BURSTS`, one per class, the Pot
+  lid's its Clang waves; TownScene `buffCast` / `burstOn`: on the buff-cast pose's `fx_start` frame(s) of
+  characters/classes/<class>/buff-hooks.csv (`loadBuffHooks`), at that row's point for the facing (the 64 px cell, the
+  feet at 32, 56) or the feet (Greatstick; Broom's on the ground); yours timed from the key press, `myCastAt`; none for a
+  refused cast or a stance switched off); Herbal Storm's heals (`buff-heal` `skill`) play Soothing Touch's look; the
+  Skills panel's buff previews the burst and landing too (`buffPreview(name, cls)`);
   tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
-  bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); icons
-  not in yet (the usual fallback: add them to manifest ui.skillIcons.have as they land). Dev: `?switch&level=40`.
+  bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); the 48
+  icons (36 skills, 12 utilities) are the art folder's ui/skills/<class> (22 Oct 2026), in manifest ui.skillIcons.have. Hailstorm's area is 2 tiles
+  (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
   a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,
@@ -1676,8 +1707,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   town-vitals.test.ts.
 - Mobility in town (`world/mobility.ts`): the hotbar's Dash (3 tiles, 2 s) and the class's Lv 8 move: Step Back (2 back,
   3 s), Charge (5, 5 s), Blink (4, 4 s), along your facing, stopping where something's in the way. The combat sheets have
-  no clothes, so in town it's your outfit with motion and fx (lavender afterimages, fx-mobility-dust / -blink placeholders,
-  a hop, a stretch-and-pop blink). Tiles go to the server as steps (within the step budget) after a `move` message that
+  no clothes, so in town it's your outfit with motion and fx (lavender afterimages, a hop, a stretch-and-pop blink) and the
+  art folder's fx/mobility-buff (22 Oct 2026): fx-mobility-dust (drawn for a move going east, flipped when the move
+  travels left on screen: Step Back by where it goes, not the facing), the Broom's and Hilot's own blink (`fx-<broom|hilot>-blink`,
+  its `-back` half under them and `-front` over, where they vanish and where they appear, never night-tinted; `playMove`'s
+  `cls`, yours from `adventure()`, others' from the town; unknown: the Broom's), and a Charge's wedge `fx-<class>-charge`
+  (`chargeWedge`: looping on the front layer from windup to landing, 10 px ahead and 18 px up, turned to the travel's
+  screen angle, flipped going left, faded as it lands; none while the manifest has no entry: the Pot lid's art isn't in).
+  The Skills panel's previews play the same (combat/skill-previews.ts). Tiles go to the server as steps (within the step budget) after a `move` message that
   the bot relays (`web/town.ts`, one per 0.8 s, ending within 6 tiles) so others play it too (`world/others.ts`, steps
   skipped while it plays; `Character.busy`). Slots show the cooldown as a purple pie with the seconds left.
 - Parties (bot `web/town-party.ts`, tested; `web/town.ts` sends it all): up to 6, one leader. Only the leader invites (or

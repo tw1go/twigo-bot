@@ -487,6 +487,8 @@ export interface TownChatLine {
   megaphone?: boolean;
   /** Said by a Game Master on the GM channel. */
   gm?: boolean;
+  /** The speaker's class (their badge before the name, wherever they were). */
+  cls?: string;
 }
 
 /** A line in the town's system feed: something that happened around the server (a dig, a bet). */
@@ -608,7 +610,7 @@ export type TownServerMessage =
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
-  | { t: 'say'; id: string; text: string; megaphone?: boolean; gm?: boolean; /** The speaker's nickname (they may be in another room). */ name?: string; links?: ChatItemLink[] }
+  | { t: 'say'; id: string; text: string; megaphone?: boolean; gm?: boolean; /** The speaker's nickname and class (they may be in another room). */ name?: string; cls?: string; links?: ChatItemLink[] }
   /** A banner for everyone in town. */
   | { t: 'announce'; announcement: TownAnnouncement }
   /** Something happened around the server (the system feed). */
@@ -808,9 +810,11 @@ export type TownServerMessage =
   | { t: 'buff-refused'; buff: string; reason: BuffRefusal; ms?: number }
   /** Someone in your room (maybe you) cast a buff: they play their class's buff-cast facing `dir`; yours with its
    *  cooldown (ms). `off`: a stance turned off. */
-  | { t: 'buff-cast'; id: string; buff: string; dir: TownDir; cooldown?: number; off?: boolean }
+  | { t: 'buff-cast'; id: string; buff: string; dir: TownDir; cooldown?: number; off?: boolean;
+      /** Who it reached (town ids; none for a debuff on mobs alone): its look plays on each. */
+      to?: string[] }
   /** A heal from a buff (Soothing Touch): how much each player it reached got back, green over them. */
-  | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[] }
+  | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[]; /** From a skill (Herbal Storm's heal:F), not a buff's cast: its healing look plays on each healed. */ skill?: boolean }
   /** The buffs on you now (on any change): each one's name, its caster's class and skill level, its stats at that level
    *  (stats.json skills.buffs), and the ms left (null: a stance, on until changed). */
   | { t: 'buffs'; buffs: TownBuff[] }
@@ -825,7 +829,7 @@ export type TownServerMessage =
   /** The player you invited said no (or let it lapse). */
   | { t: 'party-declined'; name: string }
   /** A party member said something to the party (you too: your own words come back this way). */
-  | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[] }
+  | { t: 'party-say'; id: string; name: string; text: string; links?: ChatItemLink[]; /** Their class (they may be on another map). */ cls?: string }
   /** A party member picked something up (to the rest of the party, wherever they are): their name and what; Kusing
    *  with each one's share (`share`) when it was split. */
   | { t: 'party-loot'; name: string; got: LootGot; share?: number }

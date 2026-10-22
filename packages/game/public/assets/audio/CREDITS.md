@@ -69,8 +69,11 @@ sound has an `.ogg` and an AAC `.m4a`.
   `scripts/audio/build_slums_music.py`; no source, no credit needed). 66 bpm, a 58.2 s seamless loop; the Slums' music
   in place of the town's, at 0.09 × the music volume.
 
-## Scrap Warrens (10 Oct) in `sfx/`
+## Scrap Warrens (10 Oct) in `music/` and `sfx/`
 
+- `music/music-warrens.*` — "Drip Tunnels", an original loop made for Mikazuki (the art folder's
+  `scripts/audio/build_warrens_music.py`; no credit needed). 60 bpm, a 64 s seamless loop; the Warrens' music at 0.09 ×
+  the music volume (in the game since 22 Oct).
 - `sfx/warrens-*`, `sfx/barong-*`, `sfx/celes-tin-*`, `sfx/tire-ranny-*`, `sfx/bag-yani-*`, `sfx/wire-wolf-*`,
   `sfx/crab-tain-*` (20 sounds): made by the art folder's `scripts/audio/build_warrens_sfx.py` from Kenney Impact
   Sounds, Interface Sounds and RPG Audio (CC0), the game's own sounds and original synth tones. No credit needed.
@@ -80,3 +83,15 @@ sound has an `.ogg` and an AAC `.m4a`.
 - `music/music-title.*` — "Moonlight Lullaby", an original loop composed for Mikazuki (the art folder's
   `scripts/audio/build_title_music.py`; no source, no credit needed). Warm pad and music box, 62 bpm, a 61.9 s seamless
   loop; the intro card's and title screen's music, at 0.10 (× the music volume when that's set above 0).
+
+## Everything new since the Warrens (22 Oct) in `music/` and `sfx/`
+
+- `music/music-palengke.*` — "Closing Time", an original loop made for Mikazuki (the art folder's
+  `scripts/audio/build_palengke_silong_music.py`; no credit needed). 82 bpm, a 46.8 s seamless loop; the Lumang
+  Palengke's music at 0.09 × the music volume.
+- `music/music-silong.*` — "Cold Room", the same script. 56 bpm, a 68.6 s seamless loop; Ang Silong's music at 0.09.
+- `sfx/skill-<class>-<skill>-1..3` (the Lv 21-40 skills), `sfx/skill-<class>-buff-cast-1..3`,
+  `sfx/skill-stun|taunt|debuff-1..3`, `sfx/combat-mob-hurt|death-<mob>-1..3` (the Palengke, Silong and Halloween mobs,
+  the Great Scale, Ang Makinang Yelo), `sfx/great-scale-<move>-1..3` and `sfx/silong-*` (22 sounds): made by the art
+  folder's `scripts/audio/build_new_sfx.py` from Kenney Impact Sounds, Interface Sounds and RPG Audio (CC0) and ffmpeg
+  noise (whoosh, hiss, puff, hum). No credit needed.

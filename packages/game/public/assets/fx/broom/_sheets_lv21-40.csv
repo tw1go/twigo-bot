@@ -1,0 +1,14 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-broom-moonbeam.png,38,111,11,12,no,19,99,front,Moonbeam: the beam from above; anchor = the target's feet; the hit lands on frame 5 (the flash)
+fx-broom-moonbeam-ring.png,38,111,11,12,no,19,99,ground,"Moonbeam: the small ring the beam leaves (frames 7-10, empty before); same anchor and timing as the beam"
+fx-broom-moonbeam-ground.png,70,36,11,12,no,35,18,ground,Moonbeam: the crescent ring on the ground under the target; start it with the beam; anchor = the target's feet
+fx-broom-leaf-storm-back.png,117,61,16,12,yes,58,30,ground,"Leaf Storm, back half: behind mobs; anchor = the target's feet (centre of the area); loop for 0.9 s"
+fx-broom-leaf-storm-front.png,117,61,16,12,yes,58,30,front,"Leaf Storm, front half: in front of mobs; same anchor and timing as the back half"
+fx-broom-firefly.png,24,24,12,12,yes,12,12,front,"Firefly Swarm: one firefly, moved by code from the palm to its mob; anchor = its centre"
+fx-broom-firefly-pop.png,37,37,7,14,no,18,18,front,Firefly Swarm: the pop where a firefly hits; anchor = the mob's body centre
+fx-broom-star.png,38,40,12,14,yes,26,28,front,"Starfall: one falling star, moved by code from about 3 tiles up-left down onto its spot; anchor = the star's centre"
+fx-broom-star-impact-ring.png,80,48,9,14,no,40,21,ground,Starfall: the violet ring spreading where a star lands; anchor = the landing spot; the hit lands on frame 0
+fx-broom-star-impact.png,80,48,9,14,no,40,21,front,Starfall: the sparkles jumping up from the ring; same anchor and timing as the ring
+fx-broom-tempest-ground.png,104,56,16,16,yes,52,28,ground,Tempest: the storm ring over the area; anchor = the target's feet (centre of the area); loop for 1.6 s
+fx-broom-bolt.png,42,101,7,15,no,21,90,front,Tempest and Thunder Sweep: a bolt striking one mob; anchor = the mob's feet; the hit lands on frame 2
+fx-broom-thunder-line.png,128,30,9,15,no,0,14,front,Thunder Sweep: the flat bolt; tile it end to end every cell_w px from the bristles out to 6 tiles along the facing; anchor = its left end

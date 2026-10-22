@@ -700,7 +700,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       tellVitals(o);
       return { id: o.player.id, amount };
     });
-    const healed: TownServerMessage = { t: 'buff-heal', by: c.player.id, heals };
+    const healed: TownServerMessage = { t: 'buff-heal', by: c.player.id, heals, skill: true };
     others(c, healed);
     send(c, healed);
   };
@@ -1407,7 +1407,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
         }
         if (r.mp > 0) vitals.spend(c.userId, r.mp);
-        const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}) };
+        // (Who it reached, by town id: everyone sees its look on each of them.)
+        const reached = r.to.flatMap((u) => (conns.get(u) ? [conns.get(u)!.player.id] : []));
+        const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}), ...(reached.length ? { to: reached } : {}) };
         others(c, cast);
         send(c, { ...cast, cooldown: r.cooldownMs });
         if (r.heal !== null) {
@@ -1757,7 +1759,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           c.says -= 1;
           for (const member of party.members) {
             const o = conns.get(member);
-            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text, ...(links.length ? { links } : {}) });
+            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text, ...(links.length ? { links } : {}), ...(p.cls ? { cls: p.cls } : {}) });
           }
           return;
         }
@@ -1768,7 +1770,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
-        const loud = { ...(megaphone ? { megaphone } : {}), ...(gm ? { gm } : {}) };
+        // (The speaker's class goes with it: their badge in the chat, for those on other maps too.)
+        const loud = { ...(megaphone ? { megaphone } : {}), ...(gm ? { gm } : {}), ...(p.cls ? { cls: p.cls } : {}) };
         remember({ name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
         opts.onSay?.(c.userId, p.nickname, text, megaphone, gm);
         return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });

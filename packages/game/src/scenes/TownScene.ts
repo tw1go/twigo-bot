@@ -111,7 +111,7 @@ import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts
 import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
-import { GreatScaleView } from '../world/great-scale';
+import { GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
 import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
@@ -121,9 +121,10 @@ import { type FxHandle, FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
-import { SKILL_PREVIEWS } from '../combat/skill-previews';
-import { skillPoses, skillSlots } from '../combat/skill-slots';
-import { FX_STAND_INS, resolveFx } from '../combat/fx-stand-ins';
+import { SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
+import { skillFx, skillPoses, skillSlots } from '../combat/skill-slots';
+import { resolveFx } from '../combat/fx-stand-ins';
+import { BUFF_BURSTS, BUFF_LOOKS, type BuffHook, LANDING_MS, buffHook, loadBuffHooks } from '../combat/utility-looks';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -136,7 +137,7 @@ import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
 import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
+import { type Sfx, type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSilongSounds, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
@@ -255,8 +256,15 @@ const SMOOTH_MS = 40;
 const SETTLE_MAX_MS = 15_000;
 /** …and waits this long at most for the server's first word (a slow or unreachable server: on without it). */
 const SERVER_WAIT_MS = 6000;
-/** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
-const SKILL_SOUNDS = 7;
+/** What lands on a mob (audio/sfx skill-stun / -taunt / -debuff-1…3): a stun, a taunt, any other debuff; one a crowd. */
+const MARK_SOUNDS = ['skill-stun', 'skill-taunt', 'skill-debuff'] as const;
+const MARK_GAP_MS = 150;
+/** A skill's later hits (CONTEXT.md Channel): one waits at most this long for its effect's hit before it shows anyway,
+ *  and a cast's hits are matched for this long. */
+const LATER_WAIT_MS = 1500;
+const LATER_KEEP_MS = 8000;
+/** One mob's part of a skill hit (mob-hit, mob-hits). */
+type MobHitView = Extract<TownServerMessage, { t: 'mob-hit' }>['hits'][number];
 /** A leap's arc (Timber!): this long, this high at the middle (px). */
 const LEAP_MS = 300;
 const LEAP_ARC = 24;
@@ -838,18 +846,24 @@ export class TownScene extends Phaser.Scene {
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
     // (The Slums, the Warrens and the Palengke: the Slums' music for now, no crickets; Ang Silong: the same at 70%.)
-    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? 'slums' : 'town');
-    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates; Ang Silong's events borrow them)
+    // (Each area's own music: the Slums', the Warrens', the Palengke's, Ang Silong's; the town's elsewhere.)
+    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? this.area : 'town');
+    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates and the hatch)
+    if (floorOfArea(this.area)) loadSilongSounds();
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       // (A field boss that's off, or has no art yet: the Palengke's Great Scale, none of its sounds.)
       const boss = this.map.boss && this.map.boss.active !== false && this.M.mobs?.[this.map.boss.id] ? this.map.boss : null;
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(boss ? [boss.id] : [])]);
       if (this.map.dungeon) kinds.add('scrapheap-golem'); // (the Scraplings)
-      // (Kinds with no sounds yet: mobs.json `sounds: false`, the Palengke's.)
+      // (The Halloween mobs in the Slums; Ang Makinang Yelo and its Frost Scales on Ang Silong's B3.)
+      if (this.area === 'slums') for (const k of Object.values(HALLOWEEN_MOBS)) kinds.add(k);
+      if (this.map.silong?.floor === 'b3') kinds.add('makinang-yelo').add('frost-scale');
+      // (A kind with no sounds: mobs.json `sounds: false`.)
       const data = (this.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
       for (const k of [...kinds]) if (typeof data[k] === 'object' && (data[k] as MobData).sounds === false) kinds.delete(k);
-      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...((boss && boss.id !== 'great-scale') || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
+      const golem = (boss && boss.id !== 'great-scale') || this.map.dungeon;
+      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(golem ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : []), ...(boss?.id === 'great-scale' ? GREAT_SCALE_SOUNDS.map((a) => `great-scale-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
     // Last, once the names, labels and building cursors exist: the cover lifts once the town has settled (`settle`), then
@@ -1138,8 +1152,10 @@ export class TownScene extends Phaser.Scene {
     this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons, palengke: K.palengkeLeveling }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
-      // Each class's first 7 skills' sounds (heard from others too), on a battle map.
-      if (this.battleMap) loadSoundSets(data.classes.flatMap((c) => c.skills.slice(0, SKILL_SOUNDS).map((k) => skillSet(c.id, k.name))));
+      // Each class's buff-cast hooks (where its cast burst goes off: combat/utility-looks.ts).
+      void loadBuffHooks(data.classes.map((c) => c.id), (cls) => `${import.meta.env.BASE_URL}assets/characters/classes/${cls}/buff-hooks.csv`);
+      // Every class's skills' sounds and its utilities' cast (heard from others too), and what lands on a mob, on a battle map.
+      if (this.battleMap) loadSoundSets([...data.classes.flatMap((c) => [...c.skills.map((k) => skillSet(c.id, k.name)), `skill-${c.id}-buff-cast`]), ...MARK_SOUNDS]);
       // Every item kind's art (gear and the rest), and the rarity colours every item name uses (stats.json).
       addItemArt(Object.fromEntries([...data.defs.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
       setRarityColours(Object.fromEntries(Object.entries(itemStats(data.stats).rarity.nameColour).map(([r, c]) => [r, c.colour])));
@@ -1344,11 +1360,11 @@ export class TownScene extends Phaser.Scene {
   private nextCast = 0;
 
   /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
-  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => void, landAll: () => void, poses = false): void {
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => boolean, landAll: () => void, poses = false, key?: string): Set<string> | null {
     const skill = SKILL_PREVIEWS[cls]?.[idx];
     const art = this.M.classes?.list[cls];
     const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
-    if (!skill || !art || !mobs.length) return landAll();
+    if (!skill || !art || !mobs.length) return landAll(), null;
     this.worldSkills ??= new WorldSkills(this.fxLayers, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
     // The script's slots in order get the hit mobs (the target first); the rest, the target.
     const slots = skillSlots(skill);
@@ -1357,9 +1373,11 @@ export class TownScene extends Phaser.Scene {
     // A hit on slot n lands its mob; the first also lands the mobs no slot shows (around a melee skill).
     const shown = new Set(slots.map((n) => bySlot(n).id));
     let first = true;
+    // A script hit on a mob whose hit has landed: one of the skill's later hits may land now (laterCredit).
     const onHit = (n: number) => {
-      land(bySlot(n).id);
-      if (first) for (const m of mobs) if (!shown.has(m.id)) land(m.id);
+      const id = bySlot(n).id;
+      if (!land(id) && key) this.laterCredit(key, id);
+      if (first) for (const m of mobs) if (!shown.has(m.id)) while (land(m.id));
       first = false;
     };
     const playPoses = poses ? (frames: { anim: string; frame: number; ms: number }[]) => who.strikeFrames(frames, dir) : undefined;
@@ -1367,8 +1385,70 @@ export class TownScene extends Phaser.Scene {
       const m = bySlot(n);
       return { x: m.sprite.x, y: m.sprite.y };
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
+    return shown;
   }
   private worldSkills: WorldSkills | null = null;
+
+  /** A skill hit's number and HP on its mob (and your hit's sound). */
+  private showHit(h: MobHitView, mine: boolean): void {
+    this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
+    if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
+  }
+
+  /** Each cast's later hits (a skill of several hits, a windup) by caster and skill: the mobs its effects show, the
+   *  script's hits on each not yet matched by one of the server's, and the server's waiting for one. */
+  private readonly laterHits = new Map<string, { shown: Set<string>; credits: Map<string, number>; waiting: Map<string, { h: MobHitView; timer: Phaser.Time.TimerEvent }[]>; mine: boolean; expire: Phaser.Time.TimerEvent }>();
+
+  /** A cast whose later hits wait for its effects (the one before by the same caster and skill lets its own go). */
+  private laterCast(key: string, shown: Set<string> | null, mine: boolean): void {
+    this.laterFlush(key);
+    if (!shown) return;
+    const expire = this.time.delayedCall(LATER_KEEP_MS, () => this.laterFlush(key));
+    this.laterHits.set(key, { shown, credits: new Map(), waiting: new Map(), mine, expire });
+  }
+
+  /** The script's hit on a mob: a later hit waiting for it lands, else the next one that comes lands at once. */
+  private laterCredit(key: string, id: string): void {
+    const c = this.laterHits.get(key);
+    if (!c) return;
+    const w = c.waiting.get(id)?.shift();
+    if (w) {
+      w.timer.remove();
+      return this.showHit(w.h, c.mine);
+    }
+    c.credits.set(id, (c.credits.get(id) ?? 0) + 1);
+  }
+
+  /** One of the server's later hits: at once when its effect's hit has come (or no effect shows that mob), else it waits
+   *  for it, LATER_WAIT_MS at most. */
+  private laterHit(key: string, h: MobHitView, mine: boolean): void {
+    const c = this.laterHits.get(key);
+    if (!c || !c.shown.has(h.id)) return this.showHit(h, mine);
+    const n = c.credits.get(h.id) ?? 0;
+    if (n > 0) {
+      c.credits.set(h.id, n - 1);
+      return this.showHit(h, mine);
+    }
+    const list = c.waiting.get(h.id) ?? [];
+    const entry = { h, timer: this.time.delayedCall(LATER_WAIT_MS, () => {
+      list.splice(list.indexOf(entry), 1);
+      this.showHit(h, mine);
+    }) };
+    list.push(entry);
+    c.waiting.set(h.id, list);
+  }
+
+  /** A cast's waiting hits land now and it's forgotten. */
+  private laterFlush(key: string): void {
+    const c = this.laterHits.get(key);
+    if (!c) return;
+    this.laterHits.delete(key);
+    c.expire.remove();
+    for (const list of c.waiting.values()) for (const w of list) {
+      w.timer.remove();
+      this.showHit(w.h, c.mine);
+    }
+  }
 
   /** A level up's effect (manifest fx-level-up-ring flat under their feet, fx-level-up-sparks rising off them), with
    *  "Level up!" over the head; both follow them for the moment it plays. */
@@ -1594,7 +1674,7 @@ export class TownScene extends Phaser.Scene {
       // (Its effects come with the server's answer.) The Lv 21-40 skills play their own frame orders.
       if (idx < SKILL_POSE.length) this.player.strike(SKILL_POSE[idx], dir);
       else this.player.strikeFrames(this.posesOf(c.id, idx), dir);
-      if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
+      playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
       const shot = this.chargedShot?.name === name ? this.chargedShot : null;
       if (shot) this.chargedShot = null;
       this.link?.send({ t: 'attack', mob: m.id, skill: idx, ...(shot?.held !== undefined ? { held: Math.round(shot.held) } : {}) });
@@ -1705,6 +1785,71 @@ export class TownScene extends Phaser.Scene {
     if (this.fight(name) === undefined) this.player.endStrike();
   }
 
+  /** When you last cast a buff (scene ms): its pose started then, so its burst and landing wait only for what's left. */
+  private myCastAt = -Infinity;
+
+  /** A buff cast (a refused one never comes here): its class's burst on the caster on its buff-cast pose's fx_start
+   *  frame(s), at its hook for the facing (characters/classes/<class>/buff-hooks.csv) or its feet, and LANDING_MS after the
+   *  first its look on everyone it reached. Someone else's pose starts as the message comes; yours did as you pressed. */
+  private buffCast(id: string, cls: string | null | undefined, buff: string, to: string[], dir: Dir): void {
+    const caster = id === this.myId ? this.player : this.others.charOf(id);
+    const fps = (cls && this.M.classes?.list[cls]?.anims['buff-cast']?.fps) || 12;
+    const hook = cls ? buffHook(cls) : null;
+    const frames = hook?.frames.length ? hook.frames : [0];
+    const since = id === this.myId ? Math.max(0, this.time.now - this.myCastAt) : 0;
+    const burst = cls ? BUFF_BURSTS[cls] : undefined;
+    if (burst && caster) for (const f of frames) this.time.delayedCall(Math.max(0, (f * 1000) / fps - since), () => this.burstOn(caster, burst, hook, f, dir));
+    this.time.delayedCall(Math.max(0, (frames[0] * 1000) / fps + LANDING_MS - since), () => {
+      for (const t of to) this.buffLook(t, buff);
+    });
+  }
+
+  /** A class's cast burst on a character: at its hook's point on that frame for the facing (the pose's 64 px cell, the
+   *  feet at 32, 56), or its feet; on its manifest entry's layer, following them for the moment it plays. */
+  private burstOn(ch: Character, burst: { fx: string; at: 'hook' | 'feet'; ground?: boolean }, hook: BuffHook | null, frame: number, dir: Dir): void {
+    const def = this.M.fx[burst.fx];
+    if (!def?.file || !this.textures.exists(def.file)) return;
+    const p = burst.at === 'hook' ? hook?.at[frame]?.[dir] : undefined;
+    const [dx, dy] = p ? [p[0] - 32, p[1] - 56] : [0, 0];
+    const at = () => ({ x: ch.sprite.x + dx, y: ch.sprite.y + dy });
+    this.fxLayers.play(def, at(), { layer: burst.ground || def.layer === 'ground' ? 'ground' : 'front', follow: at });
+  }
+
+  /** The buff looks playing (combat/utility-looks.ts), by `<town id>:<buff>`: their back and front halves. */
+  private readonly buffLooks = new Map<string, FxHandle[]>();
+
+  /** A buff's look on someone it reached: its `-back` half under everyone, its `-front` over them, at their feet; once,
+   *  or looped for the buff's time (`loop`: cut short as it ends, endLooks / the `buffs` message). */
+  private buffLook(id: string, buff: string): void {
+    const look = BUFF_LOOKS[buff];
+    const ch = id === this.myId ? this.player : this.others.charOf(id);
+    if (!look || !ch) return;
+    const key = `${id}:${buff}`;
+    this.endLook(key);
+    const secs = adventureData()?.stats.skills.buffs?.list[buff]?.durationSec ?? 0;
+    // (Looped for the buff's time, or for its own `ms`: a looping sheet as one cycle, Steady Breath's.)
+    const life = look.ms ?? (look.loop && secs ? secs * 1000 : undefined);
+    const at = () => ({ x: ch.sprite.x, y: ch.sprite.y });
+    const handles = (['back', 'front'] as const).flatMap((half) => {
+      const def = this.M.fx[`${look.fx}-${half}`];
+      if (!def?.file || !this.textures.exists(def.file)) return [];
+      const h = this.fxLayers.play(def, at(), { layer: half === 'back' ? 'ground' : 'front', follow: at, ...(life ? { life, fadeOut: 250 } : {}) });
+      return h ? [h] : [];
+    });
+    if (handles.length) this.buffLooks.set(key, handles);
+    if (life) this.time.delayedCall(life + 300, () => this.buffLooks.get(key) === handles && this.buffLooks.delete(key));
+  }
+
+  private endLook(key: string): void {
+    for (const h of this.buffLooks.get(key) ?? []) h.kill(250);
+    this.buffLooks.delete(key);
+  }
+
+  /** Everyone's looks on someone end (knocked out, gone). */
+  private endLooks(id: string): void {
+    for (const key of [...this.buffLooks.keys()]) if (key.startsWith(`${id}:`)) this.endLook(key);
+  }
+
   /** When each buff can be cast again (scene time, ms; the server's word wins). */
   private buffReady = new Map<string, number>();
 
@@ -1738,6 +1883,7 @@ export class TownScene extends Phaser.Scene {
     const cd = S ? cooldownOf(S, sk, sk.level) : 1;
     this.buffReady.set(name, now + cd * 1000);
     this.player.strike('buff-cast', this.player.facing);
+    this.myCastAt = now; // (its pose starts now: its burst and landing count from here)
     this.link?.send({ t: 'buff', buff: name, ...(target ? { target } : {}) });
     return cd;
   }
@@ -1775,7 +1921,7 @@ export class TownScene extends Phaser.Scene {
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
     startDodge(this, this.player, kind); // (Step Back: hits landing in its window show as Dodge)
     for (const t of tiles) this.player.onStep?.(t);
-    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set)).then(() => this.arrivedQuietly());
+    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set), adventure()?.cls).then(() => this.arrivedQuietly());
     // Its cooldown at its skill level (1% less a level).
     const S = adventureData()?.stats;
     const cd = S ? cooldownOf(S, sk, sk.level) : MOVES[kind].cooldown;
@@ -2051,8 +2197,14 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
-    // (The Lv 21-40 skills' stand-ins borrow other classes' art: combat/fx-stand-ins.ts.)
-    for (const st of Object.values(FX_STAND_INS)) if (st.use && this.M.fx[st.use]?.file) fx.push(this.M.fx[st.use].file!);
+    // (And every FX its skills' scripts name from another folder: the shared marks and looks, another class's burn or
+    // knee ring, a stand-in: combat/fx-stand-ins.ts.)
+    const scripts = [...(SKILL_PREVIEWS[cls] ?? []), ...(classInfo(cls)?.buffs ?? []).map((b) => buffPreview(b.name, cls))];
+    for (const name of skillFx(scripts)) {
+      const r = resolveFx(this.M.fx, name);
+      const file = r && this.M.fx[r.name]?.file;
+      if (file && !fx.includes(file)) fx.push(file);
+    }
     await loadImages(this, [...poseFiles(art), ...cosmeticPoseFiles(this.M.characters, K, this.outfit, art), ...fx, ...this.M.tiles.grass.files]); // (a cosmetic top's pose sheets too)
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
@@ -2302,9 +2454,10 @@ export class TownScene extends Phaser.Scene {
       this.player.setParty(!!party());
     });
     // A player's class badge before their name in the chat (yours from your quests, others' from the town).
-    chat.badgeFor = (from, id) => {
+    chat.badgeFor = (from, id, cls) => {
       const icons = this.M.ui.classIcons;
-      const c = classInfo(from === 'me' ? adventure()?.cls : id ? this.others.classOf(id) : null);
+      // (Yours now; someone else's as the server said, else as this map sees them.)
+      const c = classInfo(from === 'me' ? (adventure()?.cls ?? cls) : (cls ?? (id ? this.others.classOf(id) : null)));
       return c && icons ? { url: `${import.meta.env.BASE_URL}assets/${icons.small.replace('{class}', c.id)}`, name: c.name } : null;
     };
     // Megaphone messages run across the screen (with the megaphone's art, if it's there).
@@ -2411,16 +2564,16 @@ export class TownScene extends Phaser.Scene {
         if (m.id === myId) {
           if (bubbles) this.player.say(m.text, bubbles);
           if (m.megaphone) window.dispatchEvent(new Event('mk-wallet')); // one megaphone fewer in the bag
-          return chat.add(name, m.text, 'me', undefined, kind, m.links); // (your own words make no sound)
+          return chat.add(name, m.text, 'me', undefined, kind, m.links, m.cls); // (your own words make no sound)
         }
-        chat.add(name, m.text, 'town', m.id, kind, m.links);
+        chat.add(name, m.text, 'town', m.id, kind, m.links, m.cls);
         playSound('chat');
       }
       if (m.t === 'party-say') {
         const mine = m.id === myId;
         const char = mine ? this.player : this.others.charOf(m.id);
         if (char && bubbles) char.say(m.text, bubbles);
-        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party', m.links);
+        chat.add(mine ? (member?.nickname ?? 'You') : m.name, m.text, mine ? 'me' : 'town', mine ? undefined : m.id, 'party', m.links, m.cls);
         if (!mine) playSound('chat');
         return;
       }
@@ -2430,6 +2583,8 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (tradeWin?.handle(m)) return;
+      // (A looping buff look ends with its wearer knocked out or gone.)
+      if ((m.t === 'knocked-out' || m.t === 'leave') && 'id' in m) this.endLooks(m.id);
       if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
@@ -2648,22 +2803,30 @@ export class TownScene extends Phaser.Scene {
         const ch = mine ? this.player : this.others.charOf(m.by);
         const cls = mine ? (adventure()?.cls ?? null) : this.others.classOf(m.by);
         // Each mob's number and HP land when the effect's hit does (the rest with the first; all after 1.5 s at most).
-        const pending = new Map(m.hits.map((h) => [h.id, h]));
-        const land = (id: string) => {
-          const h = pending.get(id);
-          if (!h) return;
-          pending.delete(id);
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
-          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
+        // (Seeking shots can hit one mob several times: each lands on its own script hit.)
+        const pending = new Map<string, MobHitView[]>();
+        for (const h of m.hits) pending.set(h.id, [...(pending.get(h.id) ?? []), h]);
+        const land = (id: string): boolean => {
+          const h = pending.get(id)?.shift();
+          if (!h) return false;
+          if (!pending.get(id)?.length) pending.delete(id);
+          this.showHit(h, mine);
+          return true;
         };
-        const landAll = () => [...pending.keys()].forEach(land);
+        const landAll = () => [...pending.keys()].forEach((id) => {
+          while (land(id));
+        });
         this.time.delayedCall(1500, landAll);
+        const key = `${m.by}:${m.skill}`;
         // A windup's cast (no hits yet: they come as mob-hits): its pose and effects at the mob it's at.
         if (m.windup && m.target && ch && cls) {
           const mob = this.mobs?.list.find((x) => x.id === m.target);
           if (!mob) return;
           const dir = dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y);
-          return this.castFx(cls, m.skill, ch, dir, [mob.id], () => {}, () => {}, !mine);
+          const name = classInfo(cls)?.skills[m.skill]?.name;
+          if (name && !mine) playSet(skillSet(cls, name), { at: ch.tile, others: true }); // (yours played as you cast)
+          this.laterCast(key, this.castFx(cls, m.skill, ch, dir, [mob.id], () => false, () => {}, !mine, key), mine);
+          return;
         }
         if (ch && at && cls) {
           const mob = this.mobs?.list.find((x) => x.id === ids[0]);
@@ -2671,25 +2834,30 @@ export class TownScene extends Phaser.Scene {
           if (!mine) {
             if (m.skill < SKILL_POSE.length) ch.strike(SKILL_POSE[m.skill], dir); // (yours played as you cast; the Lv 21-40 ones by castFx)
             const name = classInfo(cls)?.skills[m.skill]?.name;
-            if (name && m.skill < SKILL_SOUNDS) playSet(skillSet(cls, name), { at: ch.tile, others: true });
+            if (name) playSet(skillSet(cls, name), { at: ch.tile, others: true });
           }
-          this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length);
+          this.laterCast(key, this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length, key), mine);
         } else landAll();
         return;
       }
-      // A skill's later hits (a channel, hits on the move, a windup landing): their numbers as they come (the effects
-      // play with the cast).
+      // A skill's later hits (a channel, hits on the move, a windup landing): each number with the effect's own hit on
+      // that mob (laterHit: at most 1.5 s late).
       if (m.t === 'mob-hits') {
         const mine = m.by === myId;
         if (mine) this.combatAt = performance.now();
-        for (const h of m.hits) {
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
-          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit');
-        }
+        for (const h of m.hits) this.laterHit(`${m.by}:${m.skill}`, h, mine);
         return;
       }
-      if (m.t === 'mob-stun') return this.mobs?.stun(m.id, m.ms, m.col, m.row);
-      if (m.t === 'mob-debuff') return this.mobs?.debuff(m.id, m.name, m.ms);
+      // A stun, a taunt or a debuff landing on a mob: its mark, and its sound from there.
+      if (m.t === 'mob-stun') {
+        playSet('skill-stun', { at: { col: m.col, row: m.row } }, MARK_GAP_MS);
+        return this.mobs?.stun(m.id, m.ms, m.col, m.row);
+      }
+      if (m.t === 'mob-debuff') {
+        const taunt = m.name === 'taunt' || m.name === 'Provoke' || m.name === 'Iron Kitchen';
+        playSet(taunt ? 'skill-taunt' : 'skill-debuff', { at: this.mobs?.tileOf(m.id) ?? null }, MARK_GAP_MS);
+        return this.mobs?.debuff(m.id, m.name, m.ms);
+      }
       // A leap (Timber!): onto its tile in an arc, everyone's; yours moves you there.
       if (m.t === 'leap') {
         if (m.id !== myId) return this.others.handle(m);
@@ -2814,6 +2982,8 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'buffs') {
         setMyBuffs(m.buffs);
+        // Your looping looks end with the buff (taken off, run out, left behind on another map).
+        for (const key of [...this.buffLooks.keys()]) if (key.startsWith(`${myId}:`) && !m.buffs.some((b) => key === `${myId}:${b.name}`)) this.endLook(key);
         setHudRating(myRating()); // (your CP with them)
         if (!this.buffDemo) {
           // (Buffs stack. Under the old rule, each stat counted only from its strongest buff: one outdone on every stat it
@@ -2844,6 +3014,12 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'buff-cast') {
+        // Its class's burst on the caster and its look on everyone it reached (combat/utility-looks.ts; a stance only as
+        // it's taken), and the class's cast sound.
+        const caster = m.id === myId ? this.player : charOf(m.id);
+        const casterCls = m.id === myId ? adventure()?.cls : this.others.classOf(m.id);
+        if (!m.off) this.buffCast(m.id, casterCls, m.buff, m.to ?? [m.id], m.dir as Dir);
+        if (caster && casterCls && !m.off) playSet(`skill-${casterCls}-buff-cast`, m.id === myId ? {} : { at: caster.tile, others: true });
         if (m.id !== myId) charOf(m.id)?.strike('buff-cast', m.dir);
         else if (m.cooldown) {
           this.buffReady.set(m.buff, this.time.now + m.cooldown);
@@ -2854,6 +3030,8 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'buff-heal') {
         for (const h of m.heals) if (h.amount > 0) charOf(h.id)?.hitNumber(`+${h.amount}`, h.id === myId, '#4ADE80');
+        // A skill's heal (Herbal Storm): Soothing Touch's healing look on each it healed (a buff's comes with its cast).
+        if (m.skill) for (const h of m.heals) this.buffLook(h.id, 'Soothing Touch');
         return;
       }
       if (m.t === 'buff-refused') {
@@ -3072,12 +3250,20 @@ export class TownScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => link.close());
   }
 
-  /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. */
+  /** A building's sounds as heard from where it stands (a neighbour's house rising or getting a new look): only within
+   *  hearing, a little quieter (audio/sound.ts playFrom). */
+  private heardFrom(b: { obj: { col: number; row: number } }) {
+    return (name: Sfx) => playFrom(name, { at: { col: b.obj.col, row: b.obj.row }, others: true });
+  }
+
+  /** An emote on a character: its icon over the head, and for laugh and wave, the cheer or wave animation too. Its sound:
+   *  yours always; someone else's only within hearing (audio/sound.ts HEAR_TILES), a little quieter. */
   private playEmote(char: Character, e: TownEmote): void {
     const E = this.M.ui.emotes;
     const frame = Array.isArray(E?.frames) ? E.frames.indexOf(e) : -1;
     if (E?.file && frame >= 0 && this.textures.exists(E.file)) char.showEmote(E.file, frame);
-    playSound('emote');
+    if (char === this.player) playSound('emote');
+    else playFrom('emote', { at: char.tile, others: true });
     if (e === 'laugh') char.emote('cheer');
     if (e === 'wave') char.emote('wave');
   }
@@ -4374,7 +4560,7 @@ export class TownScene extends Phaser.Scene {
     else hood.houses.push(m.house);
     if (m.change === 'look') {
       const key = known && this.houseTexture(m.house);
-      if (key) puffHouse(this.fx(), known, key);
+      if (key) puffHouse(this.fx(), known, key, this.heardFrom(known)); // (a neighbour's: heard nearby only)
       if (known) this.rogueSigns?.set(m.house, known); // (another type's door is elsewhere)
       return;
     }
@@ -4404,7 +4590,7 @@ export class TownScene extends Phaser.Scene {
     label.setZoom(this.cameras.main.zoom);
     this.buildingLabels.set(id, label);
     sinkHouse(b);
-    void riseHouse(this.fx(), b).then(() => this.rogueSigns?.set(m.house, b));
+    void riseHouse(this.fx(), b, this.heardFrom(b)).then(() => this.rogueSigns?.set(m.house, b)); // (heard nearby only)
     toast(`${m.house.owner} built a house in the neighbourhood!`, 3000);
   }
 

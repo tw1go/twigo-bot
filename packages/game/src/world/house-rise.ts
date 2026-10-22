@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import type { FxDef, Manifest } from '../assets/types';
-import { playSound } from '../audio/sound';
+import { type Sfx, playSound } from '../audio/sound';
+
+/** How a house's whoosh and slam are played: yours as ever (playSound); a neighbour's from their lot (TownScene: heard
+ *  only within hearing, a little quieter). */
+type HouseSound = (name: Extract<Sfx, 'arena-slam' | 'arena-whoosh'>) => void;
 import { tileToScreen } from '../iso';
 import type { Building } from './objects';
 
@@ -69,7 +73,7 @@ export function sinkHouse(b: Building): void {
 }
 
 /** The house rises out of its lot. Resolves when it has settled. */
-export function riseHouse(s: Scene, b: Building): Promise<void> {
+export function riseHouse(s: Scene, b: Building, sound: HouseSound = playSound): Promise<void> {
   const sprite = b.sprite;
   const { x, y } = sprite;
   const h = sprite.height;
@@ -80,10 +84,10 @@ export function riseHouse(s: Scene, b: Building): Promise<void> {
   if (reducedMotion()) {
     sprite.setCrop();
     burst(s, b);
-    playSound('arena-slam');
+    sound('arena-slam');
     return Promise.resolve();
   }
-  playSound('arena-whoosh');
+  sound('arena-whoosh');
   burst(s, b);
   // Dust keeps puffing from under it while it comes up.
   const dust = s.scene.time.addEvent({ delay: PUFF_EVERY_MS, loop: true, callback: () => dustOnEdge(s, b, b.depth + 0.5) });
@@ -105,7 +109,7 @@ export function riseHouse(s: Scene, b: Building): Promise<void> {
         dust.remove();
         sprite.setPosition(x, y).setCrop();
         burst(s, b);
-        playSound('arena-slam');
+        sound('arena-slam');
         done();
       },
     }),
@@ -113,8 +117,8 @@ export function riseHouse(s: Scene, b: Building): Promise<void> {
 }
 
 /** A new look: a puff of dust round the house, the new texture inside it. */
-export function puffHouse(s: Scene, b: Building, texture: string): void {
+export function puffHouse(s: Scene, b: Building, texture: string, sound: HouseSound = playSound): void {
   burst(s, b);
-  playSound('arena-whoosh');
+  sound('arena-whoosh');
   s.scene.time.delayedCall(reducedMotion() ? 0 : 180, () => b.sprite.setTexture(texture));
 }
