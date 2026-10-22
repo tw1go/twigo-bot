@@ -1,0 +1,7 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-stick-crosscut.png,106,89,11,16,no,51,42,front,Crosscut: the two cuts cross into an X; centre on the target body; the cuts land on frames 1 and 3; mirror it when the target is to the west
+fx-stick-thunder-hit.png,36,82,12,16,no,16,67,front,Thunder Tap: the bolt strikes down; anchor = the target's feet; hit on frame 2; the stun stars take over after it
+fx-stick-flurry.png,106,49,12,20,yes,58,26,front,"Hundred Hits: rapid strike lines, points EAST; loop it in front of the player, centred between the player and the target, turned to the facing"
+fx-stick-shatter-impact.png,99,70,8,16,no,48,62,front,Shatter Strike: the burst on the target; anchor = its feet; plays with fx-stick-shatter-ring (the white pole frames PixelLab drew first are left out: the player's own stick does that)
+fx-stick-shatter-ring.png,128,67,11,16,no,64,33,ground,Shatter Strike: the shockwave ring and cracks on the ground; same anchor as the impact (the target's feet); under players and mobs; starts with the impact
+fx-stick-phantom-fade.png,50,99,11,12,no,24,97,front,Phantom Sticks: an afterimage dissolving; anchor = where its feet were; plays as each afterimage ends

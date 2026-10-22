@@ -1407,7 +1407,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           }
         }
         if (r.mp > 0) vitals.spend(c.userId, r.mp);
-        const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}) };
+        // (Who it reached, by town id: everyone sees its look on each of them.)
+        const reached = r.to.flatMap((u) => (conns.get(u) ? [conns.get(u)!.player.id] : []));
+        const cast: TownServerMessage = { t: 'buff-cast', id: p.id, buff: m.buff, dir: p.dir, ...(r.off ? { off: true } : {}), ...(reached.length ? { to: reached } : {}) };
         others(c, cast);
         send(c, { ...cast, cooldown: r.cooldownMs });
         if (r.heal !== null) {

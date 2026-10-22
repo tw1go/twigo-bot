@@ -1,4 +1,5 @@
 import type { FxOpts, Pt, Skill, SkillKit } from './skill-stage';
+import { BUFF_LOOKS, DEBUFF_MARKS } from './utility-looks';
 
 // 🎬 The first 7 damage skills of each class, as the class fx notes describe them (fx/<class>/*.md in the art folder):
 // which attack anim and frames, when and where each fx piece spawns (launch.json points, the READMEs' points),
@@ -630,21 +631,45 @@ function homeAfter(k: SkillKit, end: number): void {
 
 // ── The Lv 21-40 damage skills (combat-guide.md "Lv 21-40 skills"; the art folder's docs/skills-21-40): each plays the
 // class's attack-quick, attack-heavy or attack-cast (Timber! starts on charge-start) in its own frame order, so every
-// cosmetic pose sheet still fits. Their new FX are named as PixelLab will deliver them; until a file lands its stand-in
-// plays (combat/fx-stand-ins.ts). `null` in a pose's ms list: the anim's own frame time.
+// cosmetic pose sheet still fits. Their FX are the art folder's fx/<class> (its _sheets_lv21-40.csv: anchors, layers and
+// the frame each hit lands on); a split one plays its `-back` half on the ground and its `-front` half over everyone, at
+// one anchor and time. Spirit Smoke's isn't made yet: its stand-in plays (combat/fx-stand-ins.ts). `null` in a pose's ms
+// list: the anim's own frame time.
 
 const SEED = '#84CC16'; // Seed Barrage's pebbles
 const PHANTOM = '#A3E635'; // Phantom Sticks' afterimages
-const LINE_END = (k: SkillKit, from: Pt, tilesPast = 1): Pt => toward(from, k.body(2), dist(from, k.body(2)) + tilesPast * 18);
+const AMBER = '#F59E0B'; // Hot Oil's drops
 
-/** `ticks` damage-over-time numbers on enemy n, `every` ms apart from `from` ms, an fx over it meanwhile. */
-function ticking(k: SkillKit, n: number, from: number, ticks: number, every: number, fx?: string, o: FxOpts = {}): void {
+/** When frame n of a sheet at `fps` starts (ms): where its art lands a hit. */
+const frameAt = (n: number, fps: number) => (n * 1000) / fps;
+
+/** The far end of a line skill: past the far enemy by `tilesPast` tiles. */
+const lineEnd = (k: SkillKit, from: Pt, tilesPast = 1): Pt => toward(from, k.body(2), dist(from, k.body(2)) + tilesPast * 18);
+
+/** A split FX at a point: its back half on the ground, its front half over everyone. */
+function pair(k: SkillKit, name: string, at: Pt, o: FxOpts = {}): void {
+  k.fx(`${name}-back`, at, { ...o, z: 0 });
+  k.fx(`${name}-front`, at, { ...o, z: 3 });
+}
+
+/** `ticks` damage-over-time numbers on enemy n, `every` ms apart from `from` ms: a looping FX over it meanwhile, or one
+ *  played on each tick (`tickFx`, a few px under its body). */
+function ticking(k: SkillKit, n: number, from: number, ticks: number, every: number, fx?: string, o: FxOpts = {}, tickFx?: string): void {
   k.at(from, () => {
     const on = fx ? k.fx(fx, k.targets[n], { z: 3, fadeIn: 120, ...o }) : null;
-    for (let i = 1; i <= ticks; i++) k.at(from + i * every, () => k.number({ x: k.body(n).x + 8, y: k.body(n).y }, 'dot'));
+    for (let i = 1; i <= ticks; i++)
+      k.at(from + i * every, () => {
+        if (tickFx) k.fx(tickFx, { x: k.body(n).x, y: k.body(n).y + 3 });
+        k.number({ x: k.body(n).x + 8, y: k.body(n).y }, 'dot');
+      });
     k.at(from + ticks * every + 100, () => on?.kill(250));
   });
 }
+
+/** The stage's stun stars on enemy n for `ms` (in the world the mob shows its own: world/mobs.ts). */
+const stars = (k: SkillKit, n: number, ms: number) => k.preview && k.fx('fx-stun-stars', { x: k.body(n).x, y: k.body(n).y - 12 }, { life: ms, fadeOut: 150 });
+/** The stage's taunt mark over enemy n for `ms` (in the world the mob shows its own). */
+const taunted = (k: SkillKit, n: number, ms: number) => k.preview && k.fx('fx-taunt-mark', { x: k.body(n).x, y: k.body(n).y - 22 }, { life: ms, fadeOut: 200 });
 
 const slingshotLate: Skill[] = [
   {
@@ -661,19 +686,21 @@ const slingshotLate: Skill[] = [
   {
     name: 'Burst Marble',
     run(k) {
+      // The marble flies (turned to its flight, 260 px/s) and bursts at the target's feet, the hits on the burst's frame 1.
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5]);
+      const fly = (dist(k.launch('attack-heavy', 4), k.body(1)) / 260) * 1000;
       k.at(t[4], () => {
         const fork = k.launch('attack-heavy', 4);
         k.fx('fx-slingshot-launch', fork);
-        k.shot('fx-slingshot-marble', fork, k.body(1), {
-          speed: BULLET_SPEED,
-          reveal: true,
-          onArrive: () => {
-            k.fx('fx-slingshot-marble-burst', k.body(1));
-            k.hit(1);
-            [0, 2].forEach((n) => k.hit(n, { fx: 'fx-slingshot-hit-small' })); // the rest in the burst
-          },
-        });
+        k.shot('fx-slingshot-marble', fork, k.body(1), { speed: 260, reveal: true });
+      });
+      k.at(t[4] + fly, () => {
+        k.fx('fx-slingshot-marble-burst', k.targets[1]);
+        k.fx('fx-slingshot-marble-burst-ground', k.targets[1], { z: 0 });
+      });
+      k.at(t[4] + fly + frameAt(1, 14), () => {
+        k.hit(1);
+        [0, 2].forEach((n) => k.hit(n, { fx: 'fx-slingshot-hit-small' })); // the rest in the burst
       });
     },
   },
@@ -700,15 +727,12 @@ const slingshotLate: Skill[] = [
       const hold = k.preview ? 1500 : 0;
       const t = k.preview ? k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, hold, null, null]) : [0, 0, 0, ...k.pose('attack-heavy', [3, 4, 5])];
       if (hold) {
-        k.at(t[3], () => {
-          const fork = k.launch('attack-heavy', 3);
-          k.fx('fx-slingshot-charge', fork, { life: hold, ms: 83, frames: Array.from({ length: Math.ceil(hold / 83) }, (_, i) => i % 3) });
-        });
-        k.at(t[3] + hold - 120, () => k.fx('fx-slingshot-charge-full', k.launch('attack-heavy', 3)));
+        k.at(t[3], () => k.fx('fx-slingshot-charge', k.launch('attack-heavy', 3), { life: hold }));
+        k.at(t[3] + hold - frameAt(7, 14), () => k.fx('fx-slingshot-charge-full', k.launch('attack-heavy', 3))); // (ending as it's let go)
       }
       k.at(t[4], () => {
         const fork = k.launch('attack-heavy', 4);
-        const end = LINE_END(k, fork, 2);
+        const end = lineEnd(k, fork, 2);
         const speed = BULLET_SPEED * 1.6;
         k.fx('fx-slingshot-launch', fork);
         k.shot('fx-slingshot-pebble-pierce', fork, end, { speed, reveal: true, fadeOut: 120 });
@@ -719,7 +743,7 @@ const slingshotLate: Skill[] = [
   {
     name: 'Hailstorm',
     run(k) {
-      // As Volley: a pebble lobbed up, then the hail over the area: three waves 400 ms apart, each slowing.
+      // As Volley: a pebble lobbed up, then the hail and its ring on the area, hits on the rain's frames 5, 11 and 17.
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
       k.at(t[4], () => {
         const fork = k.launch('attack-cast', 4);
@@ -727,12 +751,16 @@ const slingshotLate: Skill[] = [
         k.shot(BULLET, fork, { x: fork.x, y: fork.y - VOLLEY_LOB.up }, { speed: BULLET_SPEED, ms: VOLLEY_LOB.ms, ease: 'out', fadeEnd: VOLLEY_LOB.fade, upright: true });
       });
       const rain = t[4] + VOLLEY_LOB.ms - VOLLEY_LOB.fade;
-      k.at(rain, () => k.fx('fx-slingshot-hail', { x: k.targets[1].x, y: k.targets[1].y }, { upright: true, scale: 1.5, life: 1300, fadeOut: 200 }));
-      [0, 400, 800].forEach((d) =>
-        k.at(rain + 240 + d, () =>
+      k.at(rain, () => {
+        const at = { x: k.targets[1].x, y: k.targets[1].y };
+        k.fx('fx-slingshot-hail', at, { upright: true });
+        k.fx('fx-slingshot-hail-ring', at, { z: 0, upright: true });
+      });
+      [5, 11, 17].forEach((f, i) =>
+        k.at(rain + frameAt(f, 16), () =>
           [0, 1, 2].forEach((n) => {
             k.hit(n, { fx: 'fx-slingshot-hit-small' });
-            if (d === 0) k.fx('fx-slingshot-knee-ring', k.targets[n], { z: 0, frames: [0, 1, 2, 3, 0, 1, 2, 3] });
+            if (i === 0) k.fx('fx-slingshot-knee-ring', k.targets[n], { z: 0, frames: [0, 1, 2, 3, 0, 1, 2, 3] }); // the slow
           }),
         ),
       );
@@ -746,7 +774,7 @@ const slingshotLate: Skill[] = [
       [1, 0, 2].forEach((n, i) =>
         k.at(t[4] + i * 80, () => {
           const fork = k.launch('attack-heavy', 4);
-          k.shot('fx-slingshot-homing', fork, k.body(n), { speed: 220, minMs: 260, arc: i % 2 ? -16 : 16, reveal: true, onArrive: () => k.hit(n, { fx: 'fx-slingshot-hit-small' }) });
+          k.shot('fx-slingshot-homing', fork, k.body(n), { speed: 220, minMs: 260, arc: i % 2 ? -16 : 16, turn: false, onArrive: () => k.hit(n, { fx: 'fx-slingshot-hit-small' }) });
         }),
       );
     },
@@ -757,21 +785,20 @@ const stickLate: Skill[] = [
   {
     name: 'Crosscut',
     run(k) {
+      // The X on the target with the first impact; its two cuts land on its frames 1 and 3.
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 3, 4, 5]);
-      k.at(t[4], () => {
-        k.fx('fx-stick-crosscut', k.body(0));
-        k.hit(0, { fx: 'fx-wind-hit' });
-      });
-      k.at(t[6], () => k.hit(0, { fx: 'fx-wind-hit' }));
+      k.at(t[4], () => k.fx('fx-stick-crosscut', k.body(0)));
+      [1, 3].forEach((f) => k.at(t[4] + frameAt(f, 16), () => k.hit(0, { fx: 'fx-wind-hit' })));
     },
   },
   {
     name: 'Thunder Tap',
     run(k) {
       const t = k.pose('attack-quick', [0, 1, 2, 3], [null, null, 200, null]);
-      k.at(t[2], () => {
-        k.hit(0, { fx: 'fx-stick-thunder-hit' });
-        k.fx('fx-stun-stars', { x: k.body(0).x, y: k.body(0).y - 14 }, { life: 1200, fadeOut: 200 });
+      k.at(t[2], () => k.fx('fx-stick-thunder-hit', k.targets[0]));
+      k.at(t[2] + frameAt(2, 16), () => {
+        k.hit(0);
+        stars(k, 0, 1200);
       });
     },
   },
@@ -794,10 +821,14 @@ const stickLate: Skill[] = [
   {
     name: 'Hundred Hits',
     run(k) {
-      // quick 1,2 ten times, 90 ms a frame: a hit on each 2.
+      // quick 1,2 ten times, 90 ms a frame: a hit on each 2; the flurry looping between the fighter and the target.
       const frames = [...Array(10).fill([1, 2]).flat(), 3];
       const t = k.pose('attack-quick', frames, [...Array(20).fill(90), null]);
-      k.at(t[0], () => k.fx('fx-stick-flurry', ahead(k, k.self(0, CHEST + 6), 14), { life: t[20], fadeOut: 120 }));
+      k.at(t[0], () => {
+        const from = k.self(0, CHEST + 6);
+        const to = k.body(0);
+        k.fx('fx-stick-flurry', { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }, { angle: angle(from, to), life: t[20], fadeOut: 120 });
+      });
       frames.forEach((f, i) => f === 2 && i < 20 && k.at(t[i], () => k.hit(0, { fx: 'fx-wind-hit' })));
     },
   },
@@ -806,7 +837,7 @@ const stickLate: Skill[] = [
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, null, 260, null]);
       k.at(t[4], () => {
-        k.fx('fx-stick-shatter-impact', k.body(0));
+        k.fx('fx-stick-shatter-impact', k.targets[0]);
         k.fx('fx-stick-shatter-ring', k.targets[0], { z: 0 });
         k.hit(0);
       });
@@ -816,7 +847,8 @@ const stickLate: Skill[] = [
   {
     name: 'Phantom Sticks',
     run(k) {
-      // Two lime afterimages one tile to each side of the facing (SW and NE of it), 100 and 200 ms behind.
+      // Two lime afterimages one tile to each side of the facing (SW and NE of it), 100 and 200 ms behind, each dissolving
+      // where it ends.
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5]);
       const end = t[5] + 80;
       k.echo(-16, 8, 100, end, PHANTOM, 0.5);
@@ -842,7 +874,7 @@ const greatstickLate: Skill[] = [
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5, 6], [null, null, null, null, 300, null, null]);
       k.at(t[4], () => {
-        // Cracks every half tile along the line, 40 ms apart, from where the plank lands.
+        // Cracks every half tile along the line from the plank's tip, 40 ms apart.
         const from = k.self(22, 1);
         const half = { x: 8, y: 4 };
         for (let i = 0; i < 12; i++) k.at(t[4] + i * 40, () => k.fx('fx-greatstick-quake-crack', { x: from.x + half.x * i, y: from.y + half.y * i }, { z: 0 }));
@@ -853,15 +885,11 @@ const greatstickLate: Skill[] = [
   {
     name: 'Cyclone',
     run(k) {
-      // Three turns (350 ms each), a hit each, round the fighter.
+      // Three turns (350 ms each), a hit each, the ring round the fighter for all three.
       const turn = 350 / 3;
       const t = k.pose('attack-cast', [0, 1, 2, 3, 1, 2, 3, 1, 2, 3, 4, 5, 6], [null, ...Array(9).fill(turn), null, null, null]);
-      [1, 4, 7].forEach((i) =>
-        k.at(t[i], () => {
-          k.fx('fx-greatstick-cyclone', k.self(0, CHEST));
-          k.hit(0, { fx: 'fx-crimson-hit' });
-        }),
-      );
+      k.at(t[1], () => pair(k, 'fx-greatstick-cyclone', k.self(0, 0), { life: 3 * 350, fadeOut: 150 }));
+      [1, 4, 7].forEach((i) => k.at(t[i], () => k.hit(0, { fx: 'fx-crimson-hit' })));
     },
   },
   {
@@ -869,20 +897,22 @@ const greatstickLate: Skill[] = [
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5, 6], [null, null, null, null, 260, null, null]);
       k.at(t[4], () => k.hit(0, { fx: 'fx-crimson-hit' }));
-      ticking(k, 0, t[4], 4, 500, 'fx-greatstick-bleed'); // Bleeds 4 × 15%
+      ticking(k, 0, t[4], 4, 500, undefined, {}, 'fx-greatstick-bleed'); // Bleeds 4 × 15%
     },
   },
   {
     name: 'Timber!',
     run(k) {
-      // charge-start 0,1, then heavy 2,3 while it arcs onto enemy 1 (300 ms, 24 px up), the slam on 4.
+      // charge-start 0,1, then heavy 2,3 while it arcs onto enemy 1 (300 ms, 24 px up), the slam on 4. The plank falls
+      // there meanwhile (its fall over everyone, its crater on the ground), the hit on its frame 5.
       k.pose('charge-start', [0, 1]);
       const t = k.pose('attack-heavy', [2, 3, 4, 5, 6], [150, 150, 300, null, null]);
-      k.at(t[0], () => k.leap(1, 300, 24));
-      k.at(t[2], () => {
-        k.fx('fx-greatstick-timber-slam', k.targets[1], { z: 0, scale: 1.5 });
-        [1, 0, 2].forEach((n) => k.hit(n, { fx: 'fx-crimson-hit' }));
+      k.at(t[0], () => {
+        k.leap(1, 300, 24);
+        k.fx('fx-greatstick-timber-fall', k.targets[1]);
+        k.fx('fx-greatstick-timber-slam', k.targets[1], { z: 0 });
       });
+      k.at(t[0] + frameAt(5, 16), () => [1, 0, 2].forEach((n) => k.hit(n, { fx: 'fx-crimson-hit' })));
       homeAfter(k, t[4] + 100);
     },
   },
@@ -911,19 +941,21 @@ const broomLate: Skill[] = [
   {
     name: 'Moonbeam',
     run(k) {
+      // The beam from above with its small ring and the crescent on the ground, the hit on its frame 5 (the flash).
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, 200, null, null]);
       k.at(t[3], () => {
-        k.fx('fx-broom-moonbeam', k.targets[1], { life: 450, fadeOut: 150 });
+        k.fx('fx-broom-moonbeam', k.targets[1]);
+        k.fx('fx-broom-moonbeam-ring', k.targets[1], { z: 0 });
         k.fx('fx-broom-moonbeam-ground', k.targets[1], { z: 0 });
       });
-      k.at(t[3] + 80, () => k.hit(1, { fx: 'fx-broom-dust-hit' }));
+      k.at(t[3] + frameAt(5, 12), () => k.hit(1));
     },
   },
   {
     name: 'Leaf Storm',
     run(k) {
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
-      k.at(t[2], () => k.fx('fx-broom-leaf-storm', k.targets[1], { hold: { from: 2, to: 9, until: 900 } }));
+      k.at(t[2], () => pair(k, 'fx-broom-leaf-storm', k.targets[1], { life: 900, fadeOut: 150 }));
       [0, 300, 600].forEach((d) => k.at(t[3] + d, () => [0, 1, 2].forEach((n) => k.hit(n, { fx: 'fx-broom-leaf-hit' }))));
     },
   },
@@ -944,15 +976,18 @@ const broomLate: Skill[] = [
     name: 'Starfall',
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, 400, null, null]);
-      // Three waves (350 ms apart) of two or three stars from the upper left onto spots in the area.
+      // Three waves (350 ms apart) of two or three stars, each falling from about 3 tiles up-left onto its spot; its ring
+      // and sparkles where it lands, the hit as it does.
       const spots = [[-10, 2], [12, -3], [2, 6]];
       [0, 350, 700].forEach((d, w) =>
         k.at(t[3] + d, () =>
           spots.slice(0, w === 1 ? 2 : 3).forEach(([dx, dy], i) => {
             const at = { x: k.targets[1].x + dx, y: k.targets[1].y + dy };
-            k.shot('fx-broom-star', { x: at.x - 50, y: at.y - 80 }, at, {
+            k.shot('fx-broom-star', { x: at.x - 48, y: at.y - 64 }, at, {
               speed: 380,
+              turn: false,
               onArrive: () => {
+                k.fx('fx-broom-star-impact-ring', at, { z: 0 });
                 k.fx('fx-broom-star-impact', at);
                 if (i === 0) [0, 1, 2].forEach((n) => k.hit(n));
               },
@@ -966,14 +1001,12 @@ const broomLate: Skill[] = [
     name: 'Tempest',
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, 600, null, null]);
-      k.at(t[3], () => k.fx('fx-broom-tempest-ground', k.targets[1], { z: 0, frames: Array.from({ length: 20 }, (_, i) => i % 4), ms: 80, fadeOut: 200 }));
-      // Four hits 400 ms apart, a bolt on one mob each.
-      [1, 0, 2, 1].forEach((n, i) =>
-        k.at(t[3] + 200 + i * 400, () => {
-          k.fx('fx-broom-bolt', k.body(n));
-          [0, 1, 2].forEach((m) => k.hit(m));
-        }),
-      );
+      k.at(t[3], () => k.fx('fx-broom-tempest-ground', k.targets[1], { z: 0, life: 1600, fadeOut: 200 }));
+      // Four hits 400 ms apart, a bolt on one mob each (the hit on its frame 2).
+      [1, 0, 2, 1].forEach((n, i) => {
+        k.at(t[3] + 200 + i * 400, () => k.fx('fx-broom-bolt', k.targets[n]));
+        k.at(t[3] + 200 + i * 400 + frameAt(2, 15), () => [0, 1, 2].forEach((m) => k.hit(m)));
+      });
     },
   },
   {
@@ -981,15 +1014,19 @@ const broomLate: Skill[] = [
     run(k) {
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
       k.at(t[2], () => {
+        // The flat bolt laid end to end (a cell every 128 px) from the bristles out to 6 tiles, a bolt on each mob.
         const tip = k.launch('attack-cast', 2, 'tip');
         const end = toward(tip, k.body(2), 6 * 18);
-        k.fx('fx-broom-thunder-line', tip, { angle: angle(tip, end), length: dist(tip, end), life: 300, fadeOut: 120 });
-        [0, 1, 2].forEach((n) => {
-          k.fx('fx-broom-bolt', k.body(n));
-          k.fx('fx-stun-stars', { x: k.body(n).x, y: k.body(n).y - 14 }, { life: 800, fadeOut: 150 });
-          k.hit(n);
-        });
+        const a = angle(tip, end);
+        for (let d = 0; d < dist(tip, end); d += 128) k.fx('fx-broom-thunder-line', toward(tip, end, d), { angle: a });
+        [0, 1, 2].forEach((n) => k.fx('fx-broom-bolt', k.targets[n]));
       });
+      k.at(t[2] + frameAt(2, 15), () =>
+        [0, 1, 2].forEach((n) => {
+          k.hit(n);
+          stars(k, n, 800);
+        }),
+      );
     },
   },
 ];
@@ -998,7 +1035,8 @@ const potlidLate: Skill[] = [
   {
     name: 'Pressure Cooker',
     run(k) {
-      // The cast's frame 0 held through the 800 ms windup (a 1 px shake on the stage), then 1-5.
+      // The cast's frame 0 held through the 800 ms windup (the steam hissing round the lid; a 1 px shake on the stage),
+      // then 1-5.
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5], [800, null, null, null, null, null]);
       k.at(t[0], () => k.fx('fx-potlid-pressure', k.launch('attack-cast', 0, 'lid'), { life: 800, fadeOut: 100 }));
       if (k.preview) for (let i = 0; i < 16; i++) k.at(t[0] + i * 50, () => k.move(i % 2 ? 1 : -1, 0, 0));
@@ -1018,11 +1056,11 @@ const potlidLate: Skill[] = [
         const lid = k.launch('attack-heavy', 3, 'lid');
         const feet = { x: k.targets[1].x, y: k.targets[1].y };
         const fly = Math.max(BOIL.minMs, (dist(lid, feet) / BOIL.speed) * 1000);
-        k.shot('fx-potlid-boil-drops', lid, feet, { speed: BOIL.speed, ms: fly, arc: BOIL.arc, turn: false, quarterTurnMs: BOIL.quarterMs, upright: true, fx: { tint: '#F59E0B' } });
+        k.shot('fx-potlid-boil-drops', lid, feet, { speed: BOIL.speed, ms: fly, arc: BOIL.arc, turn: false, quarterTurnMs: BOIL.quarterMs, upright: true, fx: { tint: AMBER } });
         k.at(t[3] + fly, () => {
           k.hit(1);
-          // The pool for its ticks (5, 400 ms apart, from 600 ms after the cast), burning what stands in it.
-          k.fx('fx-potlid-oil-pool', k.targets[1], { z: 0, upright: true, life: 2400, fadeOut: 250 });
+          // The pool looping while it burns (5 ticks, 400 ms apart, from 600 ms after the cast).
+          k.fx('fx-potlid-oil-pool', k.targets[1], { z: 0, life: 2400, fadeOut: 250 });
         });
         for (let i = 0; i < 5; i++)
           k.at(t[3] + 600 + i * 400, () => {
@@ -1035,15 +1073,15 @@ const potlidLate: Skill[] = [
   {
     name: 'Gong Wave',
     run(k) {
+      // The wave from the lid along the line (300 px/s, turned to its way), a hit and a taunt as it reaches each.
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
       k.at(t[1], () => {
         const lid = k.launch('attack-cast', 1, 'lid');
-        const end = LINE_END(k, lid);
-        k.shot('fx-potlid-gong-wave', lid, end, { speed: 300, turn: false, fadeOut: 150 });
+        k.shot('fx-potlid-gong-wave', lid, lineEnd(k, lid), { speed: 300, fadeOut: 150 });
         [0, 1, 2].forEach((n) =>
           k.at(t[1] + (dist(lid, k.body(n)) / 300) * 1000, () => {
             k.hit(n, { fx: 'fx-potlid-hit' });
-            k.fx('fx-taunt-mark', { x: k.body(n).x, y: k.body(n).y - 16 }, { life: 1500, fadeOut: 200 });
+            taunted(k, n, 1500);
           }),
         );
       });
@@ -1052,37 +1090,36 @@ const potlidLate: Skill[] = [
   {
     name: 'Simmer',
     run(k) {
-      // The cast's frame 0 held through the 3 s channel, then 5: six hits 500 ms apart round the fighter.
+      // The cast's frame 0 held through the 3 s channel (the simmer round the fighter), then 5: six hits 500 ms apart.
       const t = k.pose('attack-cast', [0, 5], [3000, null]);
-      [0, 1000, 2000].forEach((d) =>
-        k.at(t[0] + d, () => {
-          k.fx('fx-potlid-simmer', k.self(0, 0), { z: 1, life: 1000, fadeOut: 150 });
-          k.fx('fx-potlid-steam-burst-front', k.self(0, 0), { z: 3, alpha: 0.6 });
-        }),
-      );
+      k.at(t[0], () => pair(k, 'fx-potlid-simmer', k.self(0, 0), { life: 3000, fadeOut: 200 }));
       for (let i = 0; i < 6; i++) k.at(t[0] + i * 500, () => k.hit(0, { fx: 'fx-potlid-hit' }));
     },
   },
   {
     name: 'Searing Lid',
     run(k) {
+      // The lid drops on the target (its glow and heat rings under it, its steam), the hit on its frame 3; then it sears.
       const t = k.pose('attack-quick', [0, 1, 2, 3], [null, 200, null, null]);
-      k.at(t[1], () => {
-        k.hit(0, { fx: 'fx-potlid-searing-hit' });
-        k.fx('fx-taunt-mark', { x: k.body(0).x, y: k.body(0).y - 16 }, { life: 2000, fadeOut: 200 });
+      k.at(t[0], () => {
+        k.fx('fx-potlid-searing-drop', k.targets[0]);
+        k.fx('fx-potlid-searing-hit', k.targets[0], { z: 0 });
+        k.fx('fx-potlid-searing-steam', k.targets[0]);
       });
-      ticking(k, 0, t[1], 4, 500, 'fx-hilot-burn'); // Sears 4 × 15%
+      const hit = t[0] + frameAt(3, 14);
+      k.at(hit, () => {
+        k.hit(0);
+        taunted(k, 0, 2000);
+      });
+      ticking(k, 0, hit, 4, 500, 'fx-hilot-burn'); // Sears 4 × 15%
     },
   },
   {
     name: 'Kettle Scream',
     run(k) {
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5], [null, null, null, 400, null, null]);
-      k.at(t[3], () => {
-        const at = k.self(0, -10);
-        k.fx('fx-potlid-scream-ring', at, { scale: 1.5 });
-        [0, 1].forEach((n) => k.at(t[3] + (dist(at, k.body(n)) / 7) * (1000 / 16), () => k.hit(n, { fx: 'fx-potlid-hit' })));
-      });
+      k.at(t[3], () => k.fx('fx-potlid-scream-ring', k.self(0, 0), { z: 0 }));
+      k.at(t[3] + frameAt(3, 14), () => [0, 1].forEach((n) => k.hit(n, { fx: 'fx-potlid-hit' })));
     },
   },
 ];
@@ -1092,10 +1129,8 @@ const hilotLate: Skill[] = [
     name: 'Nettle Burst',
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, 200, null, null]);
-      k.at(t[3], () => {
-        k.fx('fx-hilot-nettle-burst', k.self(0, 0), { z: 1, scale: 1.5 });
-        k.hit(0, { fx: 'fx-hilot-hit' });
-      });
+      k.at(t[3], () => pair(k, 'fx-hilot-nettle-burst', k.self(0, 0)));
+      k.at(t[3] + frameAt(3, 14), () => k.hit(0, { fx: 'fx-hilot-hit' }));
     },
   },
   {
@@ -1106,7 +1141,7 @@ const hilotLate: Skill[] = [
         const palm = k.launch('attack-cast', 4, 'palm');
         k.shot('fx-hilot-flick-bolt', palm, k.body(1), { speed: 300, onArrive: () => k.hit(1, { fx: 'fx-hilot-hit' }) });
       });
-      // Burns 6 × 12%: the smoke on it while it does.
+      // Burns 6 × 12%: the smoke on it while it does (a stand-in until its art comes).
       const at = t[4] + 150;
       k.at(at, () => k.fx('fx-hilot-spirit-smoke', k.targets[1], { z: 3, life: 3000, frames: Array.from({ length: 30 }, (_, i) => 3 + (i % 2)), ms: 100, fadeOut: 250 }));
       ticking(k, 1, at, 6, 500);
@@ -1116,7 +1151,7 @@ const hilotLate: Skill[] = [
     name: 'Herbal Storm',
     run(k) {
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5], [null, null, null, null, 300, null]);
-      k.at(t[4], () => k.fx('fx-hilot-herb-storm', k.targets[1], { z: 1, hold: { from: 3, to: 4, until: 900 } }));
+      k.at(t[4], () => pair(k, 'fx-hilot-herb-storm', k.targets[1], { life: 1000, fadeOut: 150 }));
       [0, 350, 700].forEach((d) =>
         k.at(t[4] + 100 + d, () => {
           [0, 1, 2].forEach((n) => k.hit(n, { fx: 'fx-hilot-hit' }));
@@ -1130,9 +1165,9 @@ const hilotLate: Skill[] = [
     run(k) {
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5]);
       k.at(t[3], () => {
+        // The wave from the palms along the line, turned to its way.
         const palm = k.launch('attack-heavy', 3, 'palm');
-        const end = LINE_END(k, palm);
-        k.shot('fx-hilot-fever-wave', palm, end, { speed: 260, reveal: true, fadeOut: 150 });
+        k.shot('fx-hilot-fever-wave', palm, lineEnd(k, palm), { speed: 260, fadeOut: 150 });
         [0, 1, 2].forEach((n) => k.at(t[3] + (dist(palm, k.body(n)) / 260) * 1000, () => k.hit(n, { fx: 'fx-hilot-hit' })));
       });
     },
@@ -1140,27 +1175,29 @@ const hilotLate: Skill[] = [
   {
     name: 'Wildroot',
     run(k) {
+      // The roots burst up over the area (tallest on its frames 3-8: the hits on 3), then hold each rooted mob 2.5 s.
       const t = k.pose('attack-cast', [0, 1, 2, 3, 4, 5]);
       k.at(t[4], () => {
-        k.fx('fx-hilot-wildroot-burst', k.targets[1], { z: 1, scale: 1.5 });
-        const hold = { from: 4, to: 10, until: 2500 }; // rooted 2.5 s
+        pair(k, 'fx-hilot-wildroot-burst', k.targets[1]);
+        const hold = { from: 4, to: 10, until: 2500 };
         [0, 1, 2].forEach((n) => {
           k.fx('fx-hilot-root-back', k.targets[n], { z: 1, hold });
           k.fx('fx-hilot-root-front', k.targets[n], { z: 3, hold });
         });
       });
-      k.at(t[4] + 3 * (1000 / 12), () => [0, 1, 2].forEach((n) => k.hit(n, { fx: 'fx-hilot-hit' })));
+      k.at(t[4] + frameAt(3, 14), () => [0, 1, 2].forEach((n) => k.hit(n, { fx: 'fx-hilot-hit' })));
     },
   },
   {
     name: 'Spirit Lash',
     run(k) {
+      // A vine whip from the palm at the target on each 2, turned to it, the hit on its frame 7.
       const t = k.pose('attack-quick', [0, 1, 2, 1, 2, 3]);
       [2, 4].forEach((i) =>
         k.at(t[i], () => {
           const palm = k.launch('attack-quick', 2, 'palm');
-          k.fx('fx-hilot-spirit-vine', palm, { angle: angle(palm, k.body(1)), length: dist(palm, k.body(1)) });
-          k.at(t[i] + 80, () => k.hit(1, { fx: 'fx-hilot-hit' }));
+          k.fx('fx-hilot-spirit-vine', palm, { angle: angle(palm, k.body(1)) });
+          k.at(t[i] + frameAt(7, 14), () => k.hit(1, { fx: 'fx-hilot-hit' }));
         }),
       );
     },
@@ -1257,12 +1294,23 @@ export const MOBILITY_PREVIEWS: Record<string, Record<string, Skill>> = {
   hilot: { dash, blink },
 };
 
-/** A buff (classes.json buffs): the class's buff-cast played once, every frame at its fps, facing SE. Every buff of a
- *  class looks the same for now: their effects and FX come later. */
+/** A utility (classes.json buffs): the class's buff-cast played once, every frame at its fps, facing SE, with its look on
+ *  the fighter (combat/utility-looks.ts: a looping one for a moment here) and a debuff's mark over enemy 1 (Hamstring's
+ *  at its feet). The Lv 1-20 buffs have no look yet. */
 export const buffPreview = (name: string): Skill => ({
   name,
   run(k) {
-    k.pose('buff-cast', Array.from({ length: k.frames('buff-cast') }, (_, f) => f));
+    const t = k.pose('buff-cast', Array.from({ length: k.frames('buff-cast') }, (_, f) => f));
+    const look = BUFF_LOOKS[name];
+    if (look) k.at(t[0], () => pair(k, look.fx, k.self(0, 0), look.loop ? { life: 1600, fadeOut: 250 } : {}));
+    const mark = DEBUFF_MARKS[name];
+    if (mark)
+      k.at(t[Math.min(2, t.length - 1)], () =>
+        k.fx(mark.fx, mark.feet ? k.targets[1] : { x: k.body(1).x, y: k.body(1).y - 22 }, {
+          z: mark.feet ? 0 : 3, life: 1600, fadeOut: 250, ...(mark.tint ? { tint: mark.tint } : {}),
+          ...(mark.feet ? { frames: Array.from({ length: 16 }, (_, i) => i % 4) } : {}),
+        }),
+      );
   },
 });
 

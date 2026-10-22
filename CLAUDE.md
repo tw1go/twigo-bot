@@ -1652,16 +1652,27 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   mobDamagePct, slow, taunt; player stats critDamage, evasion (`Target.evasion`), hpDrainPctPerSec (Blood Price, never under
   10% HP). Game: `combat/skill-previews.ts` the 36 scripts (each on attack-quick / -heavy / -cast, Timber! from
   charge-start, in its own frame order: the cosmetic pose sheets still fit; the world plays the script's frames on the
-  character, `Character.strikeFrames`, `skillPoses`), `combat/fx-stand-ins.ts` (each PixelLab FX not made yet → its
-  stand-in, tint, size: the manifest's own entry wins once it lands), the kit's fx `scale` / `tint`, `leap`, `echo`
+  character, `Character.strikeFrames`, `skillPoses`); their FX the art folder's fx/<class> and fx/shared (22 Oct 2026, its
+  `_sheets_lv21-40.csv` copied beside each, a manifest fx entry per row with its `layer`): a split one's `-back` half on
+  the ground and `-front` over everyone at one anchor (the scripts' `pair`), each hit on the frame its art lands it
+  (`frameAt`), the gong wave, fever wave and spirit vine turned to their way, the thunder line laid a cell every 128 px;
+  `combat/fx-stand-ins.ts` only Spirit Smoke's now (the manifest's own entry wins once it lands); the Skills panel's
+  stage loads every FX its class's scripts name (`skillFx`, a dry run); the kit's fx `scale` / `tint`, `leap`, `echo`
   (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
   the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
   filler never casts a charge-up), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
-  move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` / `mob-stun` / `mob-debuff` (world/mobs.ts
-  `stun` / `debuff`: code-drawn stars and a coloured pip a debuff until their art), a debuff cast at your mob target;
+  move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` (each later hit's number waits for the script's
+  own hit on that mob, 1.5 s at most: `laterCast` / `laterCredit` / `laterHit`), `mob-stun` / `mob-debuff` (world/mobs.ts
+  `stun` / `debuff`: their marks from `combat/utility-looks.ts`, looping and following the mob: the stun stars on its
+  head, each debuff's mark side by side over its head (over its name when that shows), Hamstring's knee ring in crimson
+  at its feet; code-drawn stars and pips while a sheet isn't loaded), a debuff cast at your mob target; the utilities'
+  looks (`BUFF_LOOKS`: `buff-cast`'s `to` = the town ids it reached, each wearing it, a stance as it's taken; Blood Price
+  and Hyper Regen looping for the buff's time, cut short by a knock-out, leaving or your own `buffs`: TownScene
+  `buffLook` / `endLooks`);
   tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
   bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); icons
-  not in yet (the usual fallback: add them to manifest ui.skillIcons.have as they land). Dev: `?switch&level=40`.
+  not in yet (the usual fallback: add them to manifest ui.skillIcons.have as they land). Hailstorm's area is 2 tiles
+  (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
   a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,

@@ -808,7 +808,9 @@ export type TownServerMessage =
   | { t: 'buff-refused'; buff: string; reason: BuffRefusal; ms?: number }
   /** Someone in your room (maybe you) cast a buff: they play their class's buff-cast facing `dir`; yours with its
    *  cooldown (ms). `off`: a stance turned off. */
-  | { t: 'buff-cast'; id: string; buff: string; dir: TownDir; cooldown?: number; off?: boolean }
+  | { t: 'buff-cast'; id: string; buff: string; dir: TownDir; cooldown?: number; off?: boolean;
+      /** Who it reached (town ids; none for a debuff on mobs alone): its look plays on each. */
+      to?: string[] }
   /** A heal from a buff (Soothing Touch): how much each player it reached got back, green over them. */
   | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[] }
   /** The buffs on you now (on any change): each one's name, its caster's class and skill level, its stats at that level

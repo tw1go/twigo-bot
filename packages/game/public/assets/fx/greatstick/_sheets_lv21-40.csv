@@ -1,0 +1,7 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-greatstick-quake-crack.png,64,20,11,14,no,32,12,ground,"Earthshaker: one crack burst; spawn one every half tile along the line from the plank's tip, 40 ms apart; anchor = its spot on the ground"
+fx-greatstick-cyclone-back.png,132,69,12,16,yes,66,34,ground,"Cyclone ring, back half: behind the player; anchor = the player's feet; loop it for the 3 turns"
+fx-greatstick-cyclone-front.png,132,69,12,16,yes,66,34,front,"Cyclone ring, front half: in front of the player; same anchor and timing as the back half"
+fx-greatstick-bleed.png,19,52,11,14,no,9,44,front,Nail Driver bleed: plays once per tick on the mob; anchor = a few px under its body centre (the splash lands there)
+fx-greatstick-timber-fall.png,128,126,16,16,no,64,93,front,"Timber!: the plank falling (frames 0-4, empty after); anchor = the landing spot (the target's feet); the hit lands on frame 5"
+fx-greatstick-timber-slam.png,128,126,16,16,no,64,93,ground,Timber!: the plank in its crater and the dust ring (empty for frames 0-4); same anchor and timing as the fall; under players and mobs

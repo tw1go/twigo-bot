@@ -121,9 +121,10 @@ import { type FxHandle, FxLayers } from '../world/fx-layers';
 import { SKILL_POSE, battleSheets } from '../characters/battle-art';
 import { cooldownOf, mpCostOf } from '../combat/cooldowns';
 import { WorldSkills } from '../combat/world-skills';
-import { SKILL_PREVIEWS } from '../combat/skill-previews';
-import { skillPoses, skillSlots } from '../combat/skill-slots';
-import { FX_STAND_INS, resolveFx } from '../combat/fx-stand-ins';
+import { SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
+import { skillFx, skillPoses, skillSlots } from '../combat/skill-slots';
+import { resolveFx } from '../combat/fx-stand-ins';
+import { BUFF_LOOKS } from '../combat/utility-looks';
 import { MobTargetBox } from '../ui/mob-target';
 import { LEVEL_PX } from '../world/heights';
 import { NightLife } from '../world/night-life';
@@ -257,6 +258,12 @@ const SETTLE_MAX_MS = 15_000;
 const SERVER_WAIT_MS = 6000;
 /** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
 const SKILL_SOUNDS = 7;
+/** A skill's later hits (CONTEXT.md Channel): one waits at most this long for its effect's hit before it shows anyway,
+ *  and a cast's hits are matched for this long. */
+const LATER_WAIT_MS = 1500;
+const LATER_KEEP_MS = 8000;
+/** One mob's part of a skill hit (mob-hit, mob-hits). */
+type MobHitView = Extract<TownServerMessage, { t: 'mob-hit' }>['hits'][number];
 /** A leap's arc (Timber!): this long, this high at the middle (px). */
 const LEAP_MS = 300;
 const LEAP_ARC = 24;
@@ -1344,11 +1351,11 @@ export class TownScene extends Phaser.Scene {
   private nextCast = 0;
 
   /** A skill's effects (the preview's script, combat/world-skills.ts) from a character at a mob. */
-  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => void, landAll: () => void, poses = false): void {
+  private castFx(cls: string, idx: number, who: Character, dir: Dir, hit: string[], land: (id: string) => boolean, landAll: () => void, poses = false, key?: string): Set<string> | null {
     const skill = SKILL_PREVIEWS[cls]?.[idx];
     const art = this.M.classes?.list[cls];
     const mobs = hit.map((id) => this.mobs?.list.find((x) => x.id === id)).filter((x) => !!x);
-    if (!skill || !art || !mobs.length) return landAll();
+    if (!skill || !art || !mobs.length) return landAll(), null;
     this.worldSkills ??= new WorldSkills(this.fxLayers, this.M.fx, (f) => `${import.meta.env.BASE_URL}assets/${f}`);
     // The script's slots in order get the hit mobs (the target first); the rest, the target.
     const slots = skillSlots(skill);
@@ -1357,9 +1364,11 @@ export class TownScene extends Phaser.Scene {
     // A hit on slot n lands its mob; the first also lands the mobs no slot shows (around a melee skill).
     const shown = new Set(slots.map((n) => bySlot(n).id));
     let first = true;
+    // A script hit on a mob whose hit has landed: one of the skill's later hits may land now (laterCredit).
     const onHit = (n: number) => {
-      land(bySlot(n).id);
-      if (first) for (const m of mobs) if (!shown.has(m.id)) land(m.id);
+      const id = bySlot(n).id;
+      if (!land(id) && key) this.laterCredit(key, id);
+      if (first) for (const m of mobs) if (!shown.has(m.id)) while (land(m.id));
       first = false;
     };
     const playPoses = poses ? (frames: { anim: string; frame: number; ms: number }[]) => who.strikeFrames(frames, dir) : undefined;
@@ -1367,8 +1376,70 @@ export class TownScene extends Phaser.Scene {
       const m = bySlot(n);
       return { x: m.sprite.x, y: m.sprite.y };
     }, onHit, this.fxScale[cls]?.[idx] ?? 1);
+    return shown;
   }
   private worldSkills: WorldSkills | null = null;
+
+  /** A skill hit's number and HP on its mob (and your hit's sound). */
+  private showHit(h: MobHitView, mine: boolean): void {
+    this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
+    if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
+  }
+
+  /** Each cast's later hits (a skill of several hits, a windup) by caster and skill: the mobs its effects show, the
+   *  script's hits on each not yet matched by one of the server's, and the server's waiting for one. */
+  private readonly laterHits = new Map<string, { shown: Set<string>; credits: Map<string, number>; waiting: Map<string, { h: MobHitView; timer: Phaser.Time.TimerEvent }[]>; mine: boolean; expire: Phaser.Time.TimerEvent }>();
+
+  /** A cast whose later hits wait for its effects (the one before by the same caster and skill lets its own go). */
+  private laterCast(key: string, shown: Set<string> | null, mine: boolean): void {
+    this.laterFlush(key);
+    if (!shown) return;
+    const expire = this.time.delayedCall(LATER_KEEP_MS, () => this.laterFlush(key));
+    this.laterHits.set(key, { shown, credits: new Map(), waiting: new Map(), mine, expire });
+  }
+
+  /** The script's hit on a mob: a later hit waiting for it lands, else the next one that comes lands at once. */
+  private laterCredit(key: string, id: string): void {
+    const c = this.laterHits.get(key);
+    if (!c) return;
+    const w = c.waiting.get(id)?.shift();
+    if (w) {
+      w.timer.remove();
+      return this.showHit(w.h, c.mine);
+    }
+    c.credits.set(id, (c.credits.get(id) ?? 0) + 1);
+  }
+
+  /** One of the server's later hits: at once when its effect's hit has come (or no effect shows that mob), else it waits
+   *  for it, LATER_WAIT_MS at most. */
+  private laterHit(key: string, h: MobHitView, mine: boolean): void {
+    const c = this.laterHits.get(key);
+    if (!c || !c.shown.has(h.id)) return this.showHit(h, mine);
+    const n = c.credits.get(h.id) ?? 0;
+    if (n > 0) {
+      c.credits.set(h.id, n - 1);
+      return this.showHit(h, mine);
+    }
+    const list = c.waiting.get(h.id) ?? [];
+    const entry = { h, timer: this.time.delayedCall(LATER_WAIT_MS, () => {
+      list.splice(list.indexOf(entry), 1);
+      this.showHit(h, mine);
+    }) };
+    list.push(entry);
+    c.waiting.set(h.id, list);
+  }
+
+  /** A cast's waiting hits land now and it's forgotten. */
+  private laterFlush(key: string): void {
+    const c = this.laterHits.get(key);
+    if (!c) return;
+    this.laterHits.delete(key);
+    c.expire.remove();
+    for (const list of c.waiting.values()) for (const w of list) {
+      w.timer.remove();
+      this.showHit(w.h, c.mine);
+    }
+  }
 
   /** A level up's effect (manifest fx-level-up-ring flat under their feet, fx-level-up-sparks rising off them), with
    *  "Level up!" over the head; both follow them for the moment it plays. */
@@ -1703,6 +1774,40 @@ export class TownScene extends Phaser.Scene {
     ch.bar.kill(0);
     this.chargedShot = { name, held: Math.min(ch.ms, this.time.now - ch.t0) };
     if (this.fight(name) === undefined) this.player.endStrike();
+  }
+
+  /** The buff looks playing (combat/utility-looks.ts), by `<town id>:<buff>`: their back and front halves. */
+  private readonly buffLooks = new Map<string, FxHandle[]>();
+
+  /** A buff's look on someone it reached: its `-back` half under everyone, its `-front` over them, at their feet; once,
+   *  or looped for the buff's time (`loop`: cut short as it ends, endLooks / the `buffs` message). */
+  private buffLook(id: string, buff: string): void {
+    const look = BUFF_LOOKS[buff];
+    const ch = id === this.myId ? this.player : this.others.charOf(id);
+    if (!look || !ch) return;
+    const key = `${id}:${buff}`;
+    this.endLook(key);
+    const secs = adventureData()?.stats.skills.buffs?.list[buff]?.durationSec ?? 0;
+    const life = look.loop && secs ? secs * 1000 : undefined;
+    const at = () => ({ x: ch.sprite.x, y: ch.sprite.y });
+    const handles = (['back', 'front'] as const).flatMap((half) => {
+      const def = this.M.fx[`${look.fx}-${half}`];
+      if (!def?.file || !this.textures.exists(def.file)) return [];
+      const h = this.fxLayers.play(def, at(), { layer: half === 'back' ? 'ground' : 'front', follow: at, ...(life ? { life, fadeOut: 250 } : {}) });
+      return h ? [h] : [];
+    });
+    if (handles.length) this.buffLooks.set(key, handles);
+    if (life) this.time.delayedCall(life + 300, () => this.buffLooks.get(key) === handles && this.buffLooks.delete(key));
+  }
+
+  private endLook(key: string): void {
+    for (const h of this.buffLooks.get(key) ?? []) h.kill(250);
+    this.buffLooks.delete(key);
+  }
+
+  /** Everyone's looks on someone end (knocked out, gone). */
+  private endLooks(id: string): void {
+    for (const key of [...this.buffLooks.keys()]) if (key.startsWith(`${id}:`)) this.endLook(key);
   }
 
   /** When each buff can be cast again (scene time, ms; the server's word wins). */
@@ -2051,8 +2156,14 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
     const fx = Object.values(this.M.fx).filter((f) => f.file?.startsWith(`${fxFolder}/`) || f.file?.startsWith('fx/mobility/')).map((f) => f.file!);
-    // (The Lv 21-40 skills' stand-ins borrow other classes' art: combat/fx-stand-ins.ts.)
-    for (const st of Object.values(FX_STAND_INS)) if (st.use && this.M.fx[st.use]?.file) fx.push(this.M.fx[st.use].file!);
+    // (And every FX its skills' scripts name from another folder: the shared marks and looks, another class's burn or
+    // knee ring, a stand-in: combat/fx-stand-ins.ts.)
+    const scripts = [...(SKILL_PREVIEWS[cls] ?? []), ...(classInfo(cls)?.buffs ?? []).map((b) => buffPreview(b.name))];
+    for (const name of skillFx(scripts)) {
+      const r = resolveFx(this.M.fx, name);
+      const file = r && this.M.fx[r.name]?.file;
+      if (file && !fx.includes(file)) fx.push(file);
+    }
     await loadImages(this, [...poseFiles(art), ...cosmeticPoseFiles(this.M.characters, K, this.outfit, art), ...fx, ...this.M.tiles.grass.files]); // (a cosmetic top's pose sheets too)
     const launch = art.launch
       ? await fetch(asset(art.launch)).then((r) => (r.ok ? r.json() : null)).then((j) => j?.points ?? null).catch(() => null)
@@ -2430,6 +2541,8 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (tradeWin?.handle(m)) return;
+      // (A looping buff look ends with its wearer knocked out or gone.)
+      if ((m.t === 'knocked-out' || m.t === 'leave') && 'id' in m) this.endLooks(m.id);
       if (m.t === 'party-invited') return showPartyInvite({ invite: m.invite, name: m.name, members: m.members, answer: (yes) => partyAnswer(m.invite, yes) });
       if (m.t === 'party-refused') return toast(partyRefusal(m.reason, m.name), 2600, 'bad');
       if (m.t === 'party-declined') return toast(`${m.name} didn't join the party.`, 2600);
@@ -2648,22 +2761,28 @@ export class TownScene extends Phaser.Scene {
         const ch = mine ? this.player : this.others.charOf(m.by);
         const cls = mine ? (adventure()?.cls ?? null) : this.others.classOf(m.by);
         // Each mob's number and HP land when the effect's hit does (the rest with the first; all after 1.5 s at most).
-        const pending = new Map(m.hits.map((h) => [h.id, h]));
-        const land = (id: string) => {
-          const h = pending.get(id);
-          if (!h) return;
-          pending.delete(id);
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
-          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
+        // (Seeking shots can hit one mob several times: each lands on its own script hit.)
+        const pending = new Map<string, MobHitView[]>();
+        for (const h of m.hits) pending.set(h.id, [...(pending.get(h.id) ?? []), h]);
+        const land = (id: string): boolean => {
+          const h = pending.get(id)?.shift();
+          if (!h) return false;
+          if (!pending.get(id)?.length) pending.delete(id);
+          this.showHit(h, mine);
+          return true;
         };
-        const landAll = () => [...pending.keys()].forEach(land);
+        const landAll = () => [...pending.keys()].forEach((id) => {
+          while (land(id));
+        });
         this.time.delayedCall(1500, landAll);
+        const key = `${m.by}:${m.skill}`;
         // A windup's cast (no hits yet: they come as mob-hits): its pose and effects at the mob it's at.
         if (m.windup && m.target && ch && cls) {
           const mob = this.mobs?.list.find((x) => x.id === m.target);
           if (!mob) return;
           const dir = dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y);
-          return this.castFx(cls, m.skill, ch, dir, [mob.id], () => {}, () => {}, !mine);
+          this.laterCast(key, this.castFx(cls, m.skill, ch, dir, [mob.id], () => false, () => {}, !mine, key), mine);
+          return;
         }
         if (ch && at && cls) {
           const mob = this.mobs?.list.find((x) => x.id === ids[0]);
@@ -2673,19 +2792,16 @@ export class TownScene extends Phaser.Scene {
             const name = classInfo(cls)?.skills[m.skill]?.name;
             if (name && m.skill < SKILL_SOUNDS) playSet(skillSet(cls, name), { at: ch.tile, others: true });
           }
-          this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length);
+          this.laterCast(key, this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length, key), mine);
         } else landAll();
         return;
       }
-      // A skill's later hits (a channel, hits on the move, a windup landing): their numbers as they come (the effects
-      // play with the cast).
+      // A skill's later hits (a channel, hits on the move, a windup landing): each number with the effect's own hit on
+      // that mob (laterHit: at most 1.5 s late).
       if (m.t === 'mob-hits') {
         const mine = m.by === myId;
         if (mine) this.combatAt = performance.now();
-        for (const h of m.hits) {
-          this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss);
-          if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit');
-        }
+        for (const h of m.hits) this.laterHit(`${m.by}:${m.skill}`, h, mine);
         return;
       }
       if (m.t === 'mob-stun') return this.mobs?.stun(m.id, m.ms, m.col, m.row);
@@ -2814,6 +2930,8 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'buffs') {
         setMyBuffs(m.buffs);
+        // Your looping looks end with the buff (taken off, run out, left behind on another map).
+        for (const key of [...this.buffLooks.keys()]) if (key.startsWith(`${myId}:`) && !m.buffs.some((b) => key === `${myId}:${b.name}`)) this.endLook(key);
         setHudRating(myRating()); // (your CP with them)
         if (!this.buffDemo) {
           // (Buffs stack. Under the old rule, each stat counted only from its strongest buff: one outdone on every stat it
@@ -2844,6 +2962,8 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'buff-cast') {
+        // Its look on everyone it reached (combat/utility-looks.ts; a stance only as it's taken).
+        if (!m.off) for (const id of m.to ?? [m.id]) this.buffLook(id, m.buff);
         if (m.id !== myId) charOf(m.id)?.strike('buff-cast', m.dir);
         else if (m.cooldown) {
           this.buffReady.set(m.buff, this.time.now + m.cooldown);
