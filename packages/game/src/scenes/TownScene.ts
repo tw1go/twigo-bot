@@ -111,7 +111,7 @@ import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts
 import { Terrain } from '../world/terrain';
 import { Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
-import { GreatScaleView } from '../world/great-scale';
+import { GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
 import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
@@ -137,7 +137,7 @@ import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
 import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
 import { type Bench, type Building, WorldObjects, characterDepth } from '../world/objects';
-import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
+import { type SoundTapped, enterArenaSound, enterCasinoSound, hearFrom, leaveCasinoSound, loadSilongSounds, loadSoundSets, loadWarrensSounds, playFrom, playSet, playSound, playWarrens, skillSet, soundSets, startTownSound, tapSounds } from '../audio/sound';
 import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
@@ -256,8 +256,9 @@ const SMOOTH_MS = 40;
 const SETTLE_MAX_MS = 15_000;
 /** …and waits this long at most for the server's first word (a slow or unreachable server: on without it). */
 const SERVER_WAIT_MS = 6000;
-/** Only each class's first 7 skills have sounds (audio/sfx skill-<class>-<skill>-1…3); later ones play none yet. */
-const SKILL_SOUNDS = 7;
+/** What lands on a mob (audio/sfx skill-stun / -taunt / -debuff-1…3): a stun, a taunt, any other debuff; one a crowd. */
+const MARK_SOUNDS = ['skill-stun', 'skill-taunt', 'skill-debuff'] as const;
+const MARK_GAP_MS = 150;
 /** A skill's later hits (CONTEXT.md Channel): one waits at most this long for its effect's hit before it shows anyway,
  *  and a cast's hits are matched for this long. */
 const LATER_WAIT_MS = 1500;
@@ -845,18 +846,24 @@ export class TownScene extends Phaser.Scene {
     this.buffTray = tray;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => tray.destroy());
     // (The Slums, the Warrens and the Palengke: the Slums' music for now, no crickets; Ang Silong: the same at 70%.)
-    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? 'slums' : 'town');
-    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates; Ang Silong's events borrow them)
+    // (Each area's own music: the Slums', the Warrens', the Palengke's, Ang Silong's; the town's elsewhere.)
+    startTownSound(this, this.fountainTile(), floorOfArea(this.area) ? 'silong' : this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' ? this.area : 'town');
+    if (this.area === 'slums' || this.area === 'warrens' || this.area === 'palengke' || floorOfArea(this.area)) loadWarrensSounds(); // (the gates and the hatch)
+    if (floorOfArea(this.area)) loadSilongSounds();
     // A battle map's sounds: each mob kind's hurt and death, the golem's attacks (the classes' skills once their data is in).
     if (this.battleMap) {
       // (A field boss that's off, or has no art yet: the Palengke's Great Scale, none of its sounds.)
       const boss = this.map.boss && this.map.boss.active !== false && this.M.mobs?.[this.map.boss.id] ? this.map.boss : null;
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(boss ? [boss.id] : [])]);
       if (this.map.dungeon) kinds.add('scrapheap-golem'); // (the Scraplings)
-      // (Kinds with no sounds yet: mobs.json `sounds: false`, the Palengke's.)
+      // (The Halloween mobs in the Slums; Ang Makinang Yelo and its Frost Scales on Ang Silong's B3.)
+      if (this.area === 'slums') for (const k of Object.values(HALLOWEEN_MOBS)) kinds.add(k);
+      if (this.map.silong?.floor === 'b3') kinds.add('makinang-yelo').add('frost-scale');
+      // (A kind with no sounds: mobs.json `sounds: false`.)
       const data = (this.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
       for (const k of [...kinds]) if (typeof data[k] === 'object' && (data[k] as MobData).sounds === false) kinds.delete(k);
-      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...((boss && boss.id !== 'great-scale') || this.map.dungeon ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : [])]);
+      const golem = (boss && boss.id !== 'great-scale') || this.map.dungeon;
+      loadSoundSets([...[...kinds].flatMap((k) => [`combat-mob-hurt-${k}`, `combat-mob-death-${k}`]), ...(golem ? GOLEM_SOUNDS.map((a) => `golem-${a}`) : []), ...(boss?.id === 'great-scale' ? GREAT_SCALE_SOUNDS.map((a) => `great-scale-${a}`) : [])]);
     }
     if (member || fakeLogin()) this.connect();
     // Last, once the names, labels and building cursors exist: the cover lifts once the town has settled (`settle`), then
@@ -1145,8 +1152,8 @@ export class TownScene extends Phaser.Scene {
     this.adventureReady ??= loadAdventureData(asset, { quests: Q.file, classes: K.data, equipment: E.file, items: this.M.combatItems?.file, dungeons: K.dungeons, palengke: K.palengkeLeveling }, this.cache.json.get('stats'), this.cache.json.get('leveling'));
     return this.adventureReady.then((data) => {
       if (!data) return void console.warn('[quests] the quests, classes, equipment or stats data is missing');
-      // Each class's first 7 skills' sounds (heard from others too), on a battle map.
-      if (this.battleMap) loadSoundSets(data.classes.flatMap((c) => c.skills.slice(0, SKILL_SOUNDS).map((k) => skillSet(c.id, k.name))));
+      // Every class's skills' sounds and its utilities' cast (heard from others too), and what lands on a mob, on a battle map.
+      if (this.battleMap) loadSoundSets([...data.classes.flatMap((c) => [...c.skills.map((k) => skillSet(c.id, k.name)), `skill-${c.id}-buff-cast`]), ...MARK_SOUNDS]);
       // Every item kind's art (gear and the rest), and the rarity colours every item name uses (stats.json).
       addItemArt(Object.fromEntries([...data.defs.values()].map((i) => [i.id, { icon: i.icon, showcase: i.showcase }])));
       setRarityColours(Object.fromEntries(Object.entries(itemStats(data.stats).rarity.nameColour).map(([r, c]) => [r, c.colour])));
@@ -1665,7 +1672,7 @@ export class TownScene extends Phaser.Scene {
       // (Its effects come with the server's answer.) The Lv 21-40 skills play their own frame orders.
       if (idx < SKILL_POSE.length) this.player.strike(SKILL_POSE[idx], dir);
       else this.player.strikeFrames(this.posesOf(c.id, idx), dir);
-      if (idx < SKILL_SOUNDS) playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
+      playSet(skillSet(c.id, name)); // your skill fires (its hits: combat-hit as they land)
       const shot = this.chargedShot?.name === name ? this.chargedShot : null;
       if (shot) this.chargedShot = null;
       this.link?.send({ t: 'attack', mob: m.id, skill: idx, ...(shot?.held !== undefined ? { held: Math.round(shot.held) } : {}) });
@@ -2781,6 +2788,8 @@ export class TownScene extends Phaser.Scene {
           const mob = this.mobs?.list.find((x) => x.id === m.target);
           if (!mob) return;
           const dir = dirToward(mob.sprite.x - ch.sprite.x, mob.sprite.y - ch.sprite.y);
+          const name = classInfo(cls)?.skills[m.skill]?.name;
+          if (name && !mine) playSet(skillSet(cls, name), { at: ch.tile, others: true }); // (yours played as you cast)
           this.laterCast(key, this.castFx(cls, m.skill, ch, dir, [mob.id], () => false, () => {}, !mine, key), mine);
           return;
         }
@@ -2790,7 +2799,7 @@ export class TownScene extends Phaser.Scene {
           if (!mine) {
             if (m.skill < SKILL_POSE.length) ch.strike(SKILL_POSE[m.skill], dir); // (yours played as you cast; the Lv 21-40 ones by castFx)
             const name = classInfo(cls)?.skills[m.skill]?.name;
-            if (name && m.skill < SKILL_SOUNDS) playSet(skillSet(cls, name), { at: ch.tile, others: true });
+            if (name) playSet(skillSet(cls, name), { at: ch.tile, others: true });
           }
           this.laterCast(key, this.castFx(cls, m.skill, ch, dir, ids, land, landAll, !mine && m.skill >= SKILL_POSE.length, key), mine);
         } else landAll();
@@ -2804,8 +2813,16 @@ export class TownScene extends Phaser.Scene {
         for (const h of m.hits) this.laterHit(`${m.by}:${m.skill}`, h, mine);
         return;
       }
-      if (m.t === 'mob-stun') return this.mobs?.stun(m.id, m.ms, m.col, m.row);
-      if (m.t === 'mob-debuff') return this.mobs?.debuff(m.id, m.name, m.ms);
+      // A stun, a taunt or a debuff landing on a mob: its mark, and its sound from there.
+      if (m.t === 'mob-stun') {
+        playSet('skill-stun', { at: { col: m.col, row: m.row } }, MARK_GAP_MS);
+        return this.mobs?.stun(m.id, m.ms, m.col, m.row);
+      }
+      if (m.t === 'mob-debuff') {
+        const taunt = m.name === 'taunt' || m.name === 'Provoke' || m.name === 'Iron Kitchen';
+        playSet(taunt ? 'skill-taunt' : 'skill-debuff', { at: this.mobs?.tileOf(m.id) ?? null }, MARK_GAP_MS);
+        return this.mobs?.debuff(m.id, m.name, m.ms);
+      }
       // A leap (Timber!): onto its tile in an arc, everyone's; yours moves you there.
       if (m.t === 'leap') {
         if (m.id !== myId) return this.others.handle(m);
@@ -2962,8 +2979,11 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'buff-cast') {
-        // Its look on everyone it reached (combat/utility-looks.ts; a stance only as it's taken).
+        // Its look on everyone it reached (combat/utility-looks.ts; a stance only as it's taken), and the class's cast sound.
         if (!m.off) for (const id of m.to ?? [m.id]) this.buffLook(id, m.buff);
+        const caster = m.id === myId ? this.player : charOf(m.id);
+        const casterCls = m.id === myId ? adventure()?.cls : this.others.classOf(m.id);
+        if (caster && casterCls && !m.off) playSet(`skill-${casterCls}-buff-cast`, m.id === myId ? {} : { at: caster.tile, others: true });
         if (m.id !== myId) charOf(m.id)?.strike('buff-cast', m.dir);
         else if (m.cooldown) {
           this.buffReady.set(m.buff, this.time.now + m.cooldown);

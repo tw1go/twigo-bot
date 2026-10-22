@@ -5,15 +5,17 @@ import Phaser from 'phaser';
 // Phaser's sound manager, which holds every sound until the first click, tap or key (browsers require one).
 // The music and sound-effect volumes and mute are saved in this browser. Files and credits: assets/audio/.
 // Inside the casino the town goes quiet (no town music, crickets or fountain) and the casino's own music plays. The
-// Slums (its own page, like every area) has no crickets and its own music in place of the town's, at the same setting;
-// back in town the town's music and crickets play again.
+// Slums, the Scrap Warrens, the Lumang Palengke and Ang Silong (each its own page, like every area) have no crickets and
+// their own music in place of the town's, at the same setting; back in town the town's music and crickets play again.
 // The intro card and title screen (BootScene, ui/title-screen.ts) play their own music, Moonlight Lullaby, whatever the
 // music setting (almost nobody turns music on, and this is the one place it should be heard); Mute silences it. It
 // fades out as Start or the Discord login is pressed, and the area's own music takes over as ever.
 // Combat (the Slums): sounds that come in three versions (`<base>-1`…`-3`: a player hurt, each mob kind hurt and dying,
-// each class's first 7 skills, the mobility moves, the golem's attacks) play one at random, never the same twice running
-// (playSet); the mobility moves' load with the town, the rest only on a battle map (loadSoundSets). Your own always; from
-// elsewhere (others' skills, mobs, the golem) only within HEAR_TILES of you, others' and the golem's at OTHERS.
+// each class's 13 damage skills and its utilities' cast, a stun, taunt or debuff landing on a mob, the mobility moves, the
+// golem's and the Great Scale's moves) play one at random, never the same twice running (playSet); the mobility moves'
+// load with the town, the rest only on a battle map (loadSoundSets). Your own always; from elsewhere (others' skills,
+// mobs, the bosses) only within HEAR_TILES of you, others' and the bosses' at OTHERS. Ang Silong's mini bosses and its
+// last boss have single sounds of their own (SILONG_SFX), as the Scrap Warrens' bosses do (WARRENS_SFX).
 
 export type Sfx =
   | 'emote' | 'chat' | 'door' | 'card' | 'chip' | 'coin' | 'click' | 'error'
@@ -98,6 +100,34 @@ const WARRENS_SFX = {
   'barong-death': 0.25,
 } as const;
 export type WarrensSfx = keyof typeof WARRENS_SFX;
+/** Ang Silong's own sounds (audio/sfx/silong-*: one file each), loaded on its floors (loadSilongSounds), played by
+ *  world/silong.ts on the server's boss move events (only while the boss is on your screen) and as its cages and door
+ *  open; the slams and drops loudest. */
+const SILONG_SFX = {
+  'silong-cage': 0.18,
+  'silong-door': 0.2,
+  'silong-melt': 0.18,
+  'silong-brine-splash': 0.18,
+  'silong-lid-spin': 0.18,
+  'silong-rice-rain': 0.16,
+  'silong-belly-flop-fall': 0.16,
+  'silong-belly-flop-slam': 0.22,
+  'silong-chair-barrage': 0.18,
+  'silong-split': 0.15,
+  'silong-cleaver-charge': 0.18,
+  'silong-cleaver-hit': 0.2,
+  'silong-hook-shadows': 0.2,
+  'silong-ambush': 0.22,
+  'silong-ice-slick': 0.16,
+  'silong-call': 0.18,
+  'silong-ice-block-drop': 0.22,
+  'silong-freezer-breath': 0.18,
+  'silong-belt-rush': 0.18,
+  'silong-belt-rush-hit': 0.2,
+  'silong-brine-flood': 0.18,
+  'silong-enrage': 0.22,
+} as const;
+export type SilongSfx = keyof typeof SILONG_SFX;
 const CRICKETS = { key: 'amb:crickets', urls: ['audio/ambient/crickets.mp3'], volume: 0.15 };
 const FOUNTAIN = { key: 'amb:fountain', urls: ['audio/ambient/fountain.ogg', 'audio/ambient/fountain.m4a'], volume: 0.1 };
 /** The Alings' gossip (world/npc-life.ts): one quiet loop for the whole town, as loud as the nearest gossip is near. */
@@ -107,9 +137,14 @@ const VOICE = { keys: ['a', 'e', 'i', 'o', 'u'].map((v) => ({ key: `voice:${v}`,
 const MUSIC = { key: 'music:happy-tune', urls: ['audio/music/happy-tune.ogg', 'audio/music/happy-tune.m4a'], volume: 0.12 };
 /** The Slums' own music (in place of the town's there; no crickets either). */
 const SLUMS = { key: 'music:slums', urls: ['audio/music/music-slums.ogg', 'audio/music/music-slums.m4a'], volume: 0.09 };
-/** Ang Silong's floors: the Warrens' music (the Slums') at 70% until it has its own. */
-const SILONG = { ...SLUMS, volume: SLUMS.volume * 0.7 };
-/** The area's music: the town's (and the neighbourhood's), or the Slums'. */
+/** The Scrap Warrens', the Lumang Palengke's and Ang Silong's own (each in place of the town's; no crickets). */
+const WARRENS = { key: 'music:warrens', urls: ['audio/music/music-warrens.ogg', 'audio/music/music-warrens.m4a'], volume: 0.09 };
+const PALENGKE = { key: 'music:palengke', urls: ['audio/music/music-palengke.ogg', 'audio/music/music-palengke.m4a'], volume: 0.09 };
+const SILONG = { key: 'music:silong', urls: ['audio/music/music-silong.ogg', 'audio/music/music-silong.m4a'], volume: 0.09 };
+/** Each area's music (the town's for the town and the neighbourhood). */
+const AREA_MUSIC = { town: null, slums: SLUMS, warrens: WARRENS, palengke: PALENGKE, silong: SILONG } as const;
+export type SoundArea = keyof typeof AREA_MUSIC;
+/** The area's music: the town's (and the neighbourhood's), or the area's own. */
 let areaMusic = MUSIC;
 /** The area has crickets (not the Slums). */
 let hasCrickets = true;
@@ -129,10 +164,21 @@ const SET_VOLUMES: [string, number][] = [
   ['combat-mob-hurt-', 0.12],
   ['combat-mob-death-', 0.16],
   ['skill-blink-', 0.12],
+  // (The long channelled and storm skills quieter, so they don't wash over their hits.)
+  ...['skill-stick-whirlwind', 'skill-greatstick-cyclone', 'skill-broom-tempest', 'skill-potlid-simmer', 'skill-broom-leaf-storm', 'skill-hilot-herbal-storm', 'skill-slingshot-hailstorm'].map((b): [string, number] => [b, 0.11]),
+  ['skill-stun', 0.12],
+  ['skill-taunt', 0.14],
+  ['skill-debuff', 0.12],
+  // (A class's utilities as they're cast: skill-<class>-buff-cast.)
+  ...['slingshot', 'stick', 'greatstick', 'broom', 'potlid', 'hilot'].map((c): [string, number] => [`skill-${c}-buff-cast`, 0.12]),
   ['skill-', 0.14],
   ['golem-tire-slam-windup', 0.14],
   ['golem-enrage', 0.22],
   ['golem-', 0.2],
+  ['great-scale-pan-slam-windup', 0.14],
+  ['great-scale-enrage', 0.22],
+  ['great-scale-bell', 0.18],
+  ['great-scale-', 0.2],
 ];
 /** Sounds from elsewhere (others' skills, mobs, the golem) are heard within this many tiles of you… */
 const HEAR_TILES = 12;
@@ -221,10 +267,10 @@ function saveSettings(): void {
 
 /** Starts the town's sounds: loads them (in the background, after the town's art), starts the ambience once the
  *  browser allows sound, and plays the UI's button sounds. `fountain` is the plaza fountain's middle tile. */
-export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null, area: 'town' | 'slums' | 'silong' = 'town'): void {
+export function startTownSound(s: Phaser.Scene, fountainTile: { col: number; row: number } | null, area: SoundArea = 'town'): void {
   scene = s;
   fountainAt = fountainTile;
-  areaMusic = area === 'slums' ? SLUMS : area === 'silong' ? SILONG : MUSIC;
+  areaMusic = AREA_MUSIC[area] ?? MUSIC;
   hasCrickets = area === 'town';
   applySettings();
   const load = s.load;
@@ -349,11 +395,21 @@ function play(name: string, volume: number, pitch = 0, o: { rate?: number; gapMs
 
 /** The Scrap Warrens' sounds: loaded in the background (the Slums, for the gate; the Warrens), each once. */
 export function loadWarrensSounds(): void {
+  loadSingles(Object.keys(WARRENS_SFX));
+}
+
+/** Ang Silong's sounds: loaded in the background on its floors, each once. */
+export function loadSilongSounds(): void {
+  loadSingles(Object.keys(SILONG_SFX));
+}
+
+/** Single sounds (sfx/<name>.ogg / .m4a) queued on the scene's loader, those not loaded yet. */
+function loadSingles(names: string[]): void {
   const s = scene;
   if (!s) return;
   s.load.setPath(`${import.meta.env.BASE_URL}assets/`);
   let n = 0;
-  for (const name of Object.keys(WARRENS_SFX)) {
+  for (const name of names) {
     if (s.cache.audio.exists(`sfx:${name}`)) continue;
     s.load.audio(`sfx:${name}`, ['ogg', 'm4a'].map((f) => `audio/sfx/${name}.${f}`));
     n++;
@@ -365,6 +421,11 @@ export function loadWarrensSounds(): void {
  *  most once this often (0: every time). */
 export function playWarrens(name: WarrensSfx, o: { rate?: number; gapMs?: number } = {}): void {
   play(name, WARRENS_SFX[name], 0, o);
+}
+
+/** One of Ang Silong's sounds at its volume (the caller decides who hears it); `gapMs`: at most once this often. */
+export function playSilong(name: SilongSfx, o: { rate?: number; gapMs?: number } = {}): void {
+  play(name, SILONG_SFX[name], 0, o);
 }
 
 /** Where a sound comes from (tiles; none: you), and whether it's someone else's (a little quieter). */
@@ -384,15 +445,20 @@ export function playFrom(name: Sfx, heard: Heard = {}): void {
   else tap?.({ name, volume: 0, far: true });
 }
 
-/** The last of each set of versions played, so the same one never plays twice running. */
+/** The last of each set of versions played, so the same one never plays twice running, and when. */
 const lastVariant = new Map<string, number>();
+const lastSet = new Map<string, number>();
 
 /** One of a set's versions (`skill-dash` → skill-dash-1…-3) at random, never the one played last; from `heard` (out of
  *  hearing range: nothing). A set nobody asked for (loadSoundSets), or not loaded yet, is silent. */
-export function playSet(base: string, heard: Heard = {}): void {
+export function playSet(base: string, heard: Heard = {}, gapMs = 0): void {
   const volume = sets.get(base);
   if (volume === undefined) return void tap?.({ name: base, volume: 0, missing: true });
   if (!hears(heard.at)) return void tap?.({ name: base, volume: 0, far: true });
+  // (`gapMs`: one of the set at most this often, a taunt landing on a crowd of mobs at once being one sound.)
+  const now = performance.now();
+  if (gapMs && now - (lastSet.get(base) ?? -Infinity) < gapMs) return;
+  lastSet.set(base, now);
   const last = lastVariant.get(base) ?? 0;
   let pick = 1 + Math.floor(Math.random() * (last ? VERSIONS - 1 : VERSIONS));
   if (last && pick >= last) pick++; // (any but the last, evenly)

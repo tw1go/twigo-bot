@@ -9,7 +9,7 @@ import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { WalkGrid } from './grid';
 import type { Mob, Mobs } from './mobs';
 import { Telegraphs } from './telegraph';
-import { type WarrensSfx, playWarrens } from '../audio/sound';
+import { type SilongSfx, playSet, playSilong } from '../audio/sound';
 import { BuildingLabel } from '../ui/labels';
 import type { PidoMoment } from '../ui/silong';
 import { onMap } from './clicks';
@@ -37,11 +37,10 @@ import { LABEL_DEPTH } from './depth';
 //   (rush), Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage
 //   (its -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
 //   floor). The boss bar, with its title, while you're in the Ice Plant.
-// Sounds: the Warrens' (audio/sound.ts WARRENS_SFX) on the same events until the Silong has its own, a boss's only while
-// it's on your screen: the elevator's cage and the door as the Warrens' shutter; each move's nearest Warrens sound (a lid
-// for Lid Spin, a fist for a fall or a slam, the fog for brine and breath, the burnout for a charge or Belt Rush, the
-// vanish for an Ambush or a Split, a door bursting for a call); Ang Makinang Yelo's hurt, enrage and death as
-// Barong-Barong's.
+// Sounds: the Silong's own (audio/sound.ts SILONG_SFX, the art folder's audio/sfx/silong-*), a boss's only while it's on
+// your screen: the elevator's cage opening and riding, the door, the frost melting; each move's as it's cast (`warn`)
+// and as it lands (`hit`): MOVE_SOUNDS. Ang Makinang Yelo's hurt and death are its own sets
+// (combat-mob-hurt|death-makinang-yelo), its hurt at most every HURT_MS.
 // The props it draws are left out of the map's own (net/hood.ts silongTownMap: `silongDrawn`).
 
 const RIDE_MS = 1000;
@@ -51,28 +50,28 @@ const COVER_BOX = new Phaser.Geom.Rectangle();
 /** The last boss's kind, and its hurt sound at most this often. */
 const MACHINE = 'makinang-yelo';
 const HURT_MS = 300;
-/** Each boss move's sound as it's cast (`warn`, after `in` ms) and as it lands (`hit`). */
-const MOVE_SOUNDS: Record<string, { warn?: WarrensSfx; hit?: WarrensSfx }> = {
-  brineSplash: { hit: 'bag-yani-fog' },
-  lidSpin: { hit: 'celes-tin-lid-slam' },
-  riceRain: { hit: 'barong-roof-land' },
-  bellyFlop: { warn: 'barong-fist-fall', hit: 'barong-fist-slam' },
-  chairBarrage: { hit: 'barong-roof-land' },
-  split: { warn: 'bag-yani-vanish' },
-  cleaverCharge: { warn: 'tire-ranny-burnout', hit: 'crab-tain-pincer' },
-  hookShadows: { hit: 'barong-fist-slam' },
-  ambush: { warn: 'bag-yani-vanish', hit: 'barong-fist-slam' },
-  iceSlick: { hit: 'crab-tain-hunker' },
-  jarCall: { warn: 'barong-door-burst' },
-  sackCall: { warn: 'barong-door-burst' },
-  tubCall: { warn: 'barong-door-burst' },
-  hookSwing: { warn: 'barong-door-burst' },
-  callTheFrost: { warn: 'barong-door-burst' },
-  iceBlockDrop: { hit: 'barong-fist-slam' },
-  freezerBreath: { hit: 'bag-yani-fog' },
-  beltRush: { warn: 'tire-ranny-burnout', hit: 'barong-gutter-sweep' },
-  brineFlood: { hit: 'bag-yani-fog' },
-  enrage: { warn: 'barong-enrage' },
+/** Each boss move's sound as it's cast (`warn`) and as it lands (`hit`). */
+const MOVE_SOUNDS: Record<string, { warn?: SilongSfx; hit?: SilongSfx }> = {
+  brineSplash: { hit: 'silong-brine-splash' },
+  lidSpin: { hit: 'silong-lid-spin' },
+  riceRain: { hit: 'silong-rice-rain' },
+  bellyFlop: { warn: 'silong-belly-flop-fall', hit: 'silong-belly-flop-slam' },
+  chairBarrage: { hit: 'silong-chair-barrage' },
+  split: { warn: 'silong-split' },
+  cleaverCharge: { warn: 'silong-cleaver-charge', hit: 'silong-cleaver-hit' },
+  hookShadows: { hit: 'silong-hook-shadows' },
+  ambush: { hit: 'silong-ambush' },
+  iceSlick: { hit: 'silong-ice-slick' },
+  jarCall: { warn: 'silong-call' },
+  sackCall: { warn: 'silong-call' },
+  tubCall: { warn: 'silong-call' },
+  hookSwing: { warn: 'silong-call' },
+  callTheFrost: { warn: 'silong-call' },
+  iceBlockDrop: { hit: 'silong-ice-block-drop' },
+  freezerBreath: { hit: 'silong-freezer-breath' },
+  beltRush: { warn: 'silong-belt-rush', hit: 'silong-belt-rush-hit' },
+  brineFlood: { hit: 'silong-brine-flood' },
+  enrage: { warn: 'silong-enrage' },
 };
 type Move = Extract<TownServerMessage, { t: 'boss-move' }>;
 type Hit = Extract<TownServerMessage, { t: 'boss-hit' }>;
@@ -154,11 +153,11 @@ export class SilongView {
       });
       this.ramonZone = zone;
     }
-    // (Ang Makinang Yelo's hurt and death: Barong-Barong's, while it's on your screen.)
+    // (Ang Makinang Yelo's hurt and death: its own sets, while it's on your screen; its hurt at most every HURT_MS.)
     mobs.kindSounds.set(MACHINE, {
       hurtMs: HURT_MS,
-      hurt: (m) => this.sound('barong-hurt', m, { gapMs: HURT_MS }),
-      death: (m) => this.sound('barong-death', m),
+      hurt: (m) => this.onScreen(m) && playSet(`combat-mob-hurt-${MACHINE}`),
+      death: (m) => this.onScreen(m) && playSet(`combat-mob-death-${MACHINE}`),
     });
     const glow = this.M.fx['fx-silong-lamp-glow'];
     for (const [c, r] of this.block.lamps) {
@@ -203,13 +202,13 @@ export class SilongView {
     if (f?.open && !this.open) {
       this.open = true;
       for (const [c, r2] of this.block.down) this.grid.unblock(c, r2);
-      this.sound('warrens-shutter-open', null);
+      this.sound('silong-cage', null);
       for (const p of this.cages) if (this.isDown(p.o)) p.img.setTexture((this.M.props['silong-elevator-open'] as PropDef | undefined)?.file ?? 'silong-elevator-open');
     }
     if (r.door && !this.doorOpen && this.block.doors.length) {
       this.doorOpen = true;
       this.hooks.radio('door');
-      this.sound('warrens-shutter-open', null);
+      this.sound('silong-door', null);
       for (const d of this.block.doors) for (const [c, r2] of d.tiles) this.grid.unblock(c, r2);
       const crack = this.M.fx['fx-silong-frost-crack'];
       for (const p of this.doors) {
@@ -223,7 +222,7 @@ export class SilongView {
   rideDown(at: { col: number; row: number }, then: () => void): void {
     const p = this.cages.filter((x) => this.isDown(x.o)).sort((a, b) => Math.hypot(a.o.col - at.col, a.o.row - at.row) - Math.hypot(b.o.col - at.col, b.o.row - at.row))[0];
     if (!p || matchMedia('(prefers-reduced-motion: reduce)').matches) return void this.scene.time.delayedCall(p ? 200 : 0, then);
-    this.sound('warrens-shutter-open', null);
+    this.sound('silong-cage', null);
     this.scene.tweens.add({ targets: p.img, y: p.img.y - 160, alpha: 0, duration: RIDE_MS, ease: 'Quad.easeIn', onComplete: then });
   }
 
@@ -253,7 +252,6 @@ export class SilongView {
     if (d.anim) this.poseFor(boss, String(d.anim), m.ms);
     const sfx = MOVE_SOUNDS[m.move];
     if (sfx?.warn) this.sound(sfx.warn, boss);
-    if (m.move === 'iceBlockDrop') this.later(m.id, Math.max(0, m.ms - 450), () => this.sound('barong-fist-fall', boss)); // (the blocks falling)
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     switch (m.move) {
       case 'brineSplash': {
@@ -461,6 +459,7 @@ export class SilongView {
   private melt(): void {
     if (this.melted) return;
     this.melted = true;
+    this.sound('silong-melt', null);
     const steam = this.M.fx['fx-silong-melt-steam'];
     const me = this.hooks.me();
     const cold = new Set(['frost', 'freezer', 'ice']);
@@ -485,16 +484,18 @@ export class SilongView {
     this.bar.show(m && !m.dead && m.mini ? { name: m.subtitle ? `${m.mini.name}, ${m.subtitle}` : m.mini.name, level: m.level, hp: m.hp, maxHp: m.maxHp, enraged: m.enraged } : null);
   }
 
-  /** One of the Warrens' sounds for a boss's move, only while it's on your screen (any of its drawn box; none: always). */
-  private sound(name: WarrensSfx, m: Mob | null, o: { rate?: number; gapMs?: number } = {}): void {
-    if (m) {
-      const f = this.mobs.feet(m);
-      const k = m.data?.scale ?? 1;
-      const [w, h] = m.cell.size;
-      const [ax, ay] = m.cell.anchor;
-      if (!Phaser.Geom.Rectangle.Overlaps(this.scene.cameras.main.worldView, new Phaser.Geom.Rectangle(f.x - ax * k, f.y - ay * k, w * k, h * k))) return;
-    }
-    playWarrens(name, o);
+  /** One of the Silong's sounds for a boss's move, only while it's on your screen (none: always). */
+  private sound(name: SilongSfx, m: Mob | null, o: { rate?: number; gapMs?: number } = {}): void {
+    if (!m || this.onScreen(m)) playSilong(name, o);
+  }
+
+  /** Whether any of a mob's drawn box is on your screen. */
+  private onScreen(m: Mob): boolean {
+    const f = this.mobs.feet(m);
+    const k = m.data?.scale ?? 1;
+    const [w, h] = m.cell.size;
+    const [ax, ay] = m.cell.anchor;
+    return Phaser.Geom.Rectangle.Overlaps(this.scene.cameras.main.worldView, new Phaser.Geom.Rectangle(f.x - ax * k, f.y - ay * k, w * k, h * k));
   }
 
   /** The boss's anim so its attack frame (mobs.json) lands `ms` from now. */
