@@ -129,6 +129,8 @@ export class WorldSkills {
       angle: !o.upright && mirror && o.angle ? -o.angle : (o.angle ?? 0),
       frames: o.frames, hold: o.hold, ms: o.ms, fadeIn: o.fadeIn, fadeOut: o.fadeOut, life: o.life, length: o.length, scale: scale * (o.scale ?? 1), alpha: o.alpha,
       ...(o.tint ? { tint: Number.parseInt(o.tint.slice(1), 16) } : {}),
+      // (On a mob as it walks: slot n's feet, the world's own point.)
+      ...(o.follow !== undefined ? { follow: () => slot(o.follow!) } : {}),
     });
     const fps = (anim: string) => art.anims[anim]?.fps ?? 12;
     return {
