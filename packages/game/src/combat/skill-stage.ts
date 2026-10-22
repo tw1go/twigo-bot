@@ -45,6 +45,8 @@ export interface FxOpts {
   scale?: number;
   /** A colour laid over it ('#rrggbb'): Seed Barrage's green pebbles, the lime shatter ring. */
   tint?: string;
+  /** Kept on enemy n's feet as it moves (Spirit Smoke on its mob); the stage's enemies stand still. */
+  follow?: number;
 }
 
 export interface ShotOpts {

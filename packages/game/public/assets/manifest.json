@@ -22046,6 +22046,22 @@
       "layer": "front",
       "note": "Spirit Lash: the vine whip, drawn reaching right from the palm; rotate it towards the target (flip for the west side); anchor = the palm; play it once per lash, the hit on frame 7"
     },
+    "fx-hilot-spirit-smoke": {
+      "file": "fx/hilot/fx-hilot-spirit-smoke.png",
+      "frame": [
+        52,
+        96
+      ],
+      "frames": 16,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        26,
+        91
+      ],
+      "layer": "front",
+      "note": "Spirit Smoke: the smoke curling round the mob; anchor = the mob's feet; follow the mob and loop while the ticks last"
+    },
     "fx-mobility-dust": {
       "file": "fx/mobility/fx-mobility-dust-standin.png",
       "frame": [
@@ -23759,7 +23775,15 @@
           "step-back",
           "rally",
           "steady-aim",
-          "second-wind"
+          "second-wind",
+          "armor-crack",
+          "burst-marble",
+          "hailstorm",
+          "headshot",
+          "homing-pebbles",
+          "long-pull",
+          "marked",
+          "seed-barrage"
         ],
         "stick": [
           "quick-jab",
@@ -23770,7 +23794,15 @@
           "spinning-stick",
           "lunge",
           "step-back",
-          "keen-stance"
+          "keen-stance",
+          "crosscut",
+          "fierce-stance",
+          "flow-stance",
+          "hundred-hits",
+          "phantom-sticks",
+          "shatter-strike",
+          "thunder-tap",
+          "whirlwind"
         ],
         "greatstick": [
           "quick-chop",
@@ -23783,7 +23815,15 @@
           "charge",
           "hearty-cheer",
           "steady-breath",
-          "battle-roar"
+          "battle-roar",
+          "avalanche",
+          "blood-price",
+          "cleave",
+          "cyclone",
+          "earthshaker",
+          "hamstring",
+          "nail-driver",
+          "timber"
         ],
         "broom": [
           "dust-flick",
@@ -23794,7 +23834,14 @@
           "ember-leaves",
           "static-bristles",
           "blink",
-          "warding-dust"
+          "warding-dust",
+          "firefly-swarm",
+          "leaf-storm",
+          "mist-veil",
+          "moonbeam",
+          "starfall",
+          "tempest",
+          "thunder-sweep"
         ],
         "potlid": [
           "lid-bonk",
@@ -23805,7 +23852,15 @@
           "boiling-splash",
           "rebound",
           "charge",
-          "dinner-bell"
+          "dinner-bell",
+          "gong-wave",
+          "hot-oil",
+          "iron-kitchen",
+          "kettle-scream",
+          "pressure-cooker",
+          "provoke",
+          "searing-lid",
+          "simmer"
         ],
         "hilot": [
           "menthol-flick",
@@ -23818,7 +23873,16 @@
           "blink",
           "vital-rub",
           "calm-mind",
-          "soothing-touch"
+          "soothing-touch",
+          "eye-sting",
+          "fever-wave",
+          "herbal-storm",
+          "hyper-regen",
+          "nettle-burst",
+          "numbing-oil",
+          "spirit-lash",
+          "spirit-smoke",
+          "wildroot"
         ]
       },
       "shared": {

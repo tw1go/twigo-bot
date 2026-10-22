@@ -16,8 +16,7 @@ export interface StandIn {
 }
 
 export const FX_STAND_INS: Record<string, StandIn> = {
-  // (Every other Lv 21-40 FX is in: the art folder's fx/<class> and fx/shared, 22 Oct 2026.)
-  'fx-hilot-spirit-smoke': { use: 'fx-hilot-puff', scale: 0.6 },
+  // (Every Lv 21-40 FX is in: the art folder's fx/<class> and fx/shared, 22 Oct 2026. A new one not made yet goes here.)
 };
 
 /** The fx to play for `name` (the manifest's own, else its stand-in) and the stand-in's tint and size; null: none. */

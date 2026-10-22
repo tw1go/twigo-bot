@@ -1656,7 +1656,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `_sheets_lv21-40.csv` copied beside each, a manifest fx entry per row with its `layer`): a split one's `-back` half on
   the ground and `-front` over everyone at one anchor (the scripts' `pair`), each hit on the frame its art lands it
   (`frameAt`), the gong wave, fever wave and spirit vine turned to their way, the thunder line laid a cell every 128 px;
-  `combat/fx-stand-ins.ts` only Spirit Smoke's now (the manifest's own entry wins once it lands); the Skills panel's
+  `combat/fx-stand-ins.ts` empty now (every one landed; the manifest's own entry wins once it does); fx `follow` (an
+  enemy slot: Spirit Smoke's smoke on its mob as it walks); the Skills panel's
   stage loads every FX its class's scripts name (`skillFx`, a dry run); the kit's fx `scale` / `tint`, `leap`, `echo`
   (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
   the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
@@ -1670,8 +1671,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   and Hyper Regen looping for the buff's time, cut short by a knock-out, leaving or your own `buffs`: TownScene
   `buffLook` / `endLooks`);
   tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
-  bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); icons
-  not in yet (the usual fallback: add them to manifest ui.skillIcons.have as they land). Hailstorm's area is 2 tiles
+  bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); the 48
+  icons (36 skills, 12 utilities) are the art folder's ui/skills/<class> (22 Oct 2026), in manifest ui.skillIcons.have. Hailstorm's area is 2 tiles
   (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;

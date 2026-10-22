@@ -7,3 +7,4 @@ fx-hilot-fever-wave.png,85,76,12,12,yes,39,38,front,"Fever Wave: the wave, drawn
 fx-hilot-wildroot-burst-back.png,133,97,14,14,no,67,58,ground,"Wildroot, back half: the roots behind mobs; anchor = the target's feet (centre of the area); the roots stand tallest on frames 3-8"
 fx-hilot-wildroot-burst-front.png,133,97,14,14,no,67,58,front,"Wildroot, front half: the roots in front of mobs; same anchor and timing as the back half"
 fx-hilot-spirit-vine.png,147,42,11,14,no,4,17,front,"Spirit Lash: the vine whip, drawn reaching right from the palm; rotate it towards the target (flip for the west side); anchor = the palm; play it once per lash, the hit on frame 7"
+fx-hilot-spirit-smoke.png,52,96,16,8,yes,26,91,front,Spirit Smoke: the smoke curling round the mob; anchor = the mob's feet; follow the mob and loop while the ticks last

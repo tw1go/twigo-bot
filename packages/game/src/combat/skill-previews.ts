@@ -633,8 +633,7 @@ function homeAfter(k: SkillKit, end: number): void {
 // class's attack-quick, attack-heavy or attack-cast (Timber! starts on charge-start) in its own frame order, so every
 // cosmetic pose sheet still fits. Their FX are the art folder's fx/<class> (its _sheets_lv21-40.csv: anchors, layers and
 // the frame each hit lands on); a split one plays its `-back` half on the ground and its `-front` half over everyone, at
-// one anchor and time. Spirit Smoke's isn't made yet: its stand-in plays (combat/fx-stand-ins.ts). `null` in a pose's ms
-// list: the anim's own frame time.
+// one anchor and time. `null` in a pose's ms list: the anim's own frame time.
 
 const SEED = '#84CC16'; // Seed Barrage's pebbles
 const PHANTOM = '#A3E635'; // Phantom Sticks' afterimages
@@ -1141,9 +1140,9 @@ const hilotLate: Skill[] = [
         const palm = k.launch('attack-cast', 4, 'palm');
         k.shot('fx-hilot-flick-bolt', palm, k.body(1), { speed: 300, onArrive: () => k.hit(1, { fx: 'fx-hilot-hit' }) });
       });
-      // Burns 6 × 12%: the smoke on it while it does (a stand-in until its art comes).
+      // Burns 6 × 12%: the smoke curling round it at its feet while it does, following it.
       const at = t[4] + 150;
-      k.at(at, () => k.fx('fx-hilot-spirit-smoke', k.targets[1], { z: 3, life: 3000, frames: Array.from({ length: 30 }, (_, i) => 3 + (i % 2)), ms: 100, fadeOut: 250 }));
+      k.at(at, () => k.fx('fx-hilot-spirit-smoke', k.targets[1], { z: 3, life: 3100, fadeOut: 250, follow: 1 }));
       ticking(k, 1, at, 6, 500);
     },
   },
