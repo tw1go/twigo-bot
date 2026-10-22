@@ -160,7 +160,9 @@ test('what an item gives: base ATK/DEF by its level with its plus, armor never u
   // Accessories: +2% of a line a plus to +10, +4% to +15, +10% at +16, +12% from +17 (98% at +20).
   assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 16 }, { stat: 'critDmg', value: 0.05 }), 0.075);
   assert.equal(lineValue(S, gear('acc-bone-ring'), { plus: 20 }, { stat: 'critDmg', value: 0.05 }), 0.099);
-  assert.deepEqual([agimatValue(S, 'hp', 10), agimatValue(S, 'STR', 10), agimatValue(S, 'critDmg', 20), agimatValue(S, 'def', 20)], [5, 2, 0.04, 6]);
+  // Agimats grow with their level (stats.json agimats.valueAtLevel): a Lv 20 about twice a Lv 10, the rates too.
+  assert.deepEqual([agimatValue(S, 'hp', 10), agimatValue(S, 'STR', 10), agimatValue(S, 'critDmg', 20), agimatValue(S, 'def', 20)], [8, 2, 0.08, 11]);
+  assert.deepEqual([10, 20, 30, 40].map((l) => [agimatValue(S, 'atk', l), agimatValue(S, 'critRate', l), agimatValue(S, 'amp', l)]), [[3, 0.01, 0.01], [5, 0.02, 0.02], [7, 0.03, 0.03], [9, 0.04, 0.04]]);
 });
 
 test('stats: worn items add base (+plus), lines (a stat line to the main stat) and agimats; a broken one gives nothing; caps hold', () => {
@@ -171,7 +173,7 @@ test('stats: worn items add base (+plus), lines (a stat line to the main stat) a
   const pants = rollGear(S, gear('armor-copper-bottoms'), 'lightBlue', uid(), lcg(7));
   pants.lines = [{ stat: 'mp', value: 4 }, { stat: 'hp', value: 5 }, { stat: 'stat', value: 2 }];
   const t = itemTotals(D, [sword, pants], 'STR');
-  assert.deepEqual([t.atk, t.def, t.hp, t.mp, t.STR, t.critRate, t.critDamage], [52 + 4 + 3, 12, 15, 4, 2, 0.014, 0.04]);
+  assert.deepEqual([t.atk, t.def, t.hp, t.mp, t.STR, t.critRate, t.critDamage], [52 + 4 + 5, 12, 15, 4, 2, 0.014, 0.08]);
   sword.broken = true;
   assert.equal(itemTotals(D, [sword], 'STR').atk, 0, 'broken: nothing');
   // Lifesteal past its cap is held there.

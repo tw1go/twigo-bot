@@ -1363,16 +1363,17 @@
       "amp": ["weapon", "body", "feet"]
     },
     "valueAtLevel": {
-      "atk": "0.1A+1",
-      "hp": "0.36A+1",
-      "mp": "0.25A+1",
-      "def": "0.25A+1",
-      "stat": "0.05A+1",
-      "atkRate": 0.01,
-      "critRate": 0.01,
-      "critDmg": 0.04,
-      "amp": 0.01
+      "atk": "0.2A+1",
+      "hp": "0.72A+1",
+      "mp": "0.5A+1",
+      "def": "0.5A+1",
+      "stat": "0.1A+1",
+      "atkRate": "0.001A",
+      "critRate": "0.001A",
+      "critDmg": "0.004A",
+      "amp": "0.001A"
     },
+    "valueAtLevelNote": "Repo change (Mac, 22 Oct 2026): agimats grow with their level. The flat stats twice as fast (was atk 0.1A+1, hp 0.36A+1, mp and def 0.25A+1, stat 0.05A+1); the rates with level, the same as before at Lv 10 (was a flat 1%, crit damage 4%): a Lv 20 agimat about twice a Lv 10's. Still held to the caps.",
     "fitsGearLevel": ">= A",
     "perItem": "any stats, the same one in both slots too (rare ones: up to rarePerItem)",
     "perItemNote": "Repo addition (12 Oct 2026): was 'different stats'; two of the same stat add up",
