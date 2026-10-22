@@ -1314,7 +1314,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `combat/skill-stage.ts`), the training weapon into the weapon slot, resting weapons over idle and walk for everyone
   (`Character.setRestingWeapon`, `characters/kit-art.ts`), the equipment panel beside the bag (`ui/equipment.ts`; B or
   I; 12 places: two bracers, two rings; the stats box, below), class badges on the avatar and before
-  players' names in the chat. Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
+  players' names in the chat (`say` / `party-say` and the remembered lines carry the speaker's `cls`, so one on another map
+  has theirs too). Combat poses have no clothes or hair of their own: the look's (town idle's first frame) are laid on each pose (kit-art
   `bandShift`: a band of the idle body matched to the pose's pixels; the top, bottom and shoes each by their own rows,
   trimmed to the pose's body so sleeves never float; hair, glasses and hat by the head).
 - New player guide (CONTEXT.md "Quests and the new player guide"; art: manifest `guide` (ui/guide, fx/guide: main violet,

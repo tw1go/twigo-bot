@@ -1485,7 +1485,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           c.says -= 1;
           for (const member of party.members) {
             const o = conns.get(member);
-            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text, ...(links.length ? { links } : {}) });
+            if (o) send(o, { t: 'party-say', id: p.id, name: p.nickname, text, ...(links.length ? { links } : {}), ...(p.cls ? { cls: p.cls } : {}) });
           }
           return;
         }
@@ -1496,7 +1496,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (megaphone && opts.megaphone && opts.megaphone(c.userId) === null) return send(c, { t: 'say-refused', reason: 'megaphone' });
         c.says -= 1;
         // To everyone, the speaker included (their own words come back this way), and on to Discord. Not saved.
-        const loud = { ...(megaphone ? { megaphone } : {}), ...(gm ? { gm } : {}) };
+        // (The speaker's class goes with it: their badge in the chat, for those on other maps too.)
+        const loud = { ...(megaphone ? { megaphone } : {}), ...(gm ? { gm } : {}), ...(p.cls ? { cls: p.cls } : {}) };
         remember({ name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
         opts.onSay?.(c.userId, p.nickname, text, megaphone, gm);
         return everyone({ t: 'say', id: p.id, name: p.nickname, text, ...loud, ...(links.length ? { links } : {}) });
