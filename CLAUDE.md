@@ -516,8 +516,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   class's 13 damage skills (`skillSet`: kebab case of classes.json's name; yours as it fires in `fightTick`, others' with
   their `mob-hit`; the channelled and storm ones at 0.11), skill-<class>-buff-cast (each utility as it's cast, 0.12) and
   skill-stun / -taunt / -debuff (TownScene `MARK_SOUNDS`: from the mob it lands on, one a crowd: `playSet`'s `gapMs`); the
-  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; mobs, others' skills and the
-  golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
+  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; everything from someone or something else in the world (mobs, the
+  bosses, others' skills, moves, buffs, level-ups and emotes, what lands on a mob, a neighbour's house rising or
+  restyled: TownScene `heardFrom`) only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
   Display | Game, Privacy and Account, Keybinds and Credits across the bottom; one column under 640 px): Music and Sounds volumes
