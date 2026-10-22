@@ -13,6 +13,7 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { RARITY_COLOUR } from '../ui/item-art';
 import { LABEL_DEPTH } from './depth';
+import { DEBUFF_MARKS, STUN_MARK, tintOf } from '../combat/utility-looks';
 
 // Mini bosses (classes/leveling.json; each zone's `miniBosses` spots in the map): their mob's art at miniBoss.scale (its
 // kind's mobs.json numbers scaled with it: shadow, top, eye), one fixed look by id, "Jus Tin Lv 4" always over it in
@@ -167,8 +168,10 @@ export interface Mob {
   stunUntil?: number;
   /** Its debuffs (CONTEXT.md Debuff; a skill's taunt as 'taunt') and when each ends (scene ms): a pip each over its bar. */
   debuffs?: Map<string, number>;
-  /** The stars and pips, drawn while any is on. */
+  /** The stars and pips drawn in code while a mark's sheet isn't loaded. */
   marks?: Phaser.GameObjects.Graphics | null;
+  /** Each mark's art playing over it (combat/utility-looks.ts: 'stun' or the debuff's name). */
+  markFx?: Map<string, FxHandle>;
   /** A mini boss: its name and its name's colour (always shown, with its HP bar). */
   mini: { name: string; colour: string } | null;
   /** Its body's radius in tiles (the golem's; 0 for the rest): reach to it is measured to that edge. */
@@ -854,6 +857,8 @@ export class Mobs {
         m.bar?.destroy();
         m.shield?.destroy();
         m.marks?.destroy();
+        for (const h of m.markFx?.values() ?? []) h.kill(0);
+        m.markFx?.clear();
         m.label?.text.destroy();
       };
       m.bar?.destroy();
@@ -1526,7 +1531,7 @@ export class Mobs {
     if (m === this.target) this.syncRing();
     this.syncBar(m);
     if (m.data?.shell) this.syncShield(m);
-    if (m.marks || m.stunUntil || m.debuffs?.size) this.syncMarks(m);
+    if (m.marks || m.markFx?.size || m.stunUntil || m.debuffs?.size) this.syncMarks(m);
   }
 
   /** Stunned (the server's word, CONTEXT.md Stun): still on its tile for `ms`, stars circling over its head. */
@@ -1553,21 +1558,59 @@ export class Mobs {
     return (m.stunUntil ?? 0) > this.scene.time.now;
   }
 
-  /** The stars of a stun (three yellow pixels circling, until fx-stun-stars comes) and a pip a debuff in its colour (until
-   *  the debuff icons come), over its HP bar; gone when nothing's on. */
+  /** Its marks while they last (combat/utility-looks.ts): a stun's dizzy ring on top of its head, each debuff's mark
+   *  over it (above the HP bar, side by side), Hamstring's knee ring at its feet; each its art looping (following it), or
+   *  drawn in code while its sheet isn't loaded (yellow stars, a pip in the debuff's colour). Gone when it ends. */
   private syncMarks(m: Mob): void {
     const now = this.scene.time.now;
     for (const [k, until] of m.debuffs ?? []) if (until <= now) m.debuffs!.delete(k);
     const stun = (m.stunUntil ?? 0) > now;
     if (!stun) m.stunUntil = 0;
-    if (m.dead || m.asleep || (!stun && !m.debuffs?.size)) {
+    const on = m.dead || m.asleep ? [] : [...(stun ? ['stun'] : []), ...(m.debuffs?.keys() ?? [])];
+    // Art: one looping sheet a mark, following it.
+    const fx = (m.markFx ??= new Map());
+    for (const [k, h] of fx) if (!on.includes(k)) {
+      h.kill(150);
+      fx.delete(k);
+    }
+    // (The marks over its head, side by side: worked out each frame, as debuffs come and go.)
+    const row = () => [...(m.debuffs?.keys() ?? [])].filter((k) => !DEBUFF_MARKS[k]?.feet);
+    const coded: string[] = [];
+    for (const k of on) {
+      if (fx.has(k)) continue;
+      const mark = k === 'stun' ? { fx: STUN_MARK } : DEBUFF_MARKS[k];
+      const art = mark && this.fxArt(mark.fx);
+      if (!mark || !art) {
+        coded.push(k);
+        continue;
+      }
+      const at = (): Pt => {
+        const x = m.sprite.x - m.lunge.x;
+        if (k === 'stun') return { x, y: this.top(m) + 6 };
+        if (mark.feet) return { x, y: m.sprite.y };
+        // (Over its name when that shows: a mini boss's, an event mob's, your target's.)
+        const r = row();
+        const i = r.indexOf(k);
+        const name = m.label?.text.visible ? m.label.text.getBounds().top - 10 : Infinity;
+        return { x: x + (i - (r.length - 1) / 2) * 22, y: Math.min(this.top(m) - 12, name) };
+      };
+      // (A sheet that plays once loops its frames for as long as the mark lasts.)
+      const frames = art.frames ?? 1;
+      const handle = this.fx.play(art, at(), {
+        layer: mark.feet ? 'ground' : 'front', follow: at, life: 3_600_000,
+        ...(art.loop ? {} : { hold: { from: 0, to: frames - 1, until: 3_600_000 } }),
+        ...('tint' in mark && mark.tint ? { tint: tintOf(mark.tint) } : {}),
+      });
+      if (handle) fx.set(k, handle);
+    }
+    if (!coded.length) {
       m.marks?.destroy();
       m.marks = null;
       return;
     }
     const g = (m.marks ??= this.scene.add.graphics());
     g.clear().setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(this.top(m) - 4)).setDepth(LABEL_DEPTH - 1);
-    if (stun) {
+    if (coded.includes('stun')) {
       // Three small stars (a plus of 5 px) going round over its head.
       for (let i = 0; i < 3; i++) {
         const a = now / 260 + (i * Math.PI * 2) / 3;
@@ -1576,7 +1619,7 @@ export class Mobs {
         g.fillStyle(0xfde047, 1).fillRect(x, y - 2, 1, 5).fillRect(x - 2, y, 5, 1);
       }
     }
-    const pips = [...(m.debuffs?.keys() ?? [])];
+    const pips = coded.filter((k) => k !== 'stun');
     pips.forEach((name, i) => {
       const x = Math.round((i - (pips.length - 1) / 2) * 8) - 3;
       g.fillStyle(0x0b0a1a, 1).fillRect(x - 1, -2, 8, 8).fillStyle(DEBUFF_COLOURS[name] ?? 0xe2e8f0, 1).fillRect(x, -1, 6, 6);

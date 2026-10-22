@@ -20101,6 +20101,150 @@
       "layer": "ground",
       "note": "Volley v2 target area (the dark oval, under everyone): same anchor as the rain; held through it, then faded out over 150 ms"
     },
+    "fx-slingshot-crit-star": {
+      "file": "fx/slingshot/fx-slingshot-crit-star.png",
+      "frame": [
+        64,
+        72
+      ],
+      "frames": 9,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        32,
+        34
+      ],
+      "layer": "front",
+      "note": "Headshot hit: gold crit star; centre on the target body (Headshot uses it instead of fx-slingshot-hit)"
+    },
+    "fx-slingshot-marble": {
+      "file": "fx/slingshot/fx-slingshot-marble.png",
+      "frame": [
+        69,
+        24
+      ],
+      "frames": 13,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        57,
+        12
+      ],
+      "layer": "front",
+      "note": "Burst Marble marble in flight with its swirling tail; points EAST; turn it to the flight angle; anchor = the marble"
+    },
+    "fx-slingshot-marble-burst": {
+      "file": "fx/slingshot/fx-slingshot-marble-burst.png",
+      "frame": [
+        84,
+        62
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        36
+      ],
+      "layer": "front",
+      "note": "Burst Marble burst; anchor = the target's feet (the ring's centre); hits land on frame 1"
+    },
+    "fx-slingshot-marble-burst-ground": {
+      "file": "fx/slingshot/fx-slingshot-marble-burst-ground.png",
+      "frame": [
+        84,
+        62
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        36
+      ],
+      "layer": "ground",
+      "note": "Burst Marble dust ring; same anchor and timing as fx-slingshot-marble-burst; under players and mobs"
+    },
+    "fx-slingshot-charge": {
+      "file": "fx/slingshot/fx-slingshot-charge.png",
+      "frame": [
+        72,
+        69
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        36,
+        35
+      ],
+      "layer": "front",
+      "note": "Long Pull charging: loop on the fork (heavy frame 3 launch point) while the key is held"
+    },
+    "fx-slingshot-charge-full": {
+      "file": "fx/slingshot/fx-slingshot-charge-full.png",
+      "frame": [
+        70,
+        70
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        35,
+        35
+      ],
+      "layer": "front",
+      "note": "Long Pull full charge: plays once on the fork when the charge is full; the charge loop keeps going under it"
+    },
+    "fx-slingshot-hail": {
+      "file": "fx/slingshot/fx-slingshot-hail.png",
+      "frame": [
+        104,
+        107
+      ],
+      "frames": 20,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        52,
+        81
+      ],
+      "layer": "front",
+      "note": "Hailstorm rain (straight down; never mirrored); anchor = centre of the area on the ground; hits on frames 5, 11 and 17"
+    },
+    "fx-slingshot-hail-ring": {
+      "file": "fx/slingshot/fx-slingshot-hail-ring.png",
+      "frame": [
+        104,
+        107
+      ],
+      "frames": 20,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        52,
+        81
+      ],
+      "layer": "ground",
+      "note": "Hailstorm ring (about 2 tiles across); same anchor and timing as the rain; under players and mobs"
+    },
+    "fx-slingshot-homing": {
+      "file": "fx/slingshot/fx-slingshot-homing.png",
+      "frame": [
+        43,
+        43
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        21,
+        21
+      ],
+      "layer": "front",
+      "note": "Homing Pebbles pebble: round, needs no turning; move it along its curve; anchor = the pebble"
+    },
     "fx-pebble-volley": {
       "file": "fx/open-world/fx-pebble-volley.png",
       "frame": [
@@ -20282,6 +20426,102 @@
       ],
       "note": "Rising Swat upward slash facing nw; anchor 6 px above the fighter chest; draw UNDER the character"
     },
+    "fx-stick-crosscut": {
+      "file": "fx/stick/fx-stick-crosscut.png",
+      "frame": [
+        106,
+        89
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        51,
+        42
+      ],
+      "layer": "front",
+      "note": "Crosscut: the two cuts cross into an X; centre on the target body; the cuts land on frames 1 and 3; mirror it when the target is to the west"
+    },
+    "fx-stick-thunder-hit": {
+      "file": "fx/stick/fx-stick-thunder-hit.png",
+      "frame": [
+        36,
+        82
+      ],
+      "frames": 12,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        16,
+        67
+      ],
+      "layer": "front",
+      "note": "Thunder Tap: the bolt strikes down; anchor = the target's feet; hit on frame 2; the stun stars take over after it"
+    },
+    "fx-stick-flurry": {
+      "file": "fx/stick/fx-stick-flurry.png",
+      "frame": [
+        106,
+        49
+      ],
+      "frames": 12,
+      "fps": 20,
+      "loop": true,
+      "anchor": [
+        58,
+        26
+      ],
+      "layer": "front",
+      "note": "Hundred Hits: rapid strike lines, points EAST; loop it in front of the player, centred between the player and the target, turned to the facing"
+    },
+    "fx-stick-shatter-impact": {
+      "file": "fx/stick/fx-stick-shatter-impact.png",
+      "frame": [
+        99,
+        70
+      ],
+      "frames": 8,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        48,
+        62
+      ],
+      "layer": "front",
+      "note": "Shatter Strike: the burst on the target; anchor = its feet; plays with fx-stick-shatter-ring (the white pole frames PixelLab drew first are left out: the player's own stick does that)"
+    },
+    "fx-stick-shatter-ring": {
+      "file": "fx/stick/fx-stick-shatter-ring.png",
+      "frame": [
+        128,
+        67
+      ],
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        64,
+        33
+      ],
+      "layer": "ground",
+      "note": "Shatter Strike: the shockwave ring and cracks on the ground; same anchor as the impact (the target's feet); under players and mobs; starts with the impact"
+    },
+    "fx-stick-phantom-fade": {
+      "file": "fx/stick/fx-stick-phantom-fade.png",
+      "frame": [
+        50,
+        99
+      ],
+      "frames": 11,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        24,
+        97
+      ],
+      "layer": "front",
+      "note": "Phantom Sticks: an afterimage dissolving; anchor = where its feet were; plays as each afterimage ends"
+    },
     "fx-crimson-hit": {
       "file": "fx/greatstick/fx-crimson-hit.png",
       "frame": [
@@ -20461,6 +20701,102 @@
         5
       ],
       "note": "Splinter Burst: one wood shard tumbling; fire ~9 from the plank end in a 50 deg cone"
+    },
+    "fx-greatstick-quake-crack": {
+      "file": "fx/greatstick/fx-greatstick-quake-crack.png",
+      "frame": [
+        64,
+        20
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        32,
+        12
+      ],
+      "layer": "ground",
+      "note": "Earthshaker: one crack burst; spawn one every half tile along the line from the plank's tip, 40 ms apart; anchor = its spot on the ground"
+    },
+    "fx-greatstick-cyclone-back": {
+      "file": "fx/greatstick/fx-greatstick-cyclone-back.png",
+      "frame": [
+        132,
+        69
+      ],
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        66,
+        34
+      ],
+      "layer": "ground",
+      "note": "Cyclone ring, back half: behind the player; anchor = the player's feet; loop it for the 3 turns"
+    },
+    "fx-greatstick-cyclone-front": {
+      "file": "fx/greatstick/fx-greatstick-cyclone-front.png",
+      "frame": [
+        132,
+        69
+      ],
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        66,
+        34
+      ],
+      "layer": "front",
+      "note": "Cyclone ring, front half: in front of the player; same anchor and timing as the back half"
+    },
+    "fx-greatstick-bleed": {
+      "file": "fx/greatstick/fx-greatstick-bleed.png",
+      "frame": [
+        19,
+        52
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        9,
+        44
+      ],
+      "layer": "front",
+      "note": "Nail Driver bleed: plays once per tick on the mob; anchor = a few px under its body centre (the splash lands there)"
+    },
+    "fx-greatstick-timber-fall": {
+      "file": "fx/greatstick/fx-greatstick-timber-fall.png",
+      "frame": [
+        128,
+        126
+      ],
+      "frames": 16,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        64,
+        93
+      ],
+      "layer": "front",
+      "note": "Timber!: the plank falling (frames 0-4, empty after); anchor = the landing spot (the target's feet); the hit lands on frame 5"
+    },
+    "fx-greatstick-timber-slam": {
+      "file": "fx/greatstick/fx-greatstick-timber-slam.png",
+      "frame": [
+        128,
+        126
+      ],
+      "frames": 16,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        64,
+        93
+      ],
+      "layer": "ground",
+      "note": "Timber!: the plank in its crater and the dust ring (empty for frames 0-4); same anchor and timing as the fall; under players and mobs"
     },
     "fx-broom-dust-launch": {
       "file": "fx/broom/fx-broom-dust-launch.png",
@@ -20807,6 +21143,214 @@
       ],
       "note": "Static Bristles link; anchor = start point; stretch x to the link length and turn it to the link angle; flicker 3-4 frames per link"
     },
+    "fx-broom-moonbeam": {
+      "file": "fx/broom/fx-broom-moonbeam.png",
+      "frame": [
+        38,
+        111
+      ],
+      "frames": 11,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        19,
+        99
+      ],
+      "layer": "front",
+      "note": "Moonbeam: the beam from above; anchor = the target's feet; the hit lands on frame 5 (the flash)"
+    },
+    "fx-broom-moonbeam-ring": {
+      "file": "fx/broom/fx-broom-moonbeam-ring.png",
+      "frame": [
+        38,
+        111
+      ],
+      "frames": 11,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        19,
+        99
+      ],
+      "layer": "ground",
+      "note": "Moonbeam: the small ring the beam leaves (frames 7-10, empty before); same anchor and timing as the beam"
+    },
+    "fx-broom-moonbeam-ground": {
+      "file": "fx/broom/fx-broom-moonbeam-ground.png",
+      "frame": [
+        70,
+        36
+      ],
+      "frames": 11,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        35,
+        18
+      ],
+      "layer": "ground",
+      "note": "Moonbeam: the crescent ring on the ground under the target; start it with the beam; anchor = the target's feet"
+    },
+    "fx-broom-leaf-storm-back": {
+      "file": "fx/broom/fx-broom-leaf-storm-back.png",
+      "frame": [
+        117,
+        61
+      ],
+      "frames": 16,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        58,
+        30
+      ],
+      "layer": "ground",
+      "note": "Leaf Storm, back half: behind mobs; anchor = the target's feet (centre of the area); loop for 0.9 s"
+    },
+    "fx-broom-leaf-storm-front": {
+      "file": "fx/broom/fx-broom-leaf-storm-front.png",
+      "frame": [
+        117,
+        61
+      ],
+      "frames": 16,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        58,
+        30
+      ],
+      "layer": "front",
+      "note": "Leaf Storm, front half: in front of mobs; same anchor and timing as the back half"
+    },
+    "fx-broom-firefly": {
+      "file": "fx/broom/fx-broom-firefly.png",
+      "frame": [
+        24,
+        24
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        12,
+        12
+      ],
+      "layer": "front",
+      "note": "Firefly Swarm: one firefly, moved by code from the palm to its mob; anchor = its centre"
+    },
+    "fx-broom-firefly-pop": {
+      "file": "fx/broom/fx-broom-firefly-pop.png",
+      "frame": [
+        37,
+        37
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        18,
+        18
+      ],
+      "layer": "front",
+      "note": "Firefly Swarm: the pop where a firefly hits; anchor = the mob's body centre"
+    },
+    "fx-broom-star": {
+      "file": "fx/broom/fx-broom-star.png",
+      "frame": [
+        38,
+        40
+      ],
+      "frames": 12,
+      "fps": 14,
+      "loop": true,
+      "anchor": [
+        26,
+        28
+      ],
+      "layer": "front",
+      "note": "Starfall: one falling star, moved by code from about 3 tiles up-left down onto its spot; anchor = the star's centre"
+    },
+    "fx-broom-star-impact-ring": {
+      "file": "fx/broom/fx-broom-star-impact-ring.png",
+      "frame": [
+        80,
+        48
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        40,
+        21
+      ],
+      "layer": "ground",
+      "note": "Starfall: the violet ring spreading where a star lands; anchor = the landing spot; the hit lands on frame 0"
+    },
+    "fx-broom-star-impact": {
+      "file": "fx/broom/fx-broom-star-impact.png",
+      "frame": [
+        80,
+        48
+      ],
+      "frames": 9,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        40,
+        21
+      ],
+      "layer": "front",
+      "note": "Starfall: the sparkles jumping up from the ring; same anchor and timing as the ring"
+    },
+    "fx-broom-tempest-ground": {
+      "file": "fx/broom/fx-broom-tempest-ground.png",
+      "frame": [
+        104,
+        56
+      ],
+      "frames": 16,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        52,
+        28
+      ],
+      "layer": "ground",
+      "note": "Tempest: the storm ring over the area; anchor = the target's feet (centre of the area); loop for 1.6 s"
+    },
+    "fx-broom-bolt": {
+      "file": "fx/broom/fx-broom-bolt.png",
+      "frame": [
+        42,
+        101
+      ],
+      "frames": 7,
+      "fps": 15,
+      "loop": false,
+      "anchor": [
+        21,
+        90
+      ],
+      "layer": "front",
+      "note": "Tempest and Thunder Sweep: a bolt striking one mob; anchor = the mob's feet; the hit lands on frame 2"
+    },
+    "fx-broom-thunder-line": {
+      "file": "fx/broom/fx-broom-thunder-line.png",
+      "frame": [
+        128,
+        30
+      ],
+      "frames": 9,
+      "fps": 15,
+      "loop": false,
+      "anchor": [
+        0,
+        14
+      ],
+      "layer": "front",
+      "note": "Thunder Sweep: the flat bolt; tile it end to end every cell_w px from the bristles out to 6 tiles along the facing; anchor = its left end"
+    },
     "fx-potlid-clang-waves": {
       "file": "fx/potlid/fx-potlid-clang-waves.png",
       "frame": [
@@ -21065,6 +21609,150 @@
       ],
       "note": "Boiling Splash water arcs facing nw; anchor on the lid; puddle lands at -57;-3 from the lid; draw UNDER the caster"
     },
+    "fx-potlid-pressure": {
+      "file": "fx/potlid/fx-potlid-pressure.png",
+      "frame": [
+        56,
+        55
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        28,
+        29
+      ],
+      "layer": "front",
+      "note": "Pressure Cooker: steam hissing round the lid while it rattles (loop for the 0.8 s windup); anchor = the lid's centre"
+    },
+    "fx-potlid-oil-pool": {
+      "file": "fx/potlid/fx-potlid-oil-pool.png",
+      "frame": [
+        68,
+        44
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        34,
+        30
+      ],
+      "layer": "ground",
+      "note": "Hot Oil: the pool where the oil lands, looping while it burns (5 ticks, 2 s); anchor = its centre on the ground"
+    },
+    "fx-potlid-gong-wave": {
+      "file": "fx/potlid/fx-potlid-gong-wave.png",
+      "frame": [
+        55,
+        56
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        18,
+        29
+      ],
+      "layer": "front",
+      "note": "Gong Wave: the wave, drawn pushing right; rotate it to the facing (flip for the west side) and move it from the lid along the line at 300 px/s; anchor = the back of the wave"
+    },
+    "fx-potlid-simmer-back": {
+      "file": "fx/potlid/fx-potlid-simmer-back.png",
+      "frame": [
+        121,
+        79
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        61,
+        49
+      ],
+      "layer": "ground",
+      "note": "Simmer, back half: behind the player; anchor = the player's feet; loop for the 3 s channel"
+    },
+    "fx-potlid-simmer-front": {
+      "file": "fx/potlid/fx-potlid-simmer-front.png",
+      "frame": [
+        121,
+        79
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        61,
+        49
+      ],
+      "layer": "front",
+      "note": "Simmer, front half: in front of the player; same anchor and timing as the back half"
+    },
+    "fx-potlid-searing-drop": {
+      "file": "fx/potlid/fx-potlid-searing-drop.png",
+      "frame": [
+        104,
+        88
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        52,
+        61
+      ],
+      "layer": "front",
+      "note": "Searing Lid: the lid dropping (frames 0-2, empty after); anchor = the target's feet; the hit lands on frame 3"
+    },
+    "fx-potlid-searing-hit": {
+      "file": "fx/potlid/fx-potlid-searing-hit.png",
+      "frame": [
+        104,
+        88
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        52,
+        61
+      ],
+      "layer": "ground",
+      "note": "Searing Lid: the glowing lid and heat rings under the target (empty for frames 0-2); same anchor and timing"
+    },
+    "fx-potlid-searing-steam": {
+      "file": "fx/potlid/fx-potlid-searing-steam.png",
+      "frame": [
+        104,
+        88
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        52,
+        61
+      ],
+      "layer": "front",
+      "note": "Searing Lid: the steam puffing out at the lid's sides; same anchor and timing"
+    },
+    "fx-potlid-scream-ring": {
+      "file": "fx/potlid/fx-potlid-scream-ring.png",
+      "frame": [
+        136,
+        72
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        68,
+        36
+      ],
+      "layer": "ground",
+      "note": "Kettle Scream: the sound ring round the player; anchor = the player's feet; the hits land on frame 3"
+    },
     "fx-hilot-jab": {
       "file": "fx/hilot/fx-hilot-jab.png",
       "frame": [
@@ -21229,6 +21917,134 @@
         29
       ],
       "note": "Hot Compress impact front half of the heat ring; anchor on the target feet; draw OVER the monster"
+    },
+    "fx-hilot-nettle-burst-back": {
+      "file": "fx/hilot/fx-hilot-nettle-burst-back.png",
+      "frame": [
+        151,
+        98
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        76,
+        48
+      ],
+      "layer": "ground",
+      "note": "Nettle Burst, back half: behind the player; anchor = the player's feet; the hits land on frame 3"
+    },
+    "fx-hilot-nettle-burst-front": {
+      "file": "fx/hilot/fx-hilot-nettle-burst-front.png",
+      "frame": [
+        151,
+        98
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        76,
+        48
+      ],
+      "layer": "front",
+      "note": "Nettle Burst, front half: in front of the player (the falling leaves too); same anchor and timing as the back half"
+    },
+    "fx-hilot-herb-storm-back": {
+      "file": "fx/hilot/fx-hilot-herb-storm-back.png",
+      "frame": [
+        112,
+        60
+      ],
+      "frames": 16,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        56,
+        30
+      ],
+      "layer": "ground",
+      "note": "Herbal Storm, back half: behind mobs; anchor = the target's feet (centre of the area); loop for 1 s"
+    },
+    "fx-hilot-herb-storm-front": {
+      "file": "fx/hilot/fx-hilot-herb-storm-front.png",
+      "frame": [
+        112,
+        60
+      ],
+      "frames": 16,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        56,
+        30
+      ],
+      "layer": "front",
+      "note": "Herbal Storm, front half: in front of mobs; same anchor and timing as the back half"
+    },
+    "fx-hilot-fever-wave": {
+      "file": "fx/hilot/fx-hilot-fever-wave.png",
+      "frame": [
+        85,
+        76
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        39,
+        38
+      ],
+      "layer": "front",
+      "note": "Fever Wave: the wave, drawn pushing right; rotate it to the facing (flip for the west side) and move it from the palms along the line; anchor = its centre"
+    },
+    "fx-hilot-wildroot-burst-back": {
+      "file": "fx/hilot/fx-hilot-wildroot-burst-back.png",
+      "frame": [
+        133,
+        97
+      ],
+      "frames": 14,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        67,
+        58
+      ],
+      "layer": "ground",
+      "note": "Wildroot, back half: the roots behind mobs; anchor = the target's feet (centre of the area); the roots stand tallest on frames 3-8"
+    },
+    "fx-hilot-wildroot-burst-front": {
+      "file": "fx/hilot/fx-hilot-wildroot-burst-front.png",
+      "frame": [
+        133,
+        97
+      ],
+      "frames": 14,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        67,
+        58
+      ],
+      "layer": "front",
+      "note": "Wildroot, front half: the roots in front of mobs; same anchor and timing as the back half"
+    },
+    "fx-hilot-spirit-vine": {
+      "file": "fx/hilot/fx-hilot-spirit-vine.png",
+      "frame": [
+        147,
+        42
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        4,
+        17
+      ],
+      "layer": "front",
+      "note": "Spirit Lash: the vine whip, drawn reaching right from the palm; rotate it towards the target (flip for the west side); anchor = the palm; play it once per lash, the hit on frame 7"
     },
     "fx-mobility-dust": {
       "file": "fx/mobility/fx-mobility-dust-standin.png",
@@ -22166,6 +22982,294 @@
       ],
       "layer": "front",
       "note": "the art folder's fx/palengke (21 Oct 2026, script-built): the market bell ringing over the Great Scale when it dies (the finale bell to ring); anchor = bottom, sit it above the Scale"
+    },
+    "fx-stun-stars": {
+      "file": "fx/shared/fx-stun-stars.png",
+      "frame": [
+        35,
+        19
+      ],
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "anchor": [
+        17,
+        13
+      ],
+      "layer": "front",
+      "note": "Stun (Thunder Tap, Thunder Sweep and every stun): the dizzy ring; anchor = the ring centre; sit it on top of the head"
+    },
+    "fx-taunt-mark": {
+      "file": "fx/shared/fx-taunt-mark.png",
+      "frame": [
+        26,
+        26
+      ],
+      "frames": 8,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        13,
+        13
+      ],
+      "layer": "front",
+      "note": "Taunt (Gong Wave, Searing Lid, Provoke, Iron Kitchen): anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts"
+    },
+    "fx-debuff-armor-crack": {
+      "file": "fx/shared/fx-debuff-armor-crack.png",
+      "frame": [
+        31,
+        34
+      ],
+      "frames": 12,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        14,
+        14
+      ],
+      "layer": "front",
+      "note": "Armor Crack debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; with several debuffs, line them up side by side"
+    },
+    "fx-debuff-marked": {
+      "file": "fx/shared/fx-debuff-marked.png",
+      "frame": [
+        34,
+        34
+      ],
+      "frames": 16,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        17,
+        17
+      ],
+      "layer": "front",
+      "note": "Marked debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs"
+    },
+    "fx-debuff-eye-sting": {
+      "file": "fx/shared/fx-debuff-eye-sting.png",
+      "frame": [
+        34,
+        25
+      ],
+      "frames": 12,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        17,
+        12
+      ],
+      "layer": "front",
+      "note": "Eye Sting debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs"
+    },
+    "fx-debuff-numbing": {
+      "file": "fx/shared/fx-debuff-numbing.png",
+      "frame": [
+        35,
+        31
+      ],
+      "frames": 12,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        17,
+        15
+      ],
+      "layer": "front",
+      "note": "Numbing Oil debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs"
+    },
+    "fx-buff-guard-back": {
+      "file": "fx/shared/fx-buff-guard-back.png",
+      "frame": [
+        88,
+        76
+      ],
+      "frames": 15,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        44,
+        53
+      ],
+      "layer": "ground",
+      "note": "Iron Kitchen, back: far half of the ring, behind the player; anchor = the player's feet; play once on cast"
+    },
+    "fx-buff-guard-front": {
+      "file": "fx/shared/fx-buff-guard-front.png",
+      "frame": [
+        88,
+        76
+      ],
+      "frames": 15,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        44,
+        53
+      ],
+      "layer": "front",
+      "note": "Iron Kitchen, front: near half of the ring + shields and steam, in front of the player; same anchor and timing"
+    },
+    "fx-buff-blood-back": {
+      "file": "fx/shared/fx-buff-blood-back.png",
+      "frame": [
+        82,
+        101
+      ],
+      "frames": 16,
+      "fps": 14,
+      "loop": true,
+      "anchor": [
+        41,
+        79
+      ],
+      "layer": "ground",
+      "note": "Blood Price, back: far half of the ring, behind the player; anchor = the player's feet; loop while the buff lasts"
+    },
+    "fx-buff-blood-front": {
+      "file": "fx/shared/fx-buff-blood-front.png",
+      "frame": [
+        82,
+        101
+      ],
+      "frames": 16,
+      "fps": 14,
+      "loop": true,
+      "anchor": [
+        41,
+        79
+      ],
+      "layer": "front",
+      "note": "Blood Price, front: near half of the ring + rising drops; same anchor, loop"
+    },
+    "fx-buff-mist-back": {
+      "file": "fx/shared/fx-buff-mist-back.png",
+      "frame": [
+        88,
+        94
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        44,
+        71
+      ],
+      "layer": "ground",
+      "note": "Mist Veil, back: far half of the ring, behind the player; anchor = the player's feet; play once on cast"
+    },
+    "fx-buff-mist-front": {
+      "file": "fx/shared/fx-buff-mist-front.png",
+      "frame": [
+        88,
+        94
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        44,
+        71
+      ],
+      "layer": "front",
+      "note": "Mist Veil, front: near half of the ring + mist wisps; same anchor and timing"
+    },
+    "fx-buff-hyper-regen-back": {
+      "file": "fx/shared/fx-buff-hyper-regen-back.png",
+      "frame": [
+        82,
+        105
+      ],
+      "frames": 12,
+      "fps": 14,
+      "loop": true,
+      "anchor": [
+        41,
+        83
+      ],
+      "layer": "ground",
+      "note": "Hyper Regen, back: far half of the ring, behind the player; anchor = the player's feet; loop while the buff lasts"
+    },
+    "fx-buff-hyper-regen-front": {
+      "file": "fx/shared/fx-buff-hyper-regen-front.png",
+      "frame": [
+        82,
+        105
+      ],
+      "frames": 12,
+      "fps": 14,
+      "loop": true,
+      "anchor": [
+        41,
+        83
+      ],
+      "layer": "front",
+      "note": "Hyper Regen, front: near half of the ring + rising sparks; same anchor, loop"
+    },
+    "fx-stance-fierce-back": {
+      "file": "fx/shared/fx-stance-fierce-back.png",
+      "frame": [
+        84,
+        97
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        75
+      ],
+      "layer": "ground",
+      "note": "Fierce Stance, back: far half of the ring, behind the player; anchor = the player's feet; play once when the stance is taken"
+    },
+    "fx-stance-fierce-front": {
+      "file": "fx/shared/fx-stance-fierce-front.png",
+      "frame": [
+        84,
+        97
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        75
+      ],
+      "layer": "front",
+      "note": "Fierce Stance, front: near half of the ring + ribbons and dashes; same anchor and timing"
+    },
+    "fx-stance-flow-back": {
+      "file": "fx/shared/fx-stance-flow-back.png",
+      "frame": [
+        84,
+        98
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        76
+      ],
+      "layer": "ground",
+      "note": "Flow Stance, back: far half of the ring, behind the player; anchor = the player's feet; play once when the stance is taken"
+    },
+    "fx-stance-flow-front": {
+      "file": "fx/shared/fx-stance-flow-front.png",
+      "frame": [
+        84,
+        98
+      ],
+      "frames": 11,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        42,
+        76
+      ],
+      "layer": "front",
+      "note": "Flow Stance, front: near half of the ring + ribbons and dashes; same anchor and timing"
     }
   },
   "ui": {

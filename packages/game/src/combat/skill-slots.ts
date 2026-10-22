@@ -83,3 +83,38 @@ export function skillPoses(skill: Skill, fps: (anim: string) => number, preview 
   skill.run(kit);
   return out;
 }
+
+/** Every FX the skills' scripts name (a dry run, every timed step run at once, as the stage would play them): what the
+ *  Skills panel's stage loads, whichever class's folder it's in. */
+export function skillFx(skills: Skill[]): Set<string> {
+  const names = new Set<string>();
+  const pt: Pt = { x: 0, y: 0 };
+  const kit: SkillKit = {
+    dir: 'se',
+    preview: true,
+    feet: pt,
+    targets: [pt, pt, pt],
+    body: () => pt,
+    self: () => pt,
+    frames: () => 1,
+    pose: (_a, frames) => frames.map((_, i) => i * 80),
+    launch: () => pt,
+    at: (_ms, fn) => fn(),
+    fx: (name) => (names.add(name), { kill: () => {} }),
+    shot: (name, _f, _t, o) => {
+      names.add(name);
+      o.onArrive?.();
+    },
+    hit: (_n, o) => void (o?.fx && names.add(o.fx)),
+    number: () => {},
+    hide: () => {},
+    move: () => {},
+    trail: () => {},
+    flash: () => {},
+    fade: () => {},
+    leap: () => {},
+    echo: () => {},
+  };
+  for (const s of skills) s.run(kit);
+  return names;
+}

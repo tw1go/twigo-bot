@@ -1,0 +1,19 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-stun-stars.png,35,19,12,12,yes,17,13,front,"Stun (Thunder Tap, Thunder Sweep and every stun): the dizzy ring; anchor = the ring centre; sit it on top of the head"
+fx-taunt-mark.png,26,26,8,10,yes,13,13,front,"Taunt (Gong Wave, Searing Lid, Provoke, Iron Kitchen): anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts"
+fx-debuff-armor-crack.png,31,34,12,10,yes,14,14,front,"Armor Crack debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; with several debuffs, line them up side by side"
+fx-debuff-marked.png,34,34,16,10,yes,17,17,front,Marked debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs
+fx-debuff-eye-sting.png,34,25,12,10,yes,17,12,front,Eye Sting debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs
+fx-debuff-numbing.png,35,31,12,10,yes,17,15,front,Numbing Oil debuff: anchor = its centre; draw it over the mob's head (above the HP bar line) for as long as the effect lasts; side by side with other debuffs
+fx-buff-guard-back.png,88,76,15,14,no,44,53,ground,"Iron Kitchen, back: far half of the ring, behind the player; anchor = the player's feet; play once on cast"
+fx-buff-guard-front.png,88,76,15,14,no,44,53,front,"Iron Kitchen, front: near half of the ring + shields and steam, in front of the player; same anchor and timing"
+fx-buff-blood-back.png,82,101,16,14,yes,41,79,ground,"Blood Price, back: far half of the ring, behind the player; anchor = the player's feet; loop while the buff lasts"
+fx-buff-blood-front.png,82,101,16,14,yes,41,79,front,"Blood Price, front: near half of the ring + rising drops; same anchor, loop"
+fx-buff-mist-back.png,88,94,11,14,no,44,71,ground,"Mist Veil, back: far half of the ring, behind the player; anchor = the player's feet; play once on cast"
+fx-buff-mist-front.png,88,94,11,14,no,44,71,front,"Mist Veil, front: near half of the ring + mist wisps; same anchor and timing"
+fx-buff-hyper-regen-back.png,82,105,12,14,yes,41,83,ground,"Hyper Regen, back: far half of the ring, behind the player; anchor = the player's feet; loop while the buff lasts"
+fx-buff-hyper-regen-front.png,82,105,12,14,yes,41,83,front,"Hyper Regen, front: near half of the ring + rising sparks; same anchor, loop"
+fx-stance-fierce-back.png,84,97,11,14,no,42,75,ground,"Fierce Stance, back: far half of the ring, behind the player; anchor = the player's feet; play once when the stance is taken"
+fx-stance-fierce-front.png,84,97,11,14,no,42,75,front,"Fierce Stance, front: near half of the ring + ribbons and dashes; same anchor and timing"
+fx-stance-flow-back.png,84,98,11,14,no,42,76,ground,"Flow Stance, back: far half of the ring, behind the player; anchor = the player's feet; play once when the stance is taken"
+fx-stance-flow-front.png,84,98,11,14,no,42,76,front,"Flow Stance, front: near half of the ring + ribbons and dashes; same anchor and timing"

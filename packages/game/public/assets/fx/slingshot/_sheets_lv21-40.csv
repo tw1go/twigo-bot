@@ -1,0 +1,10 @@
+file,cell_w,cell_h,frames,fps,loop,anchor_x,anchor_y,layer,notes
+fx-slingshot-crit-star.png,64,72,9,16,no,32,34,front,Headshot hit: gold crit star; centre on the target body (Headshot uses it instead of fx-slingshot-hit)
+fx-slingshot-marble.png,69,24,13,16,yes,57,12,front,Burst Marble marble in flight with its swirling tail; points EAST; turn it to the flight angle; anchor = the marble
+fx-slingshot-marble-burst.png,84,62,9,14,no,42,36,front,Burst Marble burst; anchor = the target's feet (the ring's centre); hits land on frame 1
+fx-slingshot-marble-burst-ground.png,84,62,9,14,no,42,36,ground,Burst Marble dust ring; same anchor and timing as fx-slingshot-marble-burst; under players and mobs
+fx-slingshot-charge.png,72,69,12,12,yes,36,35,front,Long Pull charging: loop on the fork (heavy frame 3 launch point) while the key is held
+fx-slingshot-charge-full.png,70,70,7,14,no,35,35,front,Long Pull full charge: plays once on the fork when the charge is full; the charge loop keeps going under it
+fx-slingshot-hail.png,104,107,20,16,no,52,81,front,"Hailstorm rain (straight down; never mirrored); anchor = centre of the area on the ground; hits on frames 5, 11 and 17"
+fx-slingshot-hail-ring.png,104,107,20,16,no,52,81,ground,Hailstorm ring (about 2 tiles across); same anchor and timing as the rain; under players and mobs
+fx-slingshot-homing.png,43,43,12,12,yes,21,21,front,"Homing Pebbles pebble: round, needs no turning; move it along its curve; anchor = the pebble"
