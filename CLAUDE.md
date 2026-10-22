@@ -534,7 +534,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
   Enter (chat), Escape, Tab and the arena's 1–3 stay fixed.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
-  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
+  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited; its sound yours
+  always, someone else's only within hearing (`playFrom`: 12 tiles, a little quieter).
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
   `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
