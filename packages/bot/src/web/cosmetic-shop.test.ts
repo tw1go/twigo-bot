@@ -69,13 +69,13 @@ test('the five Sets: ten cosmetic pieces with their icons, and every hat, top, t
   }
 });
 
-test('pose art: every cosmeticPoseTops key has a sheet for each class, combat pose and direction, frame for frame', () => {
+test('pose art: every cosmeticPoseTops key (the five Sets\' tops and the Witch Robe) has a sheet for each class, combat pose and direction, frame for frame', () => {
   const C = JSON.parse(readFileSync(asset('manifest.json'), 'utf8')) as {
     characters: { wardrobe: { cosmeticPoseTops: string[]; cosmeticPosePattern: string; cosmeticTops: Record<string, string> } };
     classes: { list: Record<string, { anims: Record<string, { dirs: Record<string, { body: string }> }> }> };
   };
   const { cosmeticPoseTops: keys, cosmeticPosePattern: pattern, cosmeticTops } = C.characters.wardrobe;
-  assert.deepEqual([...keys].sort(), SETS.map((s) => cosmeticTops[`${s}-body`]).sort(), "the five Sets' tops");
+  assert.deepEqual([...keys].sort(), [...SETS.map((s) => cosmeticTops[`${s}-body`]), cosmeticTops['witch-robe']].sort(), "the five Sets' tops and the Witch Robe");
   /** A PNG's width and height (its IHDR). */
   const size = (file: string) => {
     const b = readFileSync(asset(file));
@@ -93,7 +93,7 @@ test('pose art: every cosmeticPoseTops key has a sheet for each class, combat po
           n++;
         }
       }
-  assert.equal(n, 2200);
+  assert.equal(n, 2640); // (440 each)
 });
 
 test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {
