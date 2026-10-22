@@ -6,8 +6,9 @@ import { type StatsData, moveDodgeMs } from '@mikazuki/shared';
 
 // 💨 Mobility moves in town (the hotbar's Dash, and each class's Lv 8 move: Step Back, Charge or Blink).
 // The combat sheets for them have no clothes or hair yet, so in town the character keeps its outfit and the move is
-// motion and fx: Dash and Charge slide fast along the facing with lavender afterimages and dust; Step Back hops back
-// facing forward; Blink stretches thin and vanishes in a burst, then pops back in further on. Timings and fx hook
+// motion and fx: Dash and Charge slide fast along the facing with lavender afterimages and dust (a Charge with its
+// class's wedge ahead of it); Step Back hops back facing forward; Blink stretches thin and vanishes in its class's
+// burst, then pops back in further on. Timings and fx hook
 // points follow mobility-README (mikazuki-assets). The tiles are checked on the walk grid and sent to the server
 // one by one like steps, so where you end up is where everyone sees you; others play the same move from the
 // town's `move` message (and skip the steps it brings).
@@ -47,7 +48,6 @@ const STEP: Record<Dir, [number, number]> = {
 
 const TRAIL = 0xb794f6; // the afterimages' lavender
 const DUST = 'fx-mobility-dust';
-const BURST = 'fx-mobility-blink';
 
 /** The tiles a move would cross from `from` (in a straight line along `dir`, or against it), up to the first one it
  *  can't step to (the server takes them as steps, so even a blink can't jump over what's in the way). */
@@ -66,15 +66,31 @@ export function moveTiles(grid: WalkGrid, from: Tile, dir: Dir, kind: MoveKind, 
 }
 
 /** Plays a move on a character (yours or someone else's) to `end`, `n` tiles away, facing `dir`; resolves when it
- *  has landed. `onSpawn` night-tints what it makes (the character again too, after the move's own tints); `sound` plays
- *  a set of its sounds (audio/sound.ts playSet: skill-dash, -step-back, -charge as it goes; a Blink's skill-blink-out as
- *  it vanishes, skill-blink-in as it pops back). */
-export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind: MoveKind, end: Tile, n: number, dir: Dir, onSpawn?: (o: Phaser.GameObjects.Components.Tint) => void, sound?: (set: string) => void): Promise<void> {
+ *  has landed. `cls`: the mover's class (whose Blink and Charge art plays; unknown: the Broom's blink). `onSpawn`
+ *  night-tints what it makes (the character again too, after the move's own tints); `sound` plays a set of its sounds
+ *  (audio/sound.ts playSet: skill-dash, -step-back, -charge as it goes; a Blink's skill-blink-out as it vanishes,
+ *  skill-blink-in as it pops back). Its FX (the art folder's fx/mobility-buff): the dust kicked back from the feet,
+ *  drawn for a move going east and flipped for one going left on screen (by where it travels: a Step Back goes against
+ *  its facing); a Blink's `fx-<class>-blink` pair where it vanishes and where it appears (its back half under the
+ *  character, its front over them; glowing: never night-tinted); a Charge's `fx-<class>-charge` wedge looping ahead of
+ *  the chest for the whole slide, turned to its way (none while a class has no such art: the Pot lid's). */
+export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind: MoveKind, end: Tile, n: number, dir: Dir, onSpawn?: (o: Phaser.GameObjects.Components.Tint) => void, sound?: (set: string) => void, cls?: string | null): Promise<void> {
   const from = char.spot;
   const to = { col: end.col + 0.5, row: end.row + 0.5 };
+  // Where it travels on screen (iso: a tile is +16, +8 along col and −16, +8 along row): left means flipped dust.
+  const sx = (to.col - from.col - (to.row - from.row)) * 16;
+  const sy = (to.col - from.col + (to.row - from.row)) * 8;
+  const left = sx < 0;
   const fx = (name: string, at = char.sprite) => {
-    const o = puff(scene, M, name, at.x, at.y + char.lift, at.depth - 0.1);
+    const o = puff(scene, M, name, at.x, at.y + char.lift, at.depth - 0.1, { flip: left });
     if (o) onSpawn?.(o);
+  };
+  // A Blink's pair at the feet: the back half just under the character, the front just over (glows: no night tint).
+  const blink = () => {
+    const pair = cls === 'hilot' ? 'fx-hilot-blink' : 'fx-broom-blink';
+    const sp = char.sprite;
+    puff(scene, M, `${pair}-back`, sp.x, sp.y + char.lift, sp.depth - 0.1);
+    puff(scene, M, `${pair}-front`, sp.x, sp.y + char.lift, sp.depth + 0.1);
   };
   const trail = () => {
     const sp = char.sprite;
@@ -94,7 +110,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
   if (kind === 'blink') {
     return new Promise((resolve) => {
       const sp = char.sprite;
-      fx(BURST);
+      blink();
       sound?.('skill-blink-out');
       sp.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); // the white flash
       scene.tweens.add({
@@ -102,7 +118,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
         onComplete: () => {
           char.pose(to.col, to.row, dir, false);
           sp.setScale(1.6, 0.4);
-          fx(BURST);
+          blink();
           sound?.('skill-blink-in');
           scene.tweens.add({
             targets: sp, scaleX: 1, scaleY: 1, alpha: 1, duration: 160, ease: 'Back.easeOut',
@@ -123,6 +139,9 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
   const ms = kind === 'dash' ? 90 * n : kind === 'charge' ? 100 * n : 160 * n;
   const ease = kind === 'charge' ? 'Linear' : kind === 'dash' ? 'Cubic.easeOut' : 'Sine.easeInOut';
   const windup = kind === 'charge' ? 120 : 0;
+  // A Charge's wedge (fx-<class>-charge): ahead of the chest along its way, looping until it lands.
+  const wedge = kind === 'charge' && cls ? chargeWedge(scene, M, `fx-${cls}-charge`, char, sx, sy) : null;
+  if (wedge) onSpawn?.(wedge.sprite);
   return new Promise((resolve) => {
     let frame = 0;
     let lastDust = 0;
@@ -144,6 +163,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
       },
       onComplete: () => {
         done();
+        wedge?.end();
         fx(DUST); // the brake, the skid, the landing
         resolve();
       },
@@ -151,15 +171,48 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
   });
 }
 
-/** An fx sheet played once at a point (feet anchored), then gone. */
-function puff(scene: Phaser.Scene, M: Manifest, name: string, x: number, y: number, depth: number): Phaser.GameObjects.Sprite | null {
+/** An fx sheet played once at a point (feet anchored), then gone; `flip`: mirrored (its anchor kept on the same art
+ *  pixel). */
+function puff(scene: Phaser.Scene, M: Manifest, name: string, x: number, y: number, depth: number, o: { flip?: boolean } = {}): Phaser.GameObjects.Sprite | null {
   const fx = M.fx[name];
   if (!fx?.file || !scene.textures.exists(fx.file)) return null;
   const key = `anim:${fx.file}`;
   if (!scene.anims.exists(key)) scene.anims.create({ key, frames: scene.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 12, repeat: 0 });
   const [w, h] = fx.frame ?? [32, 32];
   const [ax, ay] = fx.anchor ?? [w / 2, h];
-  const o = scene.add.sprite(x, y, fx.file).setOrigin(ax / w, ay / h).setDepth(depth);
-  o.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => o.destroy());
-  return o;
+  const s = scene.add.sprite(x, y, fx.file).setOrigin((o.flip ? w - ax : ax) / w, ay / h).setDepth(depth).setFlipX(!!o.flip);
+  s.play(key).once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => s.destroy());
+  return s;
+}
+
+/** A Charge's wedge (drawn going east): looping 10 px ahead of the feet along its way and 18 px up (chest height),
+ *  turned to the way it goes on screen (`dx`, `dy`); going left it's mirrored first, so it's never upside down. Kept on
+ *  the character every frame; `end` fades it out. Null while the class has no such art. */
+function chargeWedge(scene: Phaser.Scene, M: Manifest, name: string, char: Character, dx: number, dy: number): { sprite: Phaser.GameObjects.Sprite; end: () => void } | null {
+  const fx = M.fx[name];
+  if (!fx?.file || !scene.textures.exists(fx.file)) return null;
+  const key = `anim:${fx.file}:loop`;
+  if (!scene.anims.exists(key)) scene.anims.create({ key, frames: scene.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 12, repeat: -1 });
+  const [w, h] = fx.frame ?? [32, 32];
+  const [ax, ay] = fx.anchor ?? [0, h / 2];
+  const left = dx < 0;
+  const len = Math.hypot(dx, dy) || 1;
+  const [ux, uy] = [dx / len, dy / len];
+  const s = scene.add.sprite(0, 0, fx.file).setOrigin((left ? w - ax : ax) / w, ay / h).setFlipX(left);
+  // (The screen angle of its way; mirrored, the same slope from the other side.)
+  s.setRotation(left ? Math.atan2(uy, ux) - Math.PI : Math.atan2(uy, ux));
+  s.play(key);
+  const follow = () => {
+    const sp = char.sprite;
+    s.setPosition(Math.round(sp.x + ux * 10), Math.round(sp.y + char.lift + uy * 10 - 18)).setDepth(sp.depth + 0.1);
+  };
+  follow();
+  scene.events.on(Phaser.Scenes.Events.UPDATE, follow);
+  return {
+    sprite: s,
+    end: () => {
+      scene.events.off(Phaser.Scenes.Events.UPDATE, follow);
+      scene.tweens.add({ targets: s, alpha: 0, duration: 150, onComplete: () => s.destroy() });
+    },
+  };
 }

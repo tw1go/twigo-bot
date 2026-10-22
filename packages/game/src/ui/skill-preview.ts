@@ -31,7 +31,7 @@ export function mountSkillPreview(o: SkillPreviewOptions, c: ClassInfo, host: HT
   const moves = (c.mobility ?? []).filter((m) => MOBILITY_PREVIEWS[c.id]?.[m.id]);
   const buffs = [...(c.buffs ?? [])].sort((a, b) => a.level - b.level);
   const levels = new Map<string, { level: number; cap: number; locked: boolean }>([...(o.levels?.(c) ?? []), ...(o.buffs?.(c) ?? [])].map((k) => [k.name, k]));
-  const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id]), ...buffs.map((b) => buffPreview(b.name))];
+  const skills: Skill[] = [...(SKILL_PREVIEWS[c.id] ?? []), ...moves.map((m) => MOBILITY_PREVIEWS[c.id][m.id]), ...buffs.map((b) => buffPreview(b.name, c.id))];
   const root = el('div', 'sp-body');
   const left = el('div', 'sp-stage');
   const numbers = el('div', 'sp-numbers');

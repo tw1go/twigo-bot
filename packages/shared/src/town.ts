@@ -814,7 +814,7 @@ export type TownServerMessage =
       /** Who it reached (town ids; none for a debuff on mobs alone): its look plays on each. */
       to?: string[] }
   /** A heal from a buff (Soothing Touch): how much each player it reached got back, green over them. */
-  | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[] }
+  | { t: 'buff-heal'; by: string; heals: { id: string; amount: number }[]; /** From a skill (Herbal Storm's heal:F), not a buff's cast: its healing look plays on each healed. */ skill?: boolean }
   /** The buffs on you now (on any change): each one's name, its caster's class and skill level, its stats at that level
    *  (stats.json skills.buffs), and the ms left (null: a stance, on until changed). */
   | { t: 'buffs'; buffs: TownBuff[] }

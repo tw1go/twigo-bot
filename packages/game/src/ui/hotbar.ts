@@ -674,7 +674,7 @@ function previewsOf(c: ClassInfo | null): Map<string, Skill> {
     const p = MOBILITY_PREVIEWS[c.id]?.[m.id];
     if (p) out.set(m.name, p);
   }
-  for (const b of c.buffs ?? []) out.set(b.name, buffPreview(b.name)); // (its buff-cast)
+  for (const b of c.buffs ?? []) out.set(b.name, buffPreview(b.name, c.id)); // (its buff-cast)
   return out;
 }
 

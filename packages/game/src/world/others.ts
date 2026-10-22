@@ -92,7 +92,7 @@ export class OtherPlayers {
         const dir = MOVES[m.move].back ? dirForStep(-dc, -dr) : dirForStep(dc, dr);
         startDodge(this.scene, ch, m.move); // (their Step Back: hits on them in its window show as Dodge)
         // (Its sounds from where they are: within hearing, a little quieter than yours.)
-        return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn, (set) => playSet(set, { at: ch.tile, others: true })).then(() => {
+        return void playMove(this.scene, this.M, ch, m.move, { col: m.col, row: m.row }, n, dir, this.onSpawn, (set) => playSet(set, { at: ch.tile, others: true }), this.classOf(m.id)).then(() => {
           // Where the server has them now (the steps landed while it played).
           if (this.all.get(m.id) === o && (s.col !== m.col || s.row !== m.row)) ch.queueStep({ col: s.col, row: s.row });
         });

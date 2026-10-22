@@ -700,7 +700,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       tellVitals(o);
       return { id: o.player.id, amount };
     });
-    const healed: TownServerMessage = { t: 'buff-heal', by: c.player.id, heals };
+    const healed: TownServerMessage = { t: 'buff-heal', by: c.player.id, heals, skill: true };
     others(c, healed);
     send(c, healed);
   };
