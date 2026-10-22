@@ -516,8 +516,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   class's 13 damage skills (`skillSet`: kebab case of classes.json's name; yours as it fires in `fightTick`, others' with
   their `mob-hit`; the channelled and storm ones at 0.11), skill-<class>-buff-cast (each utility as it's cast, 0.12) and
   skill-stun / -taunt / -debuff (TownScene `MARK_SOUNDS`: from the mob it lands on, one a crowd: `playSet`'s `gapMs`); the
-  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; mobs, others' skills and the
-  golem only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
+  Halloween mobs' in the Slums, Ang Makinang Yelo's and the Frost Scales' on B3. Hearing (`Heard`): yours always; everything from someone or something else in the world (mobs, the
+  bosses, others' skills, moves, buffs, level-ups and emotes, what lands on a mob, a neighbour's house rising or
+  restyled: TownScene `heardFrom`) only within 12 tiles of you (`hearFrom` keeps your tile), others' and the golem's at 70%. combat-level-up (yours,
   others' near you at 70%). Debug: `__town.sounds()` (every sound asked for, even while sound is locked headless: `tapSounds`).
   Settings box (`ui/settings.ts`, gear button top right, manifest `ui.settingsIcon`; 680 px wide in two columns, Audio and
   Display | Game, Privacy and Account, Keybinds and Credits across the bottom; one column under 640 px): Music and Sounds volumes
@@ -534,7 +535,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
   Enter (chat), Escape, Tab and the arena's 1–3 stay fixed.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
-  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited.
+  icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited; its sound yours
+  always, someone else's only within hearing (`playFrom`: 12 tiles, a little quieter).
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
   `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
