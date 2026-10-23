@@ -202,6 +202,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321) and
   ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
   with the picture).
+- Cutscenes (23 Oct 2026): `quests/cutscenes.json` (the art folder's docs/cutscenes/cutscenes.json: its words in
+  English, palengke-gate's `whenNotDone` palengke-01, huling-suki's `afterStep` bell, town-arrival's second camera on the
+  Tanod, `rules.map`, its `note` says so), the manifest's `quests.cutscenes`; `maps/palengke.json` the 58 more string
+  lights of the art folder's docs/cutscenes/string-lights.json (copying the map over again loses them).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
@@ -1115,6 +1119,35 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   silong-story.test.ts. Dev: `?silong=solo` / `?silong=b3` (the dev server's `/__silong`: a free run, every mini boss
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
+- Cutscenes (CONTEXT.md Cutscene, Watch again; 23 Oct 2026; `quests/cutscenes.json` = the art folder's
+  docs/cutscenes/cutscenes.json in English (manifest `quests.cutscenes`, types `assets/cutscenes.ts`; its `steps` and
+  `rules` say what each step does), 11 scenes at the story's beats, each on its own `map`): `world/cutscene.ts` plays one
+  (`playCutscene`: its steps in order, each a promise; bars 48 px in over 250 ms and the HUD faded (`[data-cutscene-hidden]`),
+  the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut), the dialog box (`openNpcDialog`; `narrator` = no name or
+  portrait, italics), bubbles, walks / place / face / anims on the NPCs (`CutsceneCast` in world/npc-life.ts: the town's
+  NpcLife and the Old Market's PalengkeNpcs, `actor` / `home` / `hold` / `talker`; held, an NPC's routine waits; let go,
+  the Old Market's walk home) and on you (`walkTo` = a click's walk; `pose`: your class's ready stance, built for the
+  moment off a battle map), hop / nod as tweens (`setNudge`), FX on the fx layers, item icons over everything (64 px drawn
+  at 32), sounds by name (`playNamed`: a sound or a set, a missing one skipped), shakes, fades to #111827, banners in
+  Marcellus SC, the Old Market's string lights section by section from the entrance (`WorldObjects.lightSection`, a soft
+  chime each), the old vendors (`ghosts`: pale see-through figures, #BFD4FF at 35%, an NPC's sheet or a random doll still,
+  `around`/`count` on free tiles in front of stalls on screen). Esc or Skip ▸▸ (`data-dialog-pass`: it works while the
+  dialog box is up) ends it at its end state; every scene ends with the bars off, the camera on you at your zoom, the HUD
+  back, the NPCs let go. TownScene runs the triggers (`talkNow`: a hand-in quest's give or report talk with a `before` /
+  `instead` scene plays it instead of the box, the talk's quest step at its end; `afterLines` after a give heard (in a
+  talk or as giveLines' toasts), a report done (a talk or the radio) or a quest done (`questDone`; the class pick);
+  `enterCutscenes` after the title card: a map's `firstEnter` (unless `whenNotDone` is done) and the `cutscenesDue`;
+  `afterStepScenes`: the finale once Q14's bell is rung; `outOfCombat`: 4 s calm), one at a time from a queue (never over
+  a dialog box), quest lines held meanwhile (`expectScene`, `sceneComing`); a scene whose moment comes on another map is
+  due there (the Golem Pit after Tanod 12 reported from town). Once each per character: `quests.cutscenesSeen` /
+  `cutscenesDue` (shared `markCutscene`, POST /town/quest { action: 'cutscene', cutscene, mark: seen | due }; tested in
+  the bot's cutscenes.test.ts), marked as it starts. Watch again (ui/quests.ts `watch`): a done quest's scenes, on their
+  map, changing nothing. The Old Market stays lit once the finale has played (or Q14 was done before it): `lightMarket`;
+  lit string lights glow at night (the lit hat's glow, ADD, flickering, three along the bulbs). Safe meanwhile: the town's
+  `cutscene` { on } (bot web/town.ts `cutsceneUntil`, CUTSCENE_MS 60 s at most): no mob's target, nothing lands, attacks
+  refused 'cutscene'; the room sees `cutscene` { id, on } (others.ts says "..." over them every few seconds;
+  `TownPlayer.cutscene` for arrivals; tested in town-vitals.test.ts). Dev: `?cutscene=<id>` and `__town.cutscene(id)`
+  play one where you are (its map), changing nothing.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat, Dungeon entrance; the dungeon entrances, shared travel.ts DUNGEON_ENTRANCES: the Warren Gate's and the Cellar
   Hatch's object and `arrive` (warrens, silong), listed after a map's posts by `lanternPostsOf` with `entrance`, so a
