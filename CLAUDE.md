@@ -191,9 +191,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`
   and the four frost mobs, `mobs/mobs.json` their entries, `maps/palengke.json` `arrive.silong`, stats.json
   `mobBehaviour.sameAs`, `classes/palengke-leveling.json` `palengke-15` (Now's the Time), palengke-14's `nextUnlock` 37 and
-  `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames` guessed
-  from the demo gif) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top`, `frame`, `attackFrame`); the art
-  is the art folder's mobs/makinang-yelo as it is (its stand sheet left out: nothing uses it).
+  `dailies.unlockedBy`. Ang Makinang Yelo (21 Oct 2026): the manifest's `mobs['makinang-yelo']` (its `hitFrames`: the
+  art's contact frames since its moving sheets, 23 Oct 2026; world/silong.ts `poseFor` times each move's sheet by them, a
+  move without one played out by its hit) and `mobs/mobs.json` `makinang-yelo` (`noShadow`, `radius`, `top` 16, `frame`
+  [21,16,277,277] for the moving art, `attackFrame`); the art is the art folder's silong/mobs/makinang-yelo-moving (23 Oct
+  2026: the arms and head move, a wind whirl over the still fan) as it is (its stand sheet left out: nothing uses it).
 - The Great Scale (20 Oct 2026): `mobs/mobs.json` `great-scale` (its `scale` 1.5 and `radius` 3 since 21 Oct 2026: bigger, Mac); `maps/palengke.json` `boss.active` true and `boss.tile`
   [139, 109] (+ `tileNote`: was [139, 105], inside its empty frame `palengke-scale-stand`, blocked); the manifest's
   `ui.greatScaleHead` (the HUD timer's face; its file the art folder's ui/ui-great-scale-head.png since 21 Oct 2026);

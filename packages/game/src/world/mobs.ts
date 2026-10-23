@@ -1497,8 +1497,9 @@ export class Mobs {
     this.ring = null;
     if (m) {
       // A soft gold ring on the ground under it.
-      // (Round the golem's shadow.)
-      const [w, h] = m.radius && m.data ? [m.data.shadow[0] * (m.data.scale ?? 1) + 8, m.data.shadow[1] * (m.data.scale ?? 1) + 6] : [22, 10];
+      // (Round the golem's shadow; round the body of one drawn without one, the Ice Machine: its radius in tiles.)
+      const sh = m.data?.shadow;
+      const [w, h] = m.radius && sh ? [sh[0] * (m.data!.scale ?? 1) + 8, sh[1] * (m.data!.scale ?? 1) + 6] : m.radius ? [m.radius * 44 + 8, m.radius * 22 + 6] : [22, 10];
       this.ring = this.scene.add.graphics();
       this.ring.lineStyle(1, 0xfcda4a, 0.9).strokeEllipse(0, 0, w, h).lineStyle(1, 0x1e1b3a, 0.6).strokeEllipse(0, 1, w + 2, h + 1);
       this.syncRing();

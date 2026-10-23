@@ -26285,7 +26285,7 @@
         "call": 5
       },
       "loadEnragedLater": true,
-      "note": "Ang Makinang Yelo, the Ice Machine (Ang Silong's last boss; the art folder's silong/mobs/makinang-yelo, 21 Oct 2026): SW only, never moves or turns; anchor on its K block's middle (dungeons.json silong.lastBoss.tile); the enraged set (red eye lamps) for every anim but enrage and death, loaded at its enrage. hitFrames (0-based) are guesses from the sheets until the art folder says: the drop's release, the rush's sweep, the flood's gush, the call's spawn."
+      "note": "Ang Makinang Yelo, the Ice Machine (Ang Silong's last boss; the art folder's silong/mobs/makinang-yelo, 21 Oct 2026): SW only, never moves or turns; anchor on its K block's middle (dungeons.json silong.lastBoss.tile); the enraged set (red eye lamps) for every anim but enrage and death, loaded at its enrage. hitFrames (0-based) are the art's contact frames (the moving sheets, 23 Oct 2026: the arms and head move, a wind whirl over the still fan): the drop's slam, the rush's sweep, the flood's floor punch, the call's raised fist."
     },
     "monobloc-stack-frost": {
       "name": "Frozen Monobloc Stack",
