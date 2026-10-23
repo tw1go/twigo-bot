@@ -35,6 +35,8 @@ export interface NpcTalk {
    *  walking away), after onClose. */
   lines?: string[];
   onDone?: () => void;
+  /** The narrator (a cutscene's): the box with no name, title or portrait, the words in italics. */
+  narrator?: boolean;
 }
 
 const PX = 2; // screen px per art px, as the HUD's frames
@@ -82,6 +84,7 @@ export function openNpcDialog(t: NpcTalk): void {
   root.setAttribute('aria-live', 'polite');
   root.style.setProperty('--px', String(PX));
   root.style.width = `min(${WIDTH * PX}px, calc(100vw - ${MARGIN * 2}px))`;
+  if (t.narrator) root.classList.add('nd-narrator');
   if (art.box) {
     root.classList.add('nd-framed');
     root.style.setProperty('--frame', `url("${art.box.url}")`);
@@ -111,8 +114,9 @@ export function openNpcDialog(t: NpcTalk): void {
   const line = el('div', 'nd-line');
   const more = el('div', 'nd-more', '▼');
   more.setAttribute('aria-hidden', 'true');
-  words.append(el('div', 'nd-name', t.name), el('div', 'nd-title', t.title), line);
-  root.append(frame, words, more);
+  if (!t.narrator) words.append(el('div', 'nd-name', t.name), el('div', 'nd-title', t.title));
+  words.append(line);
+  root.append(...(t.narrator ? [] : [frame]), words, more);
   if (t.action) {
     const { label, run } = t.action;
     const button = el('button', 'nd-action', label);
@@ -222,6 +226,8 @@ export function openNpcDialog(t: NpcTalk): void {
   let swallow = false;
   const outside = (e: PointerEvent) => {
     if (root.contains(e.target as Node)) return;
+    // (A cutscene's Skip button works while its lines are up.)
+    if ((e.target as Element | null)?.closest?.('[data-dialog-pass]')) return;
     if (!queue) return close();
     e.preventDefault();
     e.stopPropagation();

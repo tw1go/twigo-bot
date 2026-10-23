@@ -7,15 +7,16 @@ import { closeNpcDialog, openNpcDialog, talkingTo } from '../ui/npc-dialog';
 import type { Manifest } from '../assets/types';
 import { Character, dirForStep } from '../characters/character';
 import type { Outfit } from '../characters/doll';
-import { flatNpcSheets } from './npc-life';
+import { type CutsceneCast, flatNpcSheets } from './npc-life';
 
 // 🏮 The Lumang Palengke's quest NPCs (maps/palengke.json `npcs`: Aling Conching, Mang Pido, Tisay, Kuya Jun): each a
 // Character on its own flat sheets (the art folder's npcs/palengke, manifest npcs.palengkeIds, loaded with the Palengke:
 // assets/queue.ts queueNpcs 'palengke'), idling at its tile and turning to the nearest player, its name over it, clicked
 // like a town NPC (the scene walks you over and asks `talk`), the quest "!" over the name, its portrait in the dialog box
 // and its own lines (npcs/palengke-npc-dialogue.json) when there's no quest to talk about. One without its sheets: a plain
-// stand-in (a little figure in their colour, drawn here). They never walk. An NPC with `moves` stands at the tile of the
-// last one whose quest (`after`, "q7" = palengke-07) is done.
+// stand-in (a little figure in their colour, drawn here). They never walk on their own (a cutscene walks them, then
+// they walk home: `hold`). An NPC with `moves` stands at the tile of the last one whose quest (`after`, "q7" =
+// palengke-07) is done.
 
 export interface PalengkeNpc {
   id: string;
@@ -69,6 +70,8 @@ interface Standee {
   title: string;
   lines: string[];
   last: number;
+  /** A cutscene has them: they don't turn to players meanwhile. */
+  held: boolean;
 }
 
 /** The dialogue file's entry for one of them. */
@@ -81,13 +84,15 @@ interface NpcText {
 /** How near (tiles) a player must be for an idle NPC to turn to them. */
 const FACE_TILES = 5;
 
-export class PalengkeNpcs {
+export class PalengkeNpcs implements CutsceneCast {
   private readonly list: Standee[] = [];
   private zoom = 1;
   /** A quest's lines for an NPC (the scene's questScript), or null for their own. */
   script: ((id: string) => { lines: string[]; onDone?: () => void } | null) | null = null;
   /** A button on someone's dialog box (Aling Conching's menu), or none. */
   action: ((id: string) => { label: string; run: () => void } | undefined) | null = null;
+  /** The way between two tiles (the scene's walk grid): how one walks home after a cutscene. */
+  pathOf: ((from: Tile, to: Tile) => Tile[] | null) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -106,7 +111,7 @@ export class PalengkeNpcs {
       const [col, row] = moved?.tile ?? def.tile;
       const text = texts[def.id];
       const title = text?.title ?? TITLES[def.id] ?? '';
-      const base = { def, tile: { col, row }, title, lines: text?.lines ?? [], last: -1, marker: null };
+      const base = { def, tile: { col, row }, title, lines: text?.lines ?? [], last: -1, marker: null, held: false };
       // Their own sheets (manifest npcs.palengkeIds): drawn as the town's NPCs are.
       const sheets = N?.palengkeIds?.includes(def.id) ? flatNpcSheets(scene, N, def.id) : null;
       if (N && sheets) {
@@ -167,7 +172,7 @@ export class PalengkeNpcs {
     for (const s of this.list) {
       if (!s.char) continue;
       s.char.update(deltaMs);
-      if (talking === s.def.id || !s.char.isIdle) continue;
+      if (talking === s.def.id || s.held || !s.char.isIdle) continue;
       let near: Tile | null = null;
       let best = FACE_TILES + 1;
       for (const p of players) {
@@ -184,6 +189,29 @@ export class PalengkeNpcs {
 
   tileOf(id: string): Tile | null {
     return this.list.find((s) => s.def.id === id)?.tile ?? null;
+  }
+
+  actor(id: string): Character | null {
+    return this.list.find((s) => s.def.id === id)?.char ?? null;
+  }
+
+  home(id: string): Tile | null {
+    return this.tileOf(id);
+  }
+
+  /** A cutscene takes them (they stop turning to players) or lets go: back at their spot, walking there if the scene
+   *  left them elsewhere. */
+  hold(id: string, on: boolean): void {
+    const s = this.list.find((x) => x.def.id === id);
+    if (!s || s.held === on) return;
+    s.held = on;
+    const c = s.char;
+    if (on || !c) return;
+    const at = c.isIdle ? c.tile : c.heading;
+    if (at.col === s.tile.col && at.row === s.tile.row) return;
+    const path = this.pathOf?.(c.heading, s.tile);
+    if (path) c.walk(path);
+    else c.place(s.tile);
   }
 
   setMarker(id: string, mark: { symbol: string; color: string } | null): void {
