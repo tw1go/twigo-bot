@@ -17,16 +17,16 @@ const first = (r: MobRoom, zone: string) => r.snapshot(0).find((m) => zoneOf(m.i
 const guard = (level: number, hpShare = 1): Target => ({ def: 50, level, hpShare });
 const attacks = (events: MobEvent[]) => events.filter((e): e is Extract<MobEvent, { t: 'mob-attack' }> => e.t === 'mob-attack');
 
-test('20 alive in each zone (stats.json aliveperZoneIn), 10 packs of 3 jars, 14 Lurkers on the floodwater, none on the Great Scale\'s arena', () => {
+test('40 alive in each zone (stats.json aliveperZoneIn), 20 packs of 3 jars, 28 Lurkers on the floodwater, none on the Great Scale\'s arena', () => {
   const r = room();
   const all = r.snapshot(0).filter((m) => !m.mini);
   const count = (zone: string) => all.filter((m) => zoneOf(m.id) === zone).length;
   assert.equal(stats.mobBehaviour.aliveperZone, 10, 'the Slums keep theirs');
-  for (const z of ['tarp-row', 'gulayan', 'dry-goods-sako', 'karinderya', 'karnehan', 'hall']) assert.equal(count(z), 20, z);
-  assert.equal(count('dry-goods-garapon'), 30, '10 packs of 3');
+  for (const z of ['tarp-row', 'gulayan', 'dry-goods-sako', 'karinderya', 'karnehan', 'hall']) assert.equal(count(z), 40, z);
+  assert.equal(count('dry-goods-garapon'), 60, '20 packs of 3');
   assert.ok(all.filter((m) => zoneOf(m.id) === 'dry-goods-garapon').every((m) => /:\d+:[0-2]$/.test(m.id)));
   const lurkers = all.filter((m) => zoneOf(m.id) === 'isdaan');
-  assert.equal(lurkers.length, 14);
+  assert.equal(lurkers.length, 28);
   assert.ok(lurkers.every((m) => map.ground?.[m.row]?.[m.col] === 'baha' && m.hidden && m.untargetable), 'hidden in the floodwater');
   const [c0, r0, c1, r1] = map.boss!.arena;
   assert.ok(all.every((m) => !(m.col >= c0 && m.col <= c1 && m.row >= r0 && m.row <= r1)), 'off the arena');
