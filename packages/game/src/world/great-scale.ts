@@ -24,12 +24,16 @@ export const GREAT_SCALE_SOUNDS = ['pan-slam-windup', 'pan-slam', 'weigh-in', 's
 //   within 3 tiles rings it; `bell-rung` swings the code-drawn stand-in for everyone).
 // - The boss bar while it's awake and you're in its arena; the HUD's field boss timer ("Awake! Go to the hall").
 // - Asleep: hovering it says when it wakes.
-// Its effects are the art folder's fx/palengke fx-scale-* (21 Oct 2026): the pan's warning under each Pan Slam circle and
-// its impact, the Weigh-in's ring round the held player, Kulang sa Timbang's cone (se / ne art, mirrored for sw / nw),
-// the Sentinels' call, its enrage at the dial and the bell; each falls back to a code-drawn stand-in while its sheet
-// isn't loaded.
+// Its effects are Mac's PixelLab fx-scale-* (the art folder's fx/mob-boss-pixellab, 23 Oct 2026; the bell the 21 Oct one):
+// the pan's warning under each Pan Slam circle and its impact, the Weigh-in's chain ring round the held player (its back
+// half behind them, its front half over them), Kulang sa Timbang's cone (se / ne art, mirrored for sw / nw, at 70%), the
+// Sentinels' call, its enrage ring on the ground at its feet and the bell; each falls back to a code-drawn stand-in while
+// its sheet isn't loaded.
 
 export const PAN_KIND = 'great-scale-pan';
+
+/** Kulang sa Timbang's cone art is a solid wedge: drawn this see-through. */
+const CONE_ALPHA = 0.7;
 const LIFT = 12; // px a held player is lifted on the pan
 const FLASH_EVERY = 2000; // ms between its enraged red flashes
 const BELL_TILES = 3;
@@ -58,7 +62,7 @@ export class GreatScaleView {
   private at = 0;
   private readonly timers = new Set<Phaser.Time.TimerEvent>();
   private flashAt = 0;
-  private held: { id: string; ring: FxHandle } | null = null;
+  private held: { id: string; rings: FxHandle[] } | null = null;
   private bell: { at: [number, number]; until: number; zone: Phaser.GameObjects.Zone; fx: FxHandle; swingAt: number } | null = null;
   private hovered = false;
   private hoverSet = false;
@@ -102,10 +106,9 @@ export class GreatScaleView {
     if (change === 'enrage' && m) {
       this.mobs.pose(m, 'enrage');
       this.sound('enrage');
-      // fx-scale-enrage at its dial (its art's top).
+      // fx-scale-enrage: a red shockwave ring on the ground at its feet.
       const art = this.art('fx-scale-enrage');
-      const k = m.data?.scale ?? 1;
-      if (art) this.fx.play(art, { x: m.sprite.x, y: m.sprite.y + ((m.data?.top ?? 0) - m.cell.anchor[1]) * k + 16 }, { layer: 'front' });
+      if (art) this.fx.play(art, this.mobs.feet(m), { layer: 'ground' });
     }
     if (change === 'reset' || change === 'death' || change === 'sleep' || change === 'sink') this.cancel(this.id);
     // The held player: lifted while held, down again once let go.
@@ -215,12 +218,14 @@ export class GreatScaleView {
     const c = this.hooks.char(id);
     if (c) c.lift = LIFT;
     this.sound('weigh-in'); // (the lift)
-    // fx-scale-weigh-in round the held player (else a dashed circle on the ground round the pan).
-    const weigh = this.art('fx-scale-weigh-in');
-    if (weigh && c) {
+    // fx-scale-weigh-in round the held player: its far half behind them, its near half over them (else a dashed circle on
+    // the ground round the pan).
+    const back = this.art('fx-scale-weigh-in-back');
+    const front = this.art('fx-scale-weigh-in-front');
+    if (back && front && c) {
       const feet = () => ({ x: c.sprite.x, y: c.sprite.y });
-      const h = this.fx.play(weigh, feet(), { layer: 'front', follow: feet, life: Infinity });
-      if (h) return void (this.held = { id, ring: h });
+      const rings = [this.fx.play(back, feet(), { layer: 'ground', follow: feet, life: Infinity }), this.fx.play(front, feet(), { layer: 'front', follow: feet, life: Infinity })].filter((h): h is FxHandle => !!h);
+      if (rings.length) return void (this.held = { id, rings });
     }
     const ring = this.fx.drawFx('ground', (g, t) => {
       const p = this.mobs.get(pan);
@@ -230,7 +235,7 @@ export class GreatScaleView {
       dashedEllipse(g, at.x, at.y, 20, 10, t / 600, 0xfcd34d, 0.9);
       return true;
     });
-    this.held = { id, ring };
+    this.held = { id, rings: [ring] };
   }
 
   private letGo(): void {
@@ -239,7 +244,7 @@ export class GreatScaleView {
     this.held = null;
     const c = this.hooks.char(h.id);
     if (c) c.lift = 0;
-    h.ring.kill(150);
+    for (const r of h.rings) r.kill(150);
   }
 
   /** The pan (a mob of its own while someone's held): its sheets made in code, a brass dish with its chains, until the
@@ -340,8 +345,9 @@ export class GreatScaleView {
     return !!b && Math.max(Math.abs(at.col - b.at[0]), Math.abs(at.row - b.at[1])) <= BELL_TILES;
   }
 
-  /** Kulang sa Timbang's cone on the ground from its origin the way it points (the se / ne art, mirrored for sw / nw),
-   *  started so its frame 3 (its hit) lands with the hit `ms` from now. */
+  /** Kulang sa Timbang's cone on the ground from its origin the way it points (the se / ne art, mirrored on its anchor
+   *  for sw / nw; the anchor is its narrow end, on its feet), at 70% so the floor shows through the solid wedge, started
+   *  so its frame 3 (its hit) lands with the hit `ms` from now. */
   private cone(shape: Extract<TelegraphShape, { kind: 'cone' }>, ms: number): void {
     const [gx, gy] = [Math.cos(shape.facing), Math.sin(shape.facing)];
     const [sx, sy] = [gx - gy, (gx + gy) / 2]; // (screen: right and down)
@@ -349,7 +355,7 @@ export class GreatScaleView {
     if (!art) return;
     const lead = (3 / (art.fps ?? 10)) * 1000;
     const at = this.mobs.ground(shape.origin[0] + 0.5, shape.origin[1] + 0.5);
-    this.later(Math.max(0, ms - lead), () => this.fx.play(art, at, { layer: 'ground', flipX: sx < 0 }));
+    this.later(Math.max(0, ms - lead), () => this.fx.play(art, at, { layer: 'ground', flipX: sx < 0, alpha: CONE_ALPHA }));
   }
 
   /** An effect's def, only once its sheet is loaded (else the caller draws its stand-in). */

@@ -25,11 +25,14 @@ import { LABEL_DEPTH } from './depth';
 // - A warm glow under every work lamp (fx-silong-lamp-glow: the 2 tiles that clear Chill).
 // - The mini bosses' moves (`boss-move` / `boss-hit`, bot web/town-silong-bosses.ts): each one's red telegraph, its
 //   attack pose timed so its hit frame lands on the hit, and its effects, the art folder's silong/fx (21 Oct 2026; each
-//   drawn in code while its sheet isn't loaded): Atsarah's brine splash round her and her lid flying out and back along
+//   drawn in code while its sheet isn't loaded; Mac's PixelLab ones since 23 Oct 2026, the art folder's
+//   fx/mob-boss-pixellab): Atsarah's brine splash round her (its back half behind her, its front half over her) and her
+//   lid flying out and back along
 //   its line; Sakristan's rice pouring into each circle (the rice itself is the town's `mob-fx`) and his flop's frosty
 //   dust; Mono Lisa's chairs (the Monobloc's) flying to where you stood, her Split (a puff on each copy, all small, a glint
-//   over her alone); Sangkalancelot's charge kicking up frost and the hooks dropping into their shadows; Frosty Tubbs
-//   bursting up through the ice and his Ice Slick's tiles (the scene slides you on them: `slick`); a frost puff where a
+//   over her alone); Sangkalancelot's charge kicking up frost (mirrored charging left) and the hooks dropping into their
+//   shadows; Frosty Tubbs bursting up through the ice and his Ice Slick (a 2 x 2 diamond on each block of the floor's even
+//   grid it touches; the scene slides you on its tiles: `slick`); a frost puff where a
 //   boss's mobs come in. The boss bar while you're in a mini boss's room.
 // - Ang Makinang Yelo (B3's last boss: one facing, never moving; its fan the map's bossTile): Ice Block Drop (the warn on
 //   each tile, the block's shadow and fall timed to its hit, then prop-silong-ice-block standing as a wall on the walk
@@ -255,8 +258,15 @@ export class SilongView {
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     switch (m.move) {
       case 'brineSplash': {
-        const art = this.art('fx-silong-brine-splash');
-        this.later(m.id, m.ms, () => boss && (art ? this.fx.play(art, this.mobs.feet(boss), { layer: 'front' }) : this.burst(this.mobs.feet(boss), 0x7dd3c0, 2)));
+        // Its ring round her: the far half behind her, the near half over her.
+        const [back, front] = [this.art('fx-silong-brine-splash-back'), this.art('fx-silong-brine-splash-front')];
+        this.later(m.id, m.ms, () => {
+          if (!boss) return;
+          const feet = this.mobs.feet(boss);
+          if (!back || !front) return this.burst(feet, 0x7dd3c0, 2);
+          this.fx.play(back, feet, { layer: 'ground' });
+          this.fx.play(front, feet, { layer: 'front' });
+        });
         return;
       }
       case 'lidSpin': {
@@ -309,10 +319,15 @@ export class SilongView {
         this.mobs.rescale(m.id, null);
         return;
       case 'cleaverCharge': {
-        // Frost kicked up behind him as he charges: a puff at his feet every 120 ms while he goes.
+        // Frost kicked up behind him as he charges: a puff at his feet every 120 ms (about a tile) while he goes. The art
+        // drifts left, drawn for a charge going right on screen: mirrored when he charges left.
         const art = this.art('fx-silong-charge-dust');
         if (!boss) return;
-        if (art) for (let k = 0; k < 8; k++) this.later(m.id, m.ms + k * 120, () => !boss.dead && this.fx.play(art, this.mobs.feet(boss), { layer: 'ground' }));
+        const line = m.shape as Extract<TelegraphShape, { kind: 'line' }> | undefined;
+        const left = !!line && line.to[0] - line.to[1] - (line.from[0] - line.from[1]) < 0;
+        const tiles = ((d.path as unknown[]) ?? []).length || 7;
+        const puffs = Math.max(1, Math.ceil((tiles / Number(d.speed ?? 10)) * 1000 / 120));
+        if (art) for (let k = 0; k < puffs; k++) this.later(m.id, m.ms + k * 120, () => !boss.dead && this.fx.play(art, this.mobs.feet(boss), { layer: 'ground', flipX: left }));
         else this.later(m.id, m.ms, () => this.keep(m.id, this.fx.drawFx('ground', (g, t) => this.dust(g, this.mobs.feet(boss), t), 900)));
         return;
       }
@@ -397,7 +412,13 @@ export class SilongView {
       this.hooks.slick(ice, ms);
       const pts = ice.map(([c, r]) => this.mobs.ground(c + 0.5, r + 0.5));
       const slick = this.art('fx-silong-ice-slick');
-      if (slick) for (const p of pts) this.keep(m.id, this.fx.play(slick, p, { layer: 'ground', life: ms, fadeIn: 300, fadeOut: 500 }), 200);
+      // (Its diamond covers 2 x 2 tiles: one per block of the floor's even grid the cone touches, on the block's middle
+      // corner; the slide stays per tile.)
+      const blocks = new Set(ice.map(([c, r]) => `${c - (c & 1)},${r - (r & 1)}`));
+      if (slick) for (const b of blocks) {
+        const [c, r] = b.split(',').map(Number);
+        this.keep(m.id, this.fx.play(slick, this.mobs.ground(c + 1, r + 1), { layer: 'ground', life: ms, fadeIn: 300, fadeOut: 500 }), 200);
+      }
       else this.keep(m.id, this.fx.drawFx('ground', (g, t) => {
         g.clear();
         const a = t < 300 ? t / 300 : t > ms - 500 ? Math.max(0, (ms - t) / 500) : 1;
