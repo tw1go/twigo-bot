@@ -22095,6 +22095,22 @@
       "layer": "front",
       "note": "Greatstick Charge: rush wedge ahead of the player; anchor = the front of the player at chest height; drawn going east, turn it with the move; loop while charging"
     },
+    "fx-potlid-charge": {
+      "file": "fx/mobility/fx-potlid-charge.png",
+      "frame": [
+        60,
+        68
+      ],
+      "frames": 12,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        0,
+        34
+      ],
+      "layer": "front",
+      "note": "Pot lid Charge: steam bow wave ahead of the player; anchor = its back (left) edge at the front of the player at chest height; drawn going east, turn it with the move; loop while charging"
+    },
     "fx-broom-blink-back": {
       "file": "fx/mobility/fx-broom-blink-back.png",
       "frame": [
