@@ -31,6 +31,7 @@ import { sellPrice,
   repairRefusal,
   stonesFor,
   successFor,
+  temperedPlus,
   takeKind,
   tidyLuck,
   toolFor,
@@ -61,7 +62,7 @@ export function enhance(data: ItemData, s: ForgeHolder, uid: string, tool: strin
   const target = item.plus + 1;
   const stones = stonesFor(data.stats, target);
   if (!takeKind(s.bag, stone.id, stones)) return no(`Needs ${stones} ${stone.name}${stones === 1 ? '' : 's'} (you have ${countOf(s.bag, stone.id)}).`);
-  const chance = Math.min(1, tidyLuck(successFor(data.stats, target) + item.luck));
+  const chance = Math.min(1, tidyLuck(successFor(data.stats, target, item.level) + item.luck)); // (higher gear: lower odds)
   if (random() < chance) {
     item.plus = target;
     item.luck = 0;
@@ -151,8 +152,9 @@ export function drawPlus(data: ItemData, s: ForgeHolder, uid: string, newUid: ()
   return { ok: true, outcome: 'drawn', message: `Drew +${was} out of ${itemName(data, item)}: it's back to +0.`, item, got: [stone] };
 }
 
-/** A filled Temper Stone's + onto an item of its type and item level with a lower +: the item takes the stone's + (its
- *  own is lost) and the stone is used up. Its agimats, lines, rarity and binding stay as they were. */
+/** A filled Temper Stone's + onto an item of its type at the stone's item level or above, with a lower +: the item takes
+ *  the stone's + (less 2 for each gear tier up: shared temperedPlus; its own is lost) and the stone is used up. Its
+ *  agimats, lines, rarity and binding stay as they were. */
 export function applyPlus(data: ItemData, s: ForgeHolder, uid: string, stoneUid: string): Result {
   const item = findItem(s, uid)?.item;
   const stone = s.bag.find((b) => b.uid === stoneUid);
@@ -160,7 +162,7 @@ export function applyPlus(data: ItemData, s: ForgeHolder, uid: string, stoneUid:
   const why = applyRefusal(data, item, stone);
   if (why) return no(why);
   const was = item.plus;
-  item.plus = stone.plus;
+  item.plus = temperedPlus(data.stats, stone, item);
   item.luck = 0;
   s.bag.splice(s.bag.indexOf(stone), 1);
   return { ok: true, outcome: 'applied', message: `${itemName(data, item)}: +${was} → +${item.plus}.`, item };

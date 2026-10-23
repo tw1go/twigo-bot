@@ -140,7 +140,17 @@ export interface ItemStats {
     armorMinDEF?: { from: number; to: number; def: number }[];
     /** Accessories' lines: tiers like perLevel's (or one % for every plus). */
     accessories: { perLevel: PlusTier[] | number };
-    cost: { successPct: (number | null)[]; whetstonesPerTry: (number | null)[]; luckPerFail: Record<string, number>; breaks: string; repairKits?: Record<string, number | string> };
+    cost: {
+      successPct: (number | null)[];
+      whetstonesPerTry: (number | null)[];
+      luckPerFail: Record<string, number>;
+      breaks: string;
+      repairKits?: Record<string, number | string>;
+      /** Higher gear is harder (a repo addition): the odds x (1 - pct for every everyLevels item levels above from). */
+      levelPenalty?: { pctPerTier: number };
+    };
+    /** A filled Temper Stone up a gear tier (a repo addition): minusPerTier off its + for each tier it crosses. */
+    temper?: { minusPerTier: number };
     weaponAura: { tiers: { from: number; to: number; aura: string; colours?: string[]; cycle?: string[]; glints?: number }[]; smoke: { count: Record<string, string> } };
   };
   disassembly: { fragments: { formula: string; craft: string }; agimat: { rareWeight: Record<string, string>; chance?: Record<string, number | string> } };

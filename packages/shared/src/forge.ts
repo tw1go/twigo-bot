@@ -148,8 +148,18 @@ export const enhanceMax = (data: StatsData) => itemStats(data).enhancement.max;
 /** Whetstones one try at `target` (+1 … +20) uses (enhancement.cost.whetstonesPerTry). */
 export const stonesFor = (data: StatsData, target: number) => itemStats(data).enhancement.cost.whetstonesPerTry[target] ?? 0;
 
-/** A try's own odds at `target` before luck (enhancement.cost.successPct). */
-export const successFor = (data: StatsData, target: number) => itemStats(data).enhancement.cost.successPct[target] ?? 0;
+/** A try's own odds at `target` before luck (enhancement.cost.successPct), lower for an item of a higher gear tier
+ *  (`level`: enhancement.cost.levelPenalty). */
+export function successFor(data: StatsData, target: number, level = 0): number {
+  const C = itemStats(data).enhancement.cost;
+  const base = C.successPct[target] ?? 0;
+  const P = C.levelPenalty;
+  if (!P || !level) return base;
+  return base * Math.max(0, 1 - P.pctPerTier * tiersUp(data, 1, level));
+}
+
+/** How much of a try's odds an item level keeps (stats.json enhancement.cost.levelPenalty): 1 for Low gear (Lv 1-20), 0.9 for Mid (Lv 30-40). */
+export const levelOddsShare = (data: StatsData, level: number) => (successFor(data, 1, level) || 1) / (successFor(data, 1) || 1);
 
 /** The luck a fail at `target` adds to the next try at that step (enhancement.cost.luckPerFail: "1-5", "6-10"…). */
 export function luckPerFail(data: StatsData, target: number): number {
@@ -208,7 +218,7 @@ export function enhanceView(data: ItemData, item: Item, bag: Item[]): EnhanceVie
   if (!isGearDef(def) || enhanceRefusal(data, item)) return null;
   const target = item.plus + 1;
   const whetstone = toolFor(data, 'whetstone', gearTier(data.stats, item.level));
-  const base = successFor(data.stats, target);
+  const base = successFor(data.stats, target, item.level);
   return {
     target,
     stones: stonesFor(data.stats, target),
@@ -303,6 +313,20 @@ export function drawRefusal(data: ItemData, item: Item): string | null {
 
 /** Why a filled Temper Stone can't go onto this item, or null: the same type (slot) and item level, not broken, and a
  *  lower + than the stone's. */
+/** The gear tiers between a stone's item level and the item's (stats.json gearTiers, in order: Low, Mid…); 0 within one. */
+function tiersUp(data: StatsData, from: number, to: number): number {
+  const order = Object.keys(itemStats(data).gearTiers);
+  const a = order.indexOf(gearTier(data, from) ?? '');
+  const b = order.indexOf(gearTier(data, to) ?? '');
+  return a < 0 || b < 0 ? 0 : Math.max(0, b - a);
+}
+
+/** The + a filled Temper Stone gives an item: its own, less stats.json enhancement.temper.minusPerTier for every gear
+ *  tier up the item is (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). */
+export function temperedPlus(data: StatsData, stone: Item, item: Item): number {
+  return stone.plus - (itemStats(data).enhancement.temper?.minusPerTier ?? 0) * tiersUp(data, stone.level, item.level);
+}
+
 export function applyRefusal(data: ItemData, item: Item, stone: Item): string | null {
   const def = data.defs.get(item.defId);
   const sdef = data.defs.get(stone.defId);
@@ -310,9 +334,11 @@ export function applyRefusal(data: ItemData, item: Item, stone: Item): string | 
   if (!isGearDef(def)) return `Needs ${an(SLOT_WORD[stone.lock])}.`;
   if (def.training) return "Training gear can't take a +.";
   if (def.slot !== stone.lock) return `Needs ${an(SLOT_WORD[stone.lock])}.`;
-  if (item.level !== stone.level) return `Needs a Lv ${stone.level} item.`;
+  if (item.level < stone.level) return `Needs a Lv ${stone.level} item or higher.`;
   if (item.broken) return 'Repair it first.';
-  if (item.plus >= stone.plus) return `This item is already +${stone.plus} or higher.`;
+  const plus = temperedPlus(data.stats, stone, item);
+  if (plus <= 0) return `Its +${stone.plus} is too little to carry up a tier.`;
+  if (item.plus >= plus) return `This item is already +${plus} or higher.`;
   return null;
 }
 
