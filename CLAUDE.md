@@ -881,9 +881,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Hall and the Entrance plaza as they were) and Ang Silong as **the Cellar** (Cellar Hatch, Cellar Key, Practice Cellar
   Key; floors B1 Dry Storage, B2 Canteen and Butcher Row, B3 Ice Plant; the Rice Vault): the maps, items, dungeons.json,
   quest goals and titles, the NPCs' English lines, the title card, gate signs, toasts and the bot's lines. Ids, files and
-  code keep `palengke` / `silong`, and these notes their old names. Not changed: the quest dialogue written in Tagalog
-  (palengke-leveling.json's give / report lines from the story), the Great Scale's own name (Ang Dakilang Timbangan) and
-  people's names.
+  code keep `palengke` / `silong`, and these notes their old names. Since 23 Oct 2026 the dialogue
+  is English too (the owner asked): palengke-leveling.json's quest titles, give / report lines, `gapLine` and the daily
+  orders' lines (the story's Tagalog put into English; "anak" is "dear", a "suki" a "regular"; the chain is "The Last
+  Regular", its title the bot's `huling-suki` "The Last Regular"), Aling Nena's lines (quests.json), the Great Scale's
+  name ("The Great Scale": the manifest, palengke.json `boss.name`) and its lines (web/town-great-scale.ts), the Ice
+  Machine's ("The Ice Machine, the Heart of the Cellar": dungeons.json silong.lastBoss) and the Tanod's "Caught you!"
+  (casino, steal). Not changed: people's, mobs' and dishes' names, the Suki Card, leveling.json's Tanod lines (the art
+  folder's; quests.json's English ones are what shows) and the Discord bot's own Taglish lines (banter, greetings).
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
   bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the

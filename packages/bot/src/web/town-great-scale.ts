@@ -81,7 +81,7 @@ const hyp = (a: Tile, b: Tile) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 /** The line as it falls: everyone who hit it. */
 export function scaleDownLine(names: string[], boss: string): string {
   const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0] ?? 'Someone';
-  return `${who} brought down ${boss}! Patunugin ang kampana: ring its bell in the Market Hall.`;
+  return `${who} brought down ${boss}! Ring its bell in the Market Hall.`;
 }
 
 interface Pending {
@@ -257,7 +257,7 @@ export class GreatScale implements MobDirector {
     const events: MobEvent[] = [];
     if (now >= this.nextRise - this.boss.warnMinutes * MINUTE && this.warned !== this.nextRise) {
       this.warned = this.nextRise;
-      events.push(this.line('Gumagalaw ang karayom... the Great Scale in the Market Hall is stirring.', 'stir'));
+      events.push(this.line('The needle is moving... the Great Scale in the Market Hall is stirring.', 'stir'));
     }
     if (now >= this.nextRise) events.push(...this.wake(now));
     return events;
@@ -270,7 +270,7 @@ export class GreatScale implements MobDirector {
     this.save?.(now); // (awake: a restart now wakes it straight away)
     Object.assign(this, { lastHit: now, engaged: null, empty: null, casting: 0, called: false, enraged: false });
     this.next.clear();
-    return [...room.setFlags(this.id, { dormant: false }), this.change('wake', now), this.line(`${this.boss.name} has woken in the Market Hall! Timbang muna, suki.`, 'rise')];
+    return [...room.setFlags(this.id, { dormant: false }), this.change('wake', now), this.line(`${this.boss.name} has woken in the Market Hall! Step up and be weighed.`, 'rise')];
   }
 
   /** Back asleep: after its bell (`sank` false; it wakes `everyMinutes` after its fall) or sunk unhit (from now). */
@@ -287,7 +287,7 @@ export class GreatScale implements MobDirector {
 
   /** 30 minutes awake with nobody hitting it or in its fight: it sinks back to sleep. */
   private sink(now: number): MobEvent[] {
-    return [...this.sleep(now, true), this.line(`Walang lumaban. ${this.boss.name} settles back to sleep in the Market Hall.`, 'down')];
+    return [...this.sleep(now, true), this.line(`Nobody fought it. ${this.boss.name} settles back to sleep in the Market Hall.`, 'down')];
   }
 
   /** Nobody in its fight: full HP, its Sentinels and pan gone, home. */

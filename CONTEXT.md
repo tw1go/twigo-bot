@@ -34,7 +34,7 @@ _Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
 
 **Old Market**:
 The abandoned market north of the Slums, reached through the Slums' north gate (between Wire Ridge and Bag Flats): the Lv 21-40 map, its mobs, mini bosses,
-the Great Scale and the "Ang Huling Suki" quest chain. Its parts (Tarp Row, Vegetable Row, Dry Goods, Eatery Row, Butcher
+the Great Scale and the "The Last Regular" quest chain. Its parts (Tarp Row, Vegetable Row, Dry Goods, Eatery Row, Butcher
 Row, the Fish Market, the Market Hall…) are sections. (`palengke` in code: its first name was the Lumang Palengke.)
 _Avoid_: Lumang Palengke, Palengke (the old names), market (alone)
 
@@ -197,7 +197,7 @@ A single big mob that rises on a schedule rather than on a spawn point: the Scra
 _Avoid_: raid boss, world boss
 
 **Great Scale**:
-Ang Dakilang Timbangan, the Old Market's field boss in the Market Hall. Between fights it stays there asleep (it can't be hit); every two hours it wakes. It has no plain attack: only its Pan Slam, Weigh-in and Kulang sa Timbang hurt.
+The Old Market's field boss in the Market Hall. Between fights it stays there asleep (it can't be hit); every two hours it wakes. It has no plain attack: only its Pan Slam, Weigh-in and Kulang sa Timbang hurt.
 _Avoid_: timbangan boss, scale boss
 
 **Weigh-in**:
@@ -668,7 +668,7 @@ through town and map changes, and a knock-out ends it.
 _Avoid_: food buff, buff (a buff is a class skill), consumable
 
 **Daily order**:
-Once "Ang Huling Suki" is done, Aling Conching asks for one batch of quest items a day (onions, lids, rice scoops…), handed
+Once "The Last Regular" is done, Aling Conching asks for one batch of quest items a day (onions, lids, rice scoops…), handed
 in to her like a quest's; it gives XP, Kusing and a free dish. A new one comes after 4 am Manila time, once the last one
 is handed in.
 _Avoid_: daily quest (fine in passing), daily mission
