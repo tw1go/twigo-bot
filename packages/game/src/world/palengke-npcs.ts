@@ -195,6 +195,11 @@ export class PalengkeNpcs implements CutsceneCast {
     return this.list.find((s) => s.def.id === id)?.char ?? null;
   }
 
+  talker(id: string): { name: string; title: string; portrait: string; voice: number; mirror: boolean } | null {
+    const s = this.list.find((x) => x.def.id === id);
+    return s ? { name: s.def.name, title: s.title, portrait: s.portrait, voice: 1, mirror: false } : null;
+  }
+
   home(id: string): Tile | null {
     return this.tileOf(id);
   }

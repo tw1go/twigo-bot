@@ -27,6 +27,8 @@ export interface QuestUiOptions {
   /** The quest map's pin (manifest guide.pin, by the quest's type: frame 0 is the kill pin), for a touch screen's tracker
    *  rows, and what tapping one does (opens the quest map: ui/quest-map.ts). */
   pin?: { url: (type: QuestDef['type']) => string; open: () => void };
+  /** A done quest's cutscenes played again (CONTEXT.md Watch again), or null for a quest without one. */
+  watch?: (quest: string) => (() => void) | null;
 }
 
 /** A touch screen (no Tab to hold): the tracker's rows get the quest map's pin. */
@@ -388,7 +390,19 @@ function renderLog(): void {
       }
       detail.append(box);
     }
-    if (finished) detail.append(el('div', 'ql-finished-note', 'Completed'));
+    if (finished) {
+      detail.append(el('div', 'ql-finished-note', 'Completed'));
+      const watch = opts.watch?.(q.id);
+      if (watch) {
+        const b = el('button', 'ql-watch', '▶ Watch again');
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          toggleQuestLog(false);
+          watch();
+        });
+        detail.append(b);
+      }
+    }
     if (waiting.includes(q)) detail.append(el('div', 'ql-finished-note ql-waiting-note', `Come back at Lv ${q.unlockLevel}: ${giver?.name ?? 'its giver'} has it for you then.`));
     else if (available) detail.append(el('div', 'ql-finished-note ql-available-note', `Available: talk to ${giver?.name ?? 'its giver'} to start it.`));
   }

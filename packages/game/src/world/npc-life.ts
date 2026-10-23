@@ -83,6 +83,8 @@ function toward(a: Tile, b: Tile): Dir | null {
  *  (paused while held; let go, it carries on from where the scene left it). The town's and the Old Market's. */
 export interface CutsceneCast {
   actor(id: string): Character | null;
+  /** How it shows in the dialog box. */
+  talker(id: string): { name: string; title: string; portrait: string; voice: number; mirror: boolean } | null;
   home(id: string): Tile | null;
   hold(id: string, on: boolean): void;
 }
@@ -427,6 +429,11 @@ export class NpcLife implements CutsceneCast {
 
   actor(id: string): Character | null {
     return this.npcs.find((n) => n.place.id === id)?.char ?? null;
+  }
+
+  talker(id: string): { name: string; title: string; portrait: string; voice: number; mirror: boolean } | null {
+    const n = this.npcs.find((x) => x.place.id === id);
+    return n ? { name: n.text.name, title: n.text.title, portrait: this.w.asset(n.text.portrait), voice: n.place.voice, mirror: n.place.portrait === 'sw' } : null;
   }
 
   home(id: string): Tile | null {

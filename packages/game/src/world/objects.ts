@@ -472,7 +472,7 @@ export class WorldObjects {
     for (const [px, py] of bulbSpots(this.scene, lit.file, dead.file)) {
       const x = s.sprite.x + (flip ? lit.anchor[0] - px : px - lit.anchor[0]);
       const y = s.sprite.y + py - lit.anchor[1];
-      s.glows.push(this.scene.add.image(x, y, glow).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH).setScale(1.4, 1).setVisible(false));
+      s.glows.push(this.scene.add.image(x, y, glow).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH).setScale(2.2, 1.6).setVisible(false));
     }
   }
 
@@ -620,7 +620,7 @@ export class WorldObjects {
       }
       s.glows.forEach((g, k) => {
         g.setVisible(on && s.sprite.visible);
-        if (on) g.setAlpha(0.55 * (0.925 + 0.075 * Math.sin(t / 900 + k * 2.1 + s.o.col) * Math.cos(t / 2300 + s.o.row)));
+        if (on) g.setAlpha(0.9 * (0.925 + 0.075 * Math.sin(t / 900 + k * 2.1 + s.o.col) * Math.cos(t / 2300 + s.o.row)));
       });
     }
   }

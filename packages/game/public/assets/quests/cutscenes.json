@@ -1,6 +1,6 @@
 {
  "version": 1,
- "note": "Quest cutscenes (23 Oct 2026, cutscenes/src/build_cutscenes.py). Each scene plays once per player (seen flags with the quest progress), can be skipped, and can be watched again from the quest log. Everything in them is art, FX and sounds the game already has; names in the notes are what to look for where a key differs. Repo changes (23 Oct 2026): the words in English (titles, bubbles, banners, the finale's last line, as the game's quests since #104); palengke-gate only while Q1 isn't done; huling-suki also plays as the bell is rung (afterStep); rules.map and trigger documented.",
+ "note": "Quest cutscenes (23 Oct 2026, cutscenes/src/build_cutscenes.py). Each scene plays once per player (seen flags with the quest progress), can be skipped, and can be watched again from the quest log. Everything in them is art, FX and sounds the game already has; names in the notes are what to look for where a key differs. Repo changes (23 Oct 2026): the words in English (titles, bubbles, banners, the finale's last line, as the game's quests since #104); palengke-gate only while Q1 isn't done; huling-suki also plays as the bell is rung (afterStep); rules.map and trigger documented. town-arrival's second camera goes to the Tanod himself (was [38, 51]: he patrols, so he was seldom there).",
  "rules": {
   "skip": "Esc, or the Skip button on the bottom bar: jumps to the end state (quest step done, NPCs where the scene leaves them, bars off).",
   "safe": "While a scene plays you can't move, attack or be hit (the server treats you as away for at most 60 s; it ends the moment the scene does).",
@@ -61,10 +61,7 @@
      "ms": 2600
     },
     {
-     "camera": [
-      38,
-      51
-     ],
+     "camera": "tanod",
      "ms": 2600
     },
     {
