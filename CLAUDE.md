@@ -1724,7 +1724,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   its `-back` half under them and `-front` over, where they vanish and where they appear, never night-tinted; `playMove`'s
   `cls`, yours from `adventure()`, others' from the town; unknown: the Broom's), and a Charge's wedge `fx-<class>-charge`
   (`chargeWedge`: looping on the front layer from windup to landing, 10 px ahead and 18 px up, turned to the travel's
-  screen angle, flipped going left, faded as it lands; none while the manifest has no entry: the Pot lid's art isn't in).
+  screen angle, flipped going left, faded as it lands: the Greatstick's rush wedge and the Pot lid's steam bow wave (23 Oct
+  2026); none for a class whose manifest has no entry).
   The Skills panel's previews play the same (combat/skill-previews.ts). Tiles go to the server as steps (within the step budget) after a `move` message that
   the bot relays (`web/town.ts`, one per 0.8 s, ending within 6 tiles) so others play it too (`world/others.ts`, steps
   skipped while it plays; `Character.busy`). Slots show the cooldown as a purple pie with the seconds left.
