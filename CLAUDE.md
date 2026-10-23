@@ -868,6 +868,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   party members in the room within `party.xpRangeTiles` (20), +10% a member up to +30% (`partyXpMult`); bosses keep their
   own rule. Dev: `?warrens=solo` (a free run, in at once), `?warrensboss=crab-tain` (every earlier area cleared, you at
   its arena), the dev server's `/__warrens?as=&boss=` (`&hp=1`: that boss down to 1 HP, so one hit fells it); `?give=warren-ticket::3` for the gate's own flow.
+- Names in English (23 Oct 2026, the owner's call; CONTEXT.md Old Market, The Cellar): players see the Lumang Palengke as
+  the **Old Market** (its sections Vegetable Row, Dry Goods, Eatery Row, Butcher Row, Fish Market; Tarp Row, the Market
+  Hall and the Entrance plaza as they were) and Ang Silong as **the Cellar** (Cellar Hatch, Cellar Key, Practice Cellar
+  Key; floors B1 Dry Storage, B2 Canteen and Butcher Row, B3 Ice Plant; the Rice Vault): the maps, items, dungeons.json,
+  quest goals and titles, the NPCs' English lines, the title card, gate signs, toasts and the bot's lines. Ids, files and
+  code keep `palengke` / `silong`, and these notes their old names. Not changed: the quest dialogue written in Tagalog
+  (palengke-leveling.json's give / report lines from the story), the Great Scale's own name (Ang Dakilang Timbangan) and
+  people's names.
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
   bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the
@@ -1088,7 +1096,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   above that floor down; `&floor=plant`: B3 with Frosty Tubbs down and the door open, `&hp=` the machine's HP),
   `?give=susi-ng-silong::2`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
-  In combat): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
+  In combat, Dungeon entrance; the dungeon entrances, shared travel.ts DUNGEON_ENTRANCES: the Warren Gate's and the Cellar
+  Hatch's object and `arrive` (warrens, silong), listed after a map's posts by `lanternPostsOf` with `entrance`, so a
+  teleport there is the same map + post number and lands where its runs let you out; `postAt` never counts one, so you
+  can't teleport from it; no Lantern Post object of its own: TownScene skips its box): a post (manifest props `lantern-post`, its 6-frame idle as the map object's `animated`) in the middle of
   the Town and of the Slums, each map's `lantern-post` object + `arrive.lanternPost`, and four in the Lumang Palengke (its
   `teleporters`: 2 × 2 posts, blocked by `blockedWithPosts`, each landing worked out by `postLanding`: the nearest walkable
   tile in front) (shared `travel.ts`: `lanternPostsOf` (a map's list), `postAt`, `nearPost` (from the footprint),
@@ -1098,9 +1109,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   you walk to its landing, then the Map menu opens; never in combat (the client's `combatAt`: you hit, were attacked or
   hurt, stats.json regen.outOfCombatAfterSec; toast "Can't travel during a fight."). Map menu (`ui/map-menu.ts`, the
   Equipment panel's frame; M anywhere: keybind 'map', again closes; read-only away from a post: an icon says "Go to a
-  Lantern Post to travel."): manifest ui.mapWorld (its picture at 2× where it fits, else 1×, `--k`) placed by
-  `ui/map/map-layout.json` (formula, maps, posts, icon), with the Slums' zone names, "Golem Pit", "Camp" and "Hood ›"
-  written from the maps (slums.json fetched once), each map's name at its `label` tile, a teleporter icon per post
+  Lantern Post to travel."): a tab per map (Town, Slums, Old Market; opening on the map you're in), each its map alone:
+  manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond (the Old
+  Market: a plain diamond, NOT_DRAWN), at a whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab
+  shares; a smaller one fills it, up to FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`), with the Slums'
+  zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
+  maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
+  diamond `.mm-gate` and its name: a stand-in until there's an icon) and a teleporter icon per post
   (ui.mapTeleporter: normal / hover with "Lantern Post" / here with ui.mapPin and "You are here", flipped left if it would
   overlap a label), the bar "Return Lanterns: N"; closes with Esc, ×, or walking more than 3 tiles from the post. The
   other post's icon → the Teleport box (Travel to the Slums?, its cost; 0 lanterns: "You need a Return Lantern", Teleport

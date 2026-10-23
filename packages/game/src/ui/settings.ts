@@ -322,8 +322,8 @@ const CREDITS: { heading: string; lines: [string, string, string?][] }[] = [
       ['"Buy Something!" (casino) by Cleyton Kauffman', 'CC0', 'https://opengameart.org/content/shop-theme'],
       ['"Old Radio" (the Slums), an original loop for Mikazuki', 'Original'],
       ['"Drip Tunnels" (the Scrap Warrens), an original loop for Mikazuki', 'Original'],
-      ['"Closing Time" (the Lumang Palengke), an original loop for Mikazuki', 'Original'],
-      ['"Cold Room" (Ang Silong), an original loop for Mikazuki', 'Original'],
+      ['"Closing Time" (the Old Market), an original loop for Mikazuki', 'Original'],
+      ['"Cold Room" (the Cellar), an original loop for Mikazuki', 'Original'],
     ],
   },
   {

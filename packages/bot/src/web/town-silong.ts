@@ -350,7 +350,7 @@ export class SilongRun {
     }
     if (this.phase === 'running' && !this.warned && now >= this.endsAt - 60_000) {
       this.warned = true;
-      this.everywhere(out, this.line('One minute left in Ang Silong!', 'stir'));
+      this.everywhere(out, this.line('One minute left in the Cellar!', 'stir'));
     }
     const timeUp = now >= this.endsAt;
     const cleared = this.phase === 'cleared' && now >= this.clearedAt + this.S.run.closeAfterLastBossMinutes * 60_000;
@@ -403,7 +403,7 @@ export class SilongRun {
   /** Riding up from an arrival elevator (E) to a floor above that the run has reached: why not, or null (go). */
   rideUp(member: string, to: SilongFloor): string | null {
     const x = this.inside.get(member);
-    if (!x) return "You're not in the Silong.";
+    if (!x) return "You're not in the Cellar.";
     if (!this.reached.has(to) || SILONG_FLOORS.indexOf(to) >= SILONG_FLOORS.indexOf(x.floor)) return 'The elevator only goes up to floors you have reached.';
     const arrive = new Set(this.floors[x.floor].map.silong.arrive.map(key));
     if (!arrive.has(key(x.at))) return 'Step into the freight elevator first.';
@@ -463,7 +463,7 @@ export class SilongRun {
       this.clearedAt = now;
       this.clearTeam = [...this.inside.keys()];
       this.everywhere(out, { t: 'boss-move', id: b.mob, move: 'melt', key: `${b.mob}:melt`, ms: 0 });
-      this.everywhere(out, this.line(`${b.name} grinds to a stop. The frost melts away: Ang Silong is cleared! It closes in ${this.S.run.closeAfterLastBossMinutes} minutes.`, 'down'));
+      this.everywhere(out, this.line(`${b.name} grinds to a stop. The frost melts away: the Cellar is cleared! It closes in ${this.S.run.closeAfterLastBossMinutes} minutes.`, 'down'));
       return out;
     }
     // The Ice Tanks door opens with its boss.
@@ -661,7 +661,7 @@ export class Silong {
   }
 
   private entryRefusal(level: number, a: SilongAccess): { reason: 'level' | 'quest'; message: string } | null {
-    if (level < this.S.entry.minLevel) return { reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
+    if (level < this.S.entry.minLevel) return { reason: 'level', message: `The Cellar is for Lv ${this.S.entry.minLevel} and up.` };
     if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet.' };
     return null;
   }
@@ -686,8 +686,8 @@ export class Silong {
     if (no) return { ok: false, ...no };
     if (this.runFor(member)) return { ok: false, reason: 'party', message: 'Your party already has a run open: join it instead.' };
     if (this.runOf(member)) return { ok: false, reason: 'party', message: "You're in a run already." };
-    if (this.runs.size >= Silong.MAX_RUNS) return { ok: false, reason: 'full', message: 'Ang Silong is full. Try again in a few minutes.' };
-    if (!useKey()) return { ok: false, reason: 'key', message: 'You need a Susi ng Silong to open the hatch.' };
+    if (this.runs.size >= Silong.MAX_RUNS) return { ok: false, reason: 'full', message: 'The Cellar is full. Try again in a few minutes.' };
+    if (!useKey()) return { ok: false, reason: 'key', message: 'You need a Cellar Key to open the hatch.' };
     const run = new SilongRun(this.newId(), this.S, this.maps, this.deps, { member, name }, this.partyOf(member) ?? null, now);
     this.runs.set(run.id, run);
     return { ok: true, run };
@@ -695,10 +695,10 @@ export class Silong {
 
   /** A practice run (the Practice Susi ng Silong from "Now's the Time"): solo, even in a party. */
   openPractice(member: string, name: string, level: number, useKey: () => boolean, now: number): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'full' | 'key' | 'party'; message: string } {
-    if (level < this.S.entry.minLevel) return { ok: false, reason: 'level', message: `Ang Silong is for Lv ${this.S.entry.minLevel} and up.` };
+    if (level < this.S.entry.minLevel) return { ok: false, reason: 'level', message: `The Cellar is for Lv ${this.S.entry.minLevel} and up.` };
     if (this.runOf(member)) return { ok: false, reason: 'party', message: "You're in a run already." };
-    if (this.runs.size >= Silong.MAX_RUNS) return { ok: false, reason: 'full', message: 'Ang Silong is full. Try again in a few minutes.' };
-    if (!useKey()) return { ok: false, reason: 'key', message: 'You need the Practice Susi ng Silong for a practice run.' };
+    if (this.runs.size >= Silong.MAX_RUNS) return { ok: false, reason: 'full', message: 'The Cellar is full. Try again in a few minutes.' };
+    if (!useKey()) return { ok: false, reason: 'key', message: 'You need the Practice Cellar Key for a practice run.' };
     const run = new SilongRun(this.newId(), this.S, this.maps, this.deps, { member, name }, null, now, true);
     this.runs.set(run.id, run);
     return { ok: true, run };

@@ -14,12 +14,12 @@ import { toast } from './toast';
 // - Mang Pido on his radio (`pidoSays`, once a run each, kept in the tab): the first Chill, the first work lamp, the B3
 //   door, the first Freezer Breath. Mang Ramon's note (`showRamonNote`).
 
-const gateLine = (minLevel: number) => `Lv ${minLevel}+ · solo or party · needs 1 Susi ng Silong (back if no mini boss falls)`;
+const gateLine = (minLevel: number) => `Lv ${minLevel}+ · solo or party · needs 1 Cellar Key (back if no mini boss falls)`;
 
 /** The hatch's panel: `act` opens (alone or for the party), joins, or opens a practice run. */
 export function showSilongGate(g: TownSilongGate, act: (what: 'open' | 'join' | 'practice') => void): void {
   const body: HTMLElement[] = [el('p', 'wr-gate-line', gateLine(g.minLevel))];
-  body.push(el('p', 'wr-gate-you', `You: Lv ${g.level} · Susi ng Silong: ${g.keys}${g.practice ? ` · Practice Susi: ${g.practice.keys}` : ''}`));
+  body.push(el('p', 'wr-gate-you', `You: Lv ${g.level} · Cellar Key: ${g.keys}${g.practice ? ` · Practice Key: ${g.practice.keys}` : ''}`));
   const actions = el('div', 'wr-gate-actions');
   const close = () => (document.querySelector('#reward .rw-x') as HTMLButtonElement | null)?.click();
   const button = (label: string, what: 'open' | 'join' | 'practice', primary = true) => {
@@ -35,18 +35,18 @@ export function showSilongGate(g: TownSilongGate, act: (what: 'open' | 'join' | 
     body.push(el('p', 'wr-gate-run', `${g.partyRun.opener} opened a run for your party (${g.partyRun.inside} inside).`));
     button("Join my party's run", 'join');
   } else if (g.blocked === 'level' || g.blocked === 'quest') why(g.questLine ?? `You need Lv ${g.minLevel} to go in.`);
-  else if (g.blocked === 'full') why('Ang Silong is full. Try again in a few minutes.');
-  else if (g.blocked === 'key') why('You need a Susi ng Silong. Aling Conching sells them after the Great Scale rests.');
+  else if (g.blocked === 'full') why('The Cellar is full. Try again in a few minutes.');
+  else if (g.blocked === 'key') why('You need a Cellar Key. Aling Conching sells them after the Great Scale rests.');
   else button(g.inParty ? 'Open for my party' : 'Enter', 'open');
   if (g.practice) {
     const P = g.practice;
     if (P.blocked === 'run') why("You're in a run already: the practice run waits until it's over.");
-    else if (P.blocked === 'full') why('Ang Silong is full. Try again in a few minutes.');
-    else if (P.blocked === 'level') why(`Ang Silong is for Lv ${g.minLevel} and up.`);
+    else if (P.blocked === 'full') why('The Cellar is full. Try again in a few minutes.');
+    else if (P.blocked === 'level') why(`The Cellar is for Lv ${g.minLevel} and up.`);
     else button('Practice run (alone)', 'practice', !actions.childElementCount);
   }
   if (actions.childElementCount) body.push(actions);
-  void showPopup({ title: 'Ang Silong', body, button: 'Close', celebrate: false, closeX: true });
+  void showPopup({ title: 'The Cellar', body, button: 'Close', celebrate: false, closeX: true });
 }
 
 /** m:ss */
@@ -76,7 +76,7 @@ export function tellKeyBack(): void {
   } catch {
     return;
   }
-  toast(`Your ${back === 'practice' ? 'Practice Susi ng Silong' : 'Susi ng Silong'} is back: the run ended before a mini boss fell.`, 4500);
+  toast(`Your ${back === 'practice' ? 'Practice Cellar Key' : 'Cellar Key'} is back: the run ended before a mini boss fell.`, 4500);
 }
 
 /** The run's tracker (top left, in the quest tracker's place) and its timer (top centre). */
@@ -99,7 +99,7 @@ export class SilongTracker {
   ) {
     this.root.id = 'warrens-tracker';
     const head = el('div', 'wr-head');
-    head.append(el('span', 'wr-title', 'Ang Silong'));
+    head.append(el('span', 'wr-title', 'The Cellar'));
     this.clock.id = 'warrens-timer';
     this.clock.setAttribute('role', 'timer');
     this.clock.append(this.clockLabel, this.time, this.practice);
@@ -258,8 +258,8 @@ export function pidoSays(run: string | null, moment: PidoMoment, say: (text: str
 export function showRamonNote(): void {
   const body = [
     el('p', 'wr-gate-line', 'A folded note, stiff with frost:'),
-    el('p', 'wr-gate-run', '"To whoever finds this: I hid the honest weights down here in the Silong, where the scales upstairs can\'t reach them. Give this to Jun at the butcher\'s stall. He\'ll know. — Ramon"'),
-    el('p', 'wr-gate-you', "Bring it to Kuya Jun in the Lumang Palengke."),
+    el('p', 'wr-gate-run', '"To whoever finds this: I hid the honest weights down here in the Cellar, where the scales upstairs can\'t reach them. Give this to Jun at the butcher\'s stall. He\'ll know. — Ramon"'),
+    el('p', 'wr-gate-you', "Bring it to Kuya Jun in the Old Market."),
   ];
   void showPopup({ title: "Mang Ramon's Note", body, button: 'Keep it', celebrate: false, closeX: true });
 }

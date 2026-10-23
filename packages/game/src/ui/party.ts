@@ -9,7 +9,7 @@ import { disband, kick, leading, leave, onMemberHp, onParty, party } from '../ne
 // leader can right-click a member for Kick from party. Plus the invite pop-up someone gets (Accept / Decline, gone
 // after a minute). DOM only; net/party.ts has the state and sends the actions.
 
-const AREAS: Record<string, string> = { town: 'Town', hood: 'Neighbourhood', slums: 'Slums', palengke: 'Palengke' };
+const AREAS: Record<string, string> = { town: 'Town', hood: 'Neighbourhood', slums: 'Slums', palengke: 'Old Market' };
 /** Where someone is, in words ('warrens:<run>' is a Scrap Warrens run). */
 export const areaName = (area: string | null | undefined): string => (area?.startsWith('warrens:') ? 'Scrap Warrens' : (AREAS[area ?? ''] ?? 'Town'));
 const INVITE_MS = 60_000;

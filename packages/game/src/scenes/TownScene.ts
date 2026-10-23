@@ -2646,7 +2646,7 @@ export class TownScene extends Phaser.Scene {
       // Ang Silong: the hatch's panel, an invite, going down (by the elevator: its cage rides first) and up, out of it,
       // "Going down?", and the run's tracker.
       if (m.t === 'silong-gate') return showSilongGate(m.gate, (what) => link.send(what === 'open' ? { t: 'silong-open' } : what === 'practice' ? { t: 'silong-practice' } : { t: 'silong-join' }));
-      if (m.t === 'silong-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'silong-join', run: m.run } : { t: 'silong-decline', run: m.run }), 'Ang Silong');
+      if (m.t === 'silong-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'silong-join', run: m.run } : { t: 'silong-decline', run: m.run }), 'The Cellar');
       if (m.t === 'silong-refused') {
         playSound('error');
         return toast(m.message, 2800, 'bad');
@@ -2659,7 +2659,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'silong-out') {
         if (m.keyBack) noteKeyBack(m.keyBack === 'practice');
-        if (m.reason === 'closed') toast('Ang Silong closed.', 2600);
+        if (m.reason === 'closed') toast('The Cellar closed.', 2600);
         if (m.reason === 'party') toast('You left the party: back up to the Market Hall.', 2600);
         return this.travel('palengke');
       }
@@ -3326,7 +3326,7 @@ export class TownScene extends Phaser.Scene {
    *  reduced motion). */
   private zoomIntro(): void {
     // The title card over it all: the area's name, the world pulling back inside the letters (ui/title-card.ts).
-    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : this.area === 'warrens' ? 'Scrap Warrens' : this.area === 'palengke' ? 'Lumang Palengke' : this.map.silong ? `Ang Silong\n${this.map.silong.floor.toUpperCase()}` : 'Mikazuki');
+    void playTitleCard(this.area === 'hood' ? 'Neighbourhood' : this.area === 'slums' ? 'Slums' : this.area === 'warrens' ? 'Scrap Warrens' : this.area === 'palengke' ? 'Old Market' : this.map.silong ? `The Cellar\n${this.map.silong.floor.toUpperCase()}` : 'Mikazuki');
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const cam = this.cameras.main;
     const p = this.player.sprite;
@@ -3935,7 +3935,7 @@ export class TownScene extends Phaser.Scene {
     npcs.action = (id) =>
       id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
         ? { label: '🍲 Menu', run: () => void this.openDishes() }
-        : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Silong's B2)
+        : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Cellar's B2)
           ? { label: "📜 Mang Ramon's note", run: () => void this.link?.send({ t: 'ramon-give' }) }
           : undefined;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
@@ -3955,7 +3955,7 @@ export class TownScene extends Phaser.Scene {
       buy: (id) => this.buyDish(id),
       // (Her Susi ng Silong, after the finale: classes/dungeons.json silong.key.)
       key: (() => {
-        const K = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.key ?? { id: 'susi-ng-silong', name: 'Susi ng Silong', sources: { shop: { kusing: 200_000 } } };
+        const K = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.key ?? { id: 'susi-ng-silong', name: 'Cellar Key', sources: { shop: { kusing: 200_000 } } };
         return { id: K.id, name: K.name, kusing: K.sources.shop.kusing, open: !!adventure()?.quests.done.includes('palengke-14') };
       })(),
     });
@@ -4102,7 +4102,7 @@ export class TownScene extends Phaser.Scene {
     const npcs = this.npcs instanceof PalengkeNpcs ? this.npcs : null;
     const lines = [
       "This is Mang Ramon's handwriting... I thought he was gone for good.",
-      'So he hid the honest weights in the Silong. No wonder nobody could find them.',
+      'So he hid the honest weights in the Cellar. No wonder nobody could find them.',
       'Thank you. Here: for the gear that breaks on you down there.',
     ];
     const done = () => toast('Gained Mid Repair Kit', 3000, 'good');
@@ -4665,7 +4665,7 @@ export class TownScene extends Phaser.Scene {
       const at = { x: t.x, y: t.y - this.objects.heights.at(c, r) * LEVEL_PX };
       const text =
         to === 'hood' ? 'Neighbourhood →'
-        : to === 'palengke' ? (this.map.silong ? 'Stairs up to the Market Hall' : '← Palengke')
+        : to === 'palengke' ? (this.map.silong ? 'Stairs up to the Market Hall' : '← Old Market')
         : to === 'slums' ? (this.area === 'warrens' ? 'Exit to the Slums' : this.area === 'palengke' ? 'Back to the Slums →' : '← Slums')
         : this.area === 'slums' ? 'Back to town →'
         : '← Back to town';
@@ -4733,7 +4733,7 @@ export class TownScene extends Phaser.Scene {
     const top = tileToScreen(o.col, o.row);
     const mid = tileToScreen(o.col + 2, o.row + 2);
     const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
-    const label = new BuildingLabel(this, 'Silong Hatch', mid.x);
+    const label = new BuildingLabel(this, 'Cellar Hatch', mid.x);
     label.setZoom(this.cameras.main.zoom);
     this.gateLabels.push(label);
     box.setInteractive({ cursor: 'pointer' });
@@ -4763,7 +4763,7 @@ export class TownScene extends Phaser.Scene {
   /** Off to the other area: a fade, then that page (the town's art is cached, so it's quick). The Slums and the
    *  Palengke need a login. A Lantern Post's teleport says which post (`post`; this map again for another of its own). */
   private travel(to: Gate, via?: 'lantern', post = 0): void {
-    if ((to === 'slums' || to === 'warrens' || to === 'palengke' || floorOfArea(to)) && this.me?.status !== 'ok' && !fakeLogin()) return void toast(`Log in to go into ${to === 'palengke' ? 'the Palengke' : 'the Slums'}.`, 2800);
+    if ((to === 'slums' || to === 'warrens' || to === 'palengke' || floorOfArea(to)) && this.me?.status !== 'ok' && !fakeLogin()) return void toast(`Log in to go into ${to === 'palengke' ? 'the Old Market' : 'the Slums'}.`, 2800);
     if (this.travelling) return;
     this.travelling = true;
     // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); a
@@ -4776,12 +4776,12 @@ export class TownScene extends Phaser.Scene {
     const here = floorOfArea(this.area);
     toast(
       down && here ? (down > here ? `Down to ${down.toUpperCase()}…` : `Up to ${down.toUpperCase()}…`)
-      : down ? 'Down into Ang Silong…'
+      : down ? 'Down into the Cellar…'
       : here && to === 'palengke' ? 'Back up to the Market Hall…'
-      : to === this.area ? 'To the other Lantern Post…'
+      : to === this.area ? (this.lanternPosts[post]?.entrance ? `To the ${this.lanternPosts[post].name}…` : 'To the other Lantern Post…')
       : to === 'hood' ? 'To the neighbourhood…'
       : to === 'warrens' ? 'Into the Scrap Warrens…'
-      : to === 'palengke' ? 'Into the Lumang Palengke…'
+      : to === 'palengke' ? 'Into the Old Market…'
       : to === 'slums' ? (this.area === 'warrens' || this.area === 'palengke' ? 'Back to the Slums…' : 'Into the Slums…')
       : 'Back to town…',
     );
@@ -4812,7 +4812,7 @@ export class TownScene extends Phaser.Scene {
 
   /** The Lantern Posts: "Lantern Post" over each on hover; a click walks you near it, then its Map menu opens. */
   private lanternPostLabel(): void {
-    this.lanternPosts.forEach((post, i) => this.lanternPostBox(post, i));
+    this.lanternPosts.forEach((post, i) => !post.entrance && this.lanternPostBox(post, i)); // (a dungeon entrance has its own object)
   }
 
   private lanternPostBox(post: LanternPost, index: number): void {
@@ -4884,6 +4884,7 @@ export class TownScene extends Phaser.Scene {
         frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),
+        palengke: asset('maps/palengke.json'),
         marks: this.questMarkArt() ?? undefined,
       });
       onAdventure(() => this.mapView?.refresh());
@@ -4891,7 +4892,7 @@ export class TownScene extends Phaser.Scene {
     // You're at (or else nearest) one of this map's posts: "You are here" on it.
     const t = this.player.tile;
     const at = postAt(this.lanternPosts, t.col, t.row);
-    const nearest = this.lanternPosts.reduce((b, p, i) => (Math.hypot(t.col - p.tile[0], t.row - p.tile[1]) < Math.hypot(t.col - this.lanternPosts[b].tile[0], t.row - this.lanternPosts[b].tile[1]) ? i : b), 0);
+    const nearest = this.lanternPosts.reduce((b, p, i) => (!p.entrance && Math.hypot(t.col - p.tile[0], t.row - p.tile[1]) < Math.hypot(t.col - this.lanternPosts[b].tile[0], t.row - this.lanternPosts[b].tile[1]) ? i : b), 0);
     void this.mapView.open({
       here: isLanternMap(this.area) && this.lanternPosts.length ? { map: this.area, post: at >= 0 ? at : nearest } : null,
       fromPost: fromPost && at >= 0,
