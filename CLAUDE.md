@@ -1258,8 +1258,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `web/adventure.ts` saves all of a member's items with the character (`combatOf`, `withItems`, `takeLootFor`,
   `usePotionFor`, `buyCombatFor`); `loadItemData()` in stats-data.ts. Combat bag = `AdventureState.bag` (60, stats.json
   inventory.slots); the old bag (dig/bag.ts) no longer counts gear. `web/combat-bag.ts` (pure): `takeLoot`, `usePotion`,
-  `combatWares` / `buyCombat` (Healing: potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the
-  next tier's level), `devGive`.
+  `combatWares` (the store's rows: shared `combat-wares.ts` with the tickets' price from dungeons.json; the game's
+  pretend store in dev lists from the same, with `combatWareAbout`, so it never falls behind) / `buyCombat` (Healing:
+  potions for Kusing; Smithing: whetstones / kits for Kowens; Low tier until the next tier's level), `devGive`.
 - Cascades (CONTEXT.md Cascade, Drop rate; shared `cascade.ts` `cascade` / `cascadeChances` / `boosted`, tested in the
   bot's `web/cascade.test.ts`): every pick of a tier in loot and digs (a dropped piece's rarity, plus and level, a boss
   piece's affix and slots, a Warrens mini boss's affix / plain / unlucky, a dig's rarity: `rollItem` / `rollLucky` in

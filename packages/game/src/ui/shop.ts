@@ -1,9 +1,9 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
-import { bagSlots, boxPrice, cosmeticShopItem, cosmeticWares, countOf, isGearDef, pocketUsed } from '@mikazuki/shared';
+import { bagSlots, combatWareAbout, combatWares, cosmeticShopItem, cosmeticWares, countOf, isGearDef, pocketUsed, stackLimit } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
-import { adventure, anyDef, itemData, onAdventure } from '../net/adventure';
+import { adventure, anyDef, devTicketPrice, itemData, onAdventure } from '../net/adventure';
 import { RARITY_TEXT, itemArt } from './item-art';
 import { coinIcon, el, followWallet, kusingIcon, showPopup } from './reward';
 import { halloweenShopEvents } from './halloween';
@@ -389,29 +389,22 @@ function fakeBuy(id: string, quantity: number): TownShopBuyResponse {
   return { ...structuredClone(fake), ok: true, message: `Bought ${quantity > 1 ? `${quantity}× ` : ''}${it.name}!` };
 }
 
-// ── Dev: the Healing and Smithing tabs (the dev town buys them from your items there: /__shop) ──
+// ── Dev: the combat tabs (the dev town buys them from your items there: /__shop) ──
 
-const FAKE_COMBAT: TownShopItem[] = [
-  { id: 'low-hp-potion', name: 'Low HP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 150 HP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
-  { id: 'low-mp-potion', name: 'Low MP Potion', cost: 50, currency: 'kusing', kind: 'healing', about: 'Heals 80 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
-  { id: 'mid-hp-potion', name: 'Medium HP Potion', cost: 150, currency: 'kusing', kind: 'healing', about: 'Heals 250 HP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
-  { id: 'mid-mp-potion', name: 'Medium MP Potion', cost: 150, currency: 'kusing', kind: 'healing', about: 'Heals 140 MP at once. Put it on your hotbar; HP and MP Potions share a 10 s cooldown. For the Slums.', max: 99 },
-  { id: 'rough-whetstone', name: 'Rough Whetstone', cost: 3, kind: 'smithing', about: 'Enhances weapons, armor and accessories of item Lv 1-20 (the Low tier).', max: 999 },
-  { id: 'low-repair-kit', name: 'Low Repair Kit', cost: 15, kind: 'smithing', about: 'Repairs a broken item of item Lv 1-20 (the Low tier).', max: 999 },
-  { id: 'agimat-pliers', name: 'Agimat Pliers', cost: 10, kind: 'smithing', about: 'Pulls one agimat out of a weapon or armor piece without breaking it.', max: 99 },
-  { id: 'temper-stone', name: 'Temper Stone', cost: 30, kind: 'smithing', about: "Draws an item's + into the stone, to put onto another item of the same type and item level.", max: 99 },
-  { id: 'warren-ticket', name: 'Warren Ticket', cost: 500000, currency: 'kusing', kind: 'dungeons', about: 'Opens a run of the Scrap Warrens for you, or for your whole party. Use it at the Warren Gate by the golem pit.', max: 99 },
-  { id: 'return-lantern', name: 'Return Lantern', cost: 200, currency: 'kusing', kind: 'travel', about: 'Light it at a Lantern Post to travel to another map.', max: 99 },
-];
-
-/** Dev: the pretend combat wares, the pet boxes with them (their prices from stats.json pets.boxPrice, as the bot's). */
+/** Dev: the combat wares at your level, by the bot's own rules (shared combat-wares.ts: the Polished Whetstone and Mid
+ *  Repair Kit from Lv 30, the Medium potions from Lv 10, the pet boxes, the tickets at dungeons.json's price). */
 function fakeCombat(): TownShopItem[] {
   const D = itemData();
-  const boxes = D ? [...D.defs.values()].flatMap((d): TownShopItem[] => {
-    const cost = !isGearDef(d) && d.opens ? boxPrice(D, d.id) : null;
-    return cost ? [{ id: d.id, name: d.name, cost, kind: 'pets', about: !isGearDef(d) ? (d.about ?? '') : '', max: 99 }] : [];
-  }) : [];
-  return [...FAKE_COMBAT, ...boxes];
+  if (!D) return [];
+  return combatWares(D, adventure()?.progress.level ?? 1, devTicketPrice).map((w): TownShopItem => ({
+    id: w.def.id,
+    name: w.def.name,
+    cost: w.cost,
+    kind: w.tab,
+    ...(w.currency === 'kusing' ? { currency: 'kusing' as const } : {}),
+    about: combatWareAbout(D, w.def),
+    max: stackLimit(D.stats, w.def),
+  }));
 }
 
 /** Dev: the pretend shop with the combat tabs, your Kusing and what you carry. */
