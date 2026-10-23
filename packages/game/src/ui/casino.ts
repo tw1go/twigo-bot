@@ -216,7 +216,7 @@ export function openCasino(leave: () => void): void {
     say(`Busted! ${message}`, 'bust');
     // He plays once and holds his last frame; then the screen flashes while he stays.
     if (art.tanod) await play(tanod, art.tanod, scale * 2, false).done;
-    else tanod.textContent = 'Huli ka!';
+    else tanod.textContent = 'Caught you!';
     root.classList.add('cz-flashing');
     await wait(RAID_HOLD_MS);
     stopSiren();
@@ -379,7 +379,7 @@ export async function playBusted(message: string): Promise<void> {
   const stopSiren = art.siren ? play(siren, art.siren, scale * 2, true).stop : () => {};
   playSound('busted');
   if (art.tanod) await play(tanod, art.tanod, scale * 2, false).done;
-  else tanod.textContent = 'Huli ka!';
+  else tanod.textContent = 'Caught you!';
   root.classList.add('bz-flashing');
   await wait(RAID_HOLD_MS);
   stopSiren();

@@ -64,7 +64,7 @@ test('seven dishes, each unlocked by the quest that says so, six main and Atchar
 });
 
 test('bought once unlocked and paid for: locked says which quest, short says how much', () => {
-  assert.equal(dishRefusal(at(1, 10_000), QUESTS, PALENGKE, 'lugaw'), 'Unlocks with Sa Ilalim ng Payong.');
+  assert.equal(dishRefusal(at(1, 10_000), QUESTS, PALENGKE, 'lugaw'), 'Unlocks with Under the Umbrellas.');
   assert.equal(dishRefusal(at(2, 299), QUESTS, PALENGKE, 'lugaw'), 'You need 300 Kusing.');
   assert.equal(dishRefusal(at(2, 300), QUESTS, PALENGKE, 'lugaw'), null);
   assert.equal(dishRefusal(at(2, 300), QUESTS, PALENGKE, 'tapsilog'), 'No such dish.');
@@ -156,7 +156,7 @@ test("over the town's socket: dishes are bought only in the Old Market, and show
     authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
     profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never, cls: 'stick' }),
     progress: { fighter: () => ({ cls: 'stick', level: 30, points: {} }), kill: () => ({ progress: freshProgress(S, 'stick'), gained: 0, ups: 0 }) },
-    dishes: { buy: (name, dish) => (dish === 'adobo' ? (bought.push(`${name}:${dish}`), null) : 'Unlocks with Bigas, Bigas.'), save: (all) => (saved = all) },
+    dishes: { buy: (name, dish) => (dish === 'adobo' ? (bought.push(`${name}:${dish}`), null) : 'Unlocks with Rice, Rice.'), save: (all) => (saved = all) },
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const port = (server.address() as AddressInfo).port;
@@ -178,7 +178,7 @@ test("over the town's socket: dishes are bought only in the Old Market, and show
   pal.ws.send(JSON.stringify({ t: 'dish-buy', dish: 'adobo' }));
   await wait(150);
   assert.deepEqual(dish(town1.got).map((m) => [m.ok, m.message]), [[false, 'Aling Conching serves them in the Old Market.']]);
-  assert.deepEqual(dish(pal.got).map((m) => [m.dish, m.ok, m.message]), [['sinigang', false, 'Unlocks with Bigas, Bigas.'], ['adobo', true, undefined]]);
+  assert.deepEqual(dish(pal.got).map((m) => [m.dish, m.ok, m.message]), [['sinigang', false, 'Unlocks with Rice, Rice.'], ['adobo', true, undefined]]);
   assert.deepEqual(bought, ['Here:adobo']);
   const tray = pal.got.filter((m): m is Extract<TownServerMessage, { t: 'buffs' }> => m.t === 'buffs').at(-1)!;
   assert.deepEqual(tray.buffs.map((b) => [b.name, b.cls, b.dish]), [['adobo', 'dish', 'main']]);

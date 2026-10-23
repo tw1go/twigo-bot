@@ -26128,7 +26128,7 @@
       }
     },
     "great-scale": {
-      "name": "Ang Dakilang Timbangan",
+      "name": "The Great Scale",
       "file": "mobs/great-scale/mob-great-scale-boss-{anim}-{dir}.png",
       "size": [
         262,
@@ -26198,7 +26198,7 @@
       "note": "The Great Scale, the Palengke field boss (the art folder's monsters/palengke/pixellab-v1/great-scale/anim, 20 Oct 2026): one look, eight directions; no enraged sheets yet (its enrage tints it red)."
     },
     "makinang-yelo": {
-      "name": "Ang Makinang Yelo",
+      "name": "The Ice Machine",
       "file": "mobs/makinang-yelo/mob-makinang-yelo-{anim}-{dir}.png",
       "size": [
         304,

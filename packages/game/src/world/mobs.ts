@@ -785,7 +785,7 @@ export class Mobs {
         m.shadow?.destroy(); // (Barong-Barong stands in its own heap)
         m.shadow = null;
       }
-      if (s.title) m.subtitle = s.title; // (Ang Makinang Yelo's "the Ice Machine")
+      if (s.title) m.subtitle = s.title; // (the Ice Machine's "the Heart of the Cellar")
       this.showLabel(m);
     }
     if (this.events?.kinds.has(s.kind!)) {

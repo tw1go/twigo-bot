@@ -190,10 +190,10 @@
   "freeDish": "random",
   "dialogue": {
    "give": [
-    "May order ako ngayong araw, anak: {count} {item}. Kaya mo 'yan?"
+    "I have an order today, dear: {count} {item}. Can you manage that?"
    ],
    "report": [
-    "Salamat, anak! Heto, may libreng ulam ka. Kain muna bago mangaso ulit."
+    "Thank you, dear! Here, a free dish for you. Eat first before you go hunting again."
    ]
   },
   "repoNote": "Repo additions (20 Oct 2026): `reset` (4 am Manila: a new order once the last is handed in), `freeDish` (random: one of the dishes the player has unlocked, served at once), `dialogue` (written here)."
@@ -265,7 +265,7 @@
  "quests": [
   {
    "id": "palengke-01",
-   "title": "Bukas Pa Ba?",
+   "title": "Still Open?",
    "giver": "aling-conching",
    "kind": "talk",
    "unlockLevel": 21,
@@ -280,19 +280,19 @@
    "reportTo": "mang-pido",
    "dialogue": {
     "give": [
-     "Ay, may customer! First customer in years, anak. Upo ka, kain muna.",
-     "Sarado na 'tong palengke since the typhoon. But every night, I cook. Malay mo, babalik sila.",
-     "Kaso... the stalls woke up. Yung mga gamit na iniwan. Talk to Mang Pido, he knows."
+     "Oh, a customer! My first customer in years, dear. Sit down, eat first.",
+     "This market's been closed since the typhoon. But every night, I cook. You never know, they might come back.",
+     "Only... the stalls woke up. All the things people left behind. Talk to Mang Pido, he knows."
     ],
     "report": [
-     "Ah, hindi ka multo. Good. Ako si Pido, bantay dito. Thirty-five years. Wala nang binabantayan, pero bantay pa rin."
+     "Ah, you're not a ghost. Good. I'm Pido, the guard here. Thirty-five years. Nothing left to guard, but I'm still the guard."
     ]
    },
    "freeDish": "lugaw"
   },
   {
    "id": "palengke-02",
-   "title": "Sa Ilalim ng Payong",
+   "title": "Under the Umbrellas",
    "giver": "mang-pido",
    "kind": "kill",
    "unlockLevel": 21,
@@ -308,16 +308,16 @@
    "unlocksDish": "lugaw",
    "dialogue": {
     "give": [
-     "Yung mga payong ng vendors sa Tarp Row, lumilipad na. Tinusok ako kagabi. Sa puwet. Ayusin mo 'yan."
+     "The vendors' umbrellas in Tarp Row have started flying. One stabbed me last night. In the backside. Go sort them out."
     ],
     "report": [
-     "Clear ang Tarp Row! ...Medyo."
+     "Tarp Row's clear! ...Mostly."
     ]
    }
   },
   {
    "id": "palengke-03",
-   "title": "Pang-Sinigang",
+   "title": "Onions for Sinigang",
    "giver": "aling-conching",
    "kind": "collect",
    "unlockLevel": 23,
@@ -333,17 +333,17 @@
    "unlocksDish": "sinigang",
    "dialogue": {
     "give": [
-     "Gusto kong magluto ng sinigang para sa'yo. Kaso yung sibuyas sa Gulayan... buhay. At umiiyak. At pinapaiyak ka rin.",
-     "Bring me twelve good ones. Yung hindi bulok, ha."
+     "I want to cook you some sinigang. But the onions in Vegetable Row... they're alive. And crying. And they'll make you cry too.",
+     "Bring me twelve good ones. Not the rotten ones, okay?"
     ],
     "report": [
-     "Ang ganda ng mga sibuyas! Sinigang na tayo, anak. Nasa menu ko na."
+     "What lovely onions! Sinigang it is, dear. It's on my menu now."
     ]
    }
   },
   {
    "id": "palengke-04",
-   "title": "Huwag Kang Iiyak",
+   "title": "Don't Cry",
    "giver": "mang-pido",
    "kind": "kill+miniBoss",
    "unlockLevel": 24,
@@ -359,16 +359,16 @@
    "miniBoss": "sibuyas-sobber-shallot-holmes",
    "dialogue": {
     "give": [
-     "May malaking sibuyas sa gitna ng Gulayan. Naka-sombrero pa. Ewan ko kung bakit."
+     "There's a giant onion in the middle of Vegetable Row. Wearing a hat, no less. Don't ask me why."
     ],
     "report": [
-     "Umiyak ka ba? Okay lang. Ako rin, noong una."
+     "Did you cry? That's okay. So did I, the first time."
     ]
    }
   },
   {
    "id": "palengke-05",
-   "title": "Mga Garapon",
+   "title": "The Jars",
    "giver": "aling-conching",
    "kind": "collect",
    "unlockLevel": 25,
@@ -384,16 +384,16 @@
    "unlocksDish": "atchara",
    "dialogue": {
     "give": [
-     "I want to make atchara again. But I need jars with lids. Yung sa dry goods, tumatalon na. Pakikuha ang takip, 'wag mong basagin lahat."
+     "I want to make atchara again. But I need jars with lids. The ones in Dry Goods have started hopping around. Bring me their lids, and try not to break them all."
     ],
     "report": [
-     "Buo pa ang mga takip! May atchara na ulit, pang-partner sa ulam."
+     "The lids are still whole! Atchara's back, the perfect side for any dish."
     ]
    }
   },
   {
    "id": "palengke-06",
-   "title": "Bigas, Bigas",
+   "title": "Rice, Rice",
    "giver": "aling-conching",
    "kind": "collect+kill",
    "unlockLevel": 27,
@@ -413,17 +413,17 @@
    "unlocksDish": "adobo",
    "dialogue": {
     "give": [
-     "Walang kanin, walang karinderya. Kuha ka ng bigas sa mga sako. Careful, mabigat silang dumagan."
+     "No rice, no eatery. Get some rice from the sacks. Careful, they're heavy when they land on you."
     ],
     "report": [
-     "May kanin na! Adobo tayo ngayon.",
-     "Ay, kanina may nakita akong batang may dalang lampara sa dry goods. Palihim."
+     "We have rice! Adobo today.",
+     "Oh, earlier I saw a girl with a lamp in Dry Goods. Sneaking around."
     ]
    }
   },
   {
    "id": "palengke-07",
-   "title": "Ang Talaan ni Inay",
+   "title": "Mother's Ledger",
    "giver": "tisay",
    "kind": "deliver",
    "unlockLevel": 28,
@@ -439,19 +439,19 @@
    "gives": "tisay-note",
    "dialogue": {
     "give": [
-     "Uy, 'wag kang lalapit, may... ah, tao ka pala. Sorry. Akala ko sako.",
-     "I'm looking for my mom's suki ledger. Aling Rosa, the fish vendor. She wrote everything there, every suki, every utang she forgave. It's all I have left of her handwriting.",
-     "Pakibigay 'to kay Aling Conching. She'll know me."
+     "Hey, don't come any closer, there's a... oh, you're a person. Sorry. I thought you were a sack.",
+     "I'm looking for my mom's ledger. Aling Rosa, the fish vendor. She wrote everything there, every regular, every debt she forgave. It's all I have left of her handwriting.",
+     "Please give this to Aling Conching. She'll know me."
     ],
     "report": [
-     "Si Rosa... anak ni Rosa 'yan. Kamukha niya.",
-     "Ang talaan? Baka nasa Isdaan. Hindi pa humuhupa ang tubig doon."
+     "Rosa... that's Rosa's daughter. She looks just like her.",
+     "The ledger? Maybe it's in the Fish Market. The water there still hasn't gone down."
     ]
    }
   },
   {
    "id": "palengke-08",
-   "title": "Upuan Para sa Lahat",
+   "title": "A Seat for Everyone",
    "giver": "aling-conching",
    "kind": "collect+miniBoss",
    "unlockLevel": 29,
@@ -468,16 +468,16 @@
    "unlocksDish": "pancit",
    "dialogue": {
     "give": [
-     "Pag nagbukas ulit tayo, kailangan natin ng upuan. Yung mga monobloc sa Karinderya Row, nagpatong-patong na at nambabato."
+     "When we open again, we'll need chairs. The monoblocs in Eatery Row have stacked themselves up and started throwing things."
     ],
     "report": [
-     "Twelve chairs! Ngayon may mauupuan na ang mga suki ko."
+     "Twelve chairs! Now my regulars will have somewhere to sit."
     ]
    }
   },
   {
    "id": "palengke-09",
-   "title": "Ang Itak ni Jun",
+   "title": "Jun's Cleaver",
    "giver": "kuya-jun",
    "kind": "collect",
    "unlockLevel": 31,
@@ -492,11 +492,11 @@
    "item": "rusty-cleaver-piece",
    "dialogue": {
     "give": [
-     "...Pasensya, hindi ako sanay may kausap. Ako si Jun. Dito nagtitinda ang tatay ko. Si Mang Ramon.",
-     "His lucky cleaver broke when the chopping blocks woke up. Nasa loob ng mga sangkalan ang mga piraso. Gusto ko lang mabuo ulit."
+     "...Sorry, I'm not used to talking to people. I'm Jun. My father had his stall here. Mang Ramon.",
+     "His lucky cleaver broke when the chopping blocks woke up. The pieces are inside the chopping blocks. I just want to make it whole again."
     ],
     "report": [
-     "...Buo na ulit. Salamat."
+     "...It's whole again. Thank you."
     ]
    }
   },
@@ -520,16 +520,16 @@
    "reportTo": "kuya-jun",
    "dialogue": {
     "give": [
-     "Si Ramon, kilala ko 'yan. Mabait. Pinakamabait na magkakarne. Kaya 'wag mong hayaang guluhin ng mga sangkalan ang puwesto niya."
+     "Ramon, I knew him. A kind man. The kindest butcher there was. So don't let those chopping blocks wreck his stall."
     ],
     "report": [
-     "Salamat. Hindi na ako takot pumunta dito."
+     "Thank you. I'm not scared to come here anymore."
     ]
    }
   },
   {
    "id": "palengke-11",
-   "title": "Ang Talaan sa Tubig",
+   "title": "The Ledger in the Water",
    "giver": "tisay",
    "kind": "collect",
    "unlockLevel": 33,
@@ -550,18 +550,18 @@
    ],
    "dialogue": {
     "give": [
-     "The tubs swallowed the pages. Ewan ko kung paano. Six pages are missing. Help me?"
+     "The tubs swallowed the pages. I don't know how. Six pages are missing. Help me?"
     ],
     "report": [
-     "\"Ramon. Nagtapat sa akin tungkol sa timbang. Pinatawad ko na siya. Sana patawarin din niya ang sarili niya.\"",
-     "...Sino si Ramon?",
-     "Itago mo 'to. Suki card ni Nanay. Suki ka na rin namin."
+     "\"Ramon. He confessed to me about the weights. I've forgiven him. I hope he can forgive himself too.\"",
+     "...Who's Ramon?",
+     "Keep this. Mom's Suki Card. You're one of our regulars now."
     ]
    }
   },
   {
    "id": "palengke-12",
-   "title": "Ang Katotohanan",
+   "title": "The Truth",
    "giver": "kuya-jun",
    "kind": "talk",
    "unlockLevel": 34,
@@ -575,15 +575,15 @@
    "rewardKusing": 830917,
    "dialogue": {
     "give": [
-     "...Tatay ko 'yan.",
-     "He filed his weights. Kulang ng ilang gramo bawat kilo. Para sa gamot ni Nanay. The night of the typhoon he put them on the Great Scale, and the needle went crazy and the clock stopped. Sabi niya, simula noon, hindi na balanse ang palengke.",
-     "I came back for his cleaver, pero ang totoo, I came back to say sorry for him. Hindi ko lang alam kung kanino."
+     "...That's my father.",
+     "He filed his weights. A few grams short on every kilo. For my mother's medicine. The night of the typhoon he put them on the Great Scale, and the needle went crazy and the clock stopped. He said that ever since, the market has been out of balance.",
+     "I came back for his cleaver, but the truth is, I came back to say sorry for him. I just don't know who to say it to."
     ]
    }
   },
   {
    "id": "palengke-13",
-   "title": "Timbang ng Puso",
+   "title": "The Weight of the Heart",
    "giver": "mang-pido",
    "kind": "kill+collect",
    "unlockLevel": 35,
@@ -609,22 +609,22 @@
    ],
    "dialogue": {
     "give": [
-     "The small scales guard the hall. Kailangan nating makapasok."
+     "The small scales guard the hall. We need to get inside."
     ],
     "report": [
-     "Give me the brass weights. I'll make one honest weight out of them, and melt my father's false ones into it. Pang-balanse. Para maitama.",
-     "Dalhin mo 'to sa Timbangan. Sabi ni Aling Conching, nasa kanya ang kampana ng palengke."
+     "Give me the brass weights. I'll make one honest weight out of them, and melt my father's false ones into it. To balance it. To make it right.",
+     "Take this to the Great Scale. Aling Conching says she has the market's bell."
     ]
    }
   },
   {
    "id": "palengke-14",
-   "title": "Ang Huling Suki",
+   "title": "The Last Regular",
    "giver": "aling-conching",
    "kind": "fieldBoss",
    "unlockLevel": 37,
    "nextUnlock": 37,
-   "goal": "Help defeat Ang Dakilang Timbangan (at least 5% of its HP), then ring the bell",
+   "goal": "Help defeat the Great Scale (at least 5% of its HP), then ring the bell",
    "count": 1,
    "rewardXP": 8330,
    "xpFromQuestKills": 6939,
@@ -635,14 +635,14 @@
    "unlocksDish": "kare-kare",
    "dialogue": {
     "give": [
-     "Kung maririnig ulit ng palengke ang kampana, makakapagpahinga na sila."
+     "If the market hears its bell again, they can finally rest."
     ],
     "report": [
-     "Inilagay mo ang Honest Weight sa timbangan. Tumigil sa gitna ang karayom, at tumunog ulit ang orasan ng hall.",
-     "Gumulong palabas ang kampana ng palengke.",
-     "Kinuha ni Aling Conching ang kampana, hinawakan sandali, at pinatunog.",
-     "Nagbukas ang mga ilaw ng buong palengke. Sandaling lumitaw ang mga dating tindero sa kanilang puwesto, saka naglaho.",
-     "Bukas na ang palengke, anak. Ikaw ang huling suki ng lumang palengke, at ang unang suki ng bago."
+     "You set the Honest Weight on the scale. The needle stopped in the middle, and the hall's clock rang again.",
+     "The market's bell rolled out.",
+     "Aling Conching picked up the bell, held it for a moment, and rang it.",
+     "Every light in the market came on. For a moment the old vendors appeared at their stalls, then faded away.",
+     "The market is open, dear. You're the last regular of the old market, and the first regular of the new one."
     ]
    },
    "rewardTitle": "huling-suki"
@@ -679,6 +679,6 @@
    "note": "Repo addition (20 Oct 2026): the Silong's quest (the art folder's silong brief): its Practice Susi opens one practice run."
   }
  ],
- "gapLine": "Balik ka pag Lv {level} ka na, anak. Mangaso ka muna.",
+ "gapLine": "Come back when you're Lv {level}, dear. Go hunt for a while first.",
  "dishesNote": "Repo additions (20 Oct 2026): each dish's `slot` (main, or side: Atchara) and `stats` (its effect as the buff system's stats: mpRegenPct and moveSpeedPct are new; sinigang's HP regen counts out of combat too, as every regen buff does), read by the game and the bot; `effect` stays the words. Their pictures (23 Oct 2026): `icon` (16 px), `showcase` (32 px) and `large` (64 px), the art folder's items/consumables item-dish-<id> files."
 }
