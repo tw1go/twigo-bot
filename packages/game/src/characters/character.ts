@@ -6,6 +6,7 @@ import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import type { Tile } from '../world/grid';
 import { type BigPiece, type Outfit, bigHat, bigTop, headTop, litHat, sheetKey } from './doll';
+import { FAINT_ANCHOR, FAINT_CELL, FAINT_DOWN_MS, FAINT_SHADOW, type FaintPose, faintOf, wantFaint } from './faint';
 import type { AuraTier, TitleData } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
@@ -16,9 +17,12 @@ import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubbl
 
 export const SPEED = 4; // tiles per second (players; NPCs walk slower: `speed`)
 const HP_BAR_W = 20; // the HP bar over a hurt player (a mob's is as wide)
-/** A knocked-out player fades out this long (until a lying-down pose comes); back in at KO_BACK_MS. */
+/** A knocked-out player whose faint (characters/faint.ts) isn't built yet fades out this long instead; back in (respawned)
+ *  at KO_BACK_MS. */
 export const KO_FADE_MS = 1500;
 const KO_BACK_MS = 300;
+/** A knocked-out player's name tag, dimmed. */
+const KO_TAG_ALPHA = 0.6;
 
 /** A character drawn from flat sheets instead of a paper doll: the animation key per animation and direction (made
  *  by the caller), how many empty rows sit above the head in the cell, and the directions drawn. */
@@ -73,8 +77,11 @@ export class Character {
   /** How much of the character shows: 1, or fading to 0 while knocked out (and back as they respawn). */
   private seen = 1;
   private seenTween: Phaser.Tweens.Tween | null = null;
-  /** Knocked out (0 HP): faded out where they fell until they respawn. */
+  /** Knocked out (0 HP): fallen and lying where they were (or faded out, without their faint yet) until they respawn. */
   knockedOut = false;
+  /** Their faint while knocked out (characters/faint.ts): its pose facing the way they fell, and the stars over the head
+   *  once they're down. */
+  private faint: { pose: FaintPose; stars: Phaser.GameObjects.Sprite | null } | null = null;
   /** The class's resting weapon (behind and in front of the body), drawn over idle and walk. */
   private rest: { art: ClassArt; offset: [number, number]; back: Phaser.GameObjects.Sprite[]; front: Phaser.GameObjects.Sprite[] } | null = null;
   /** The worn weapon's aura (+15 and up, fx/weaponAura.ts): round the resting weapon in town, the weapon in hand in battle. */
@@ -439,6 +446,7 @@ export class Character {
 
   update(deltaMs: number): void {
     if (this.busy) return;
+    if (this.faint) return this.sync(); // (lying there: the shadow follows the fall's frames)
     if (((this.lit && this.night) || this.bigs.length) && !this.path.length) this.sync(); // (the overlays follow the idle frames; the glow flickers)
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
@@ -650,7 +658,7 @@ export class Character {
 
   /** Turn on the spot (a movement key pressed against a wall). */
   face(dir: Dir): void {
-    if (this.path.length || this.sittingAt || this.dir === dir) return;
+    if (this.path.length || this.sittingAt || this.dir === dir || this.knockedOut) return;
     this.dir = dir;
     this.play('idle');
   }
@@ -668,7 +676,7 @@ export class Character {
   }
 
   private play(anim: string): void {
-    if (this.striking) return; // an attack pose plays out first
+    if (this.striking || this.faint) return; // an attack pose plays out first; a faint holds till they're up
     const C = this.M.characters;
     const dirs = this.battle?.directions ?? this.flat?.directions ?? C.animations[anim]?.directions ?? C.directions;
     const dir = dirs.includes(this.dir) ? this.dir : dirs[0];
@@ -699,6 +707,8 @@ export class Character {
     if (b === this.battle) return;
     this.battle = b;
     this.striking = false;
+    if (b) this.readyFaint(); // (their faint in idle time from now: knock-outs only happen on battle maps)
+    if (this.faint) return; // (lying down: the new poses once they're up)
     const C = this.M.characters;
     const [ax, ay] = b?.anchor ?? C.anchor;
     const [w, h] = b?.cell ?? C.cell;
@@ -710,7 +720,7 @@ export class Character {
 
   /** An attack pose, once, facing `dir` (battle only); then standing or walking again. */
   strike(pose: string, dir: Dir): void {
-    if (!this.battle || this.sittingAt) return;
+    if (!this.battle || this.sittingAt || this.knockedOut) return;
     this.dir = dir;
     this.striking = false;
     const run = ++this.strikes;
@@ -728,7 +738,7 @@ export class Character {
   /** A skill's own frame order (the Lv 21-40 skills: combat/skill-previews.ts), facing `dir` (battle only): each anim's
    *  frame for its ms, in turn, across anims (Timber!'s charge-start then attack-heavy); then standing or walking. */
   strikeFrames(frames: { anim: string; frame: number; ms: number }[], dir: Dir): void {
-    if (!this.battle || this.sittingAt || !frames.length) return;
+    if (!this.battle || this.sittingAt || this.knockedOut || !frames.length) return;
     this.dir = dir;
     const run = ++this.strikes;
     this.striking = true;
@@ -816,23 +826,114 @@ export class Character {
     this.scene.tweens.add({ targets: t, y: t.y - 14, alpha: { from: 1, to: 0 }, duration: 800, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
   }
 
-  /** Knocked out (0 HP): fades out where they stand, name and all (no death pose: players are never "dead"); `false`:
-   *  fades back in (respawned, placed first). */
-  setKnockedOut(on: boolean): void {
-    if (this.knockedOut === on) return;
+  /**
+   * Knocked out (0 HP): they faint (CONTEXT.md Faint: fall forwards the way they face and lie there, dizzy, stars over
+   * the head; players are never "dead"), their name dimmed over the lying body; `already`: lying there at once (someone
+   * already down when you arrive). Without their faint built yet, they fade out instead (never a wait), and lie down
+   * once it is. `false`: up again (respawned, placed first), fading back in. Returns the ms until they're down.
+   */
+  setKnockedOut(on: boolean, already = false): number {
+    if (this.knockedOut === on) return 0;
     this.knockedOut = on;
-    if (on) {
-      this.cancelPath();
-      this.hpBar?.destroy();
-      this.hpBar = null;
+    if (!on) {
+      const lay = !!this.faint;
+      this.getUp();
+      if (lay) this.setSeen(0); // (back in where they respawned, as ever)
+      this.fade(1, KO_BACK_MS);
+      return 0;
     }
+    this.cancelPath();
+    this.hpBar?.destroy();
+    this.hpBar = null;
+    // (What they were doing stops: an attack pose, an emote, an effect over the head.)
+    this.strikes++;
+    this.striking = false;
+    this.pop?.destroy();
+    this.pop = null;
+    this.overhead?.destroy();
+    this.overhead = null;
+    const pose = this.faintPose();
+    if (pose) {
+      this.fallDown(pose, already);
+      return already ? 0 : FAINT_DOWN_MS;
+    }
+    if (!this.flat) {
+      void wantFaint(this.scene, this.M, this.outfit, this.battle?.cls ?? null, true).then(() => {
+        const late = this.faintPose();
+        if (!this.knockedOut || this.faint || !late) return;
+        this.fallDown(late, true);
+        this.fade(1, KO_BACK_MS);
+      });
+    }
+    if (already) this.setSeen(0);
+    else this.fade(0, KO_FADE_MS);
+    return already ? 0 : KO_FADE_MS;
+  }
+
+  /** Their faint facing the way they face, if it's built (never for flat sheets). */
+  private faintPose(): FaintPose | null {
+    if (this.flat) return null;
+    const f = faintOf(this.outfit, this.battle?.cls ?? null);
+    return (f && (f[this.dir] ?? Object.values(f)[0])) ?? null;
+  }
+
+  /** Asks for their faint to be built in idle time (battle maps: where anyone is ever knocked out). */
+  readyFaint(): void {
+    if (!this.flat) void wantFaint(this.scene, this.M, this.outfit, this.battle?.cls ?? null);
+  }
+
+  /** Falls (or, `already`, lies there at once): the faint's sheet in its 128 × 72 cell, the stars once down. */
+  private fallDown(pose: FaintPose, already: boolean): void {
+    this.faint = { pose, stars: null };
+    this.sprite.anims.stop();
+    this.sprite.setOrigin(FAINT_ANCHOR[0] / FAINT_CELL[0], FAINT_ANCHOR[1] / FAINT_CELL[1]);
+    if (already) {
+      this.sprite.setTexture(pose.key, FAINT_SHADOW.length - 1);
+      this.showStars();
+    } else {
+      this.sprite.play(pose.key);
+      this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+        if (this.faint?.pose === pose) this.showStars();
+      });
+    }
+    this.setSeen(this.seen); // (the name dims)
+    this.sync();
+  }
+
+  /** The dizzy stars over the lying head (manifest fx-faint-stars; never night-tinted: they're light). */
+  private showStars(): void {
+    const fx = this.M.fx['fx-faint-stars'];
+    if (!this.faint || this.faint.stars || !fx?.file || !this.scene.textures.exists(fx.file)) return;
+    const key = `anim:${fx.file}`;
+    if (!this.scene.anims.exists(key)) {
+      this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(fx.file, { start: 0, end: (fx.frames ?? 1) - 1 }), frameRate: fx.fps ?? 8, repeat: -1 });
+    }
+    const [w, h] = fx.frame ?? [24, 12];
+    const [ax, ay] = fx.anchor ?? [w / 2, h / 2];
+    this.faint.stars = this.scene.add.sprite(0, 0, fx.file).setOrigin(ax / w, ay / h).setAlpha(this.seen);
+    this.faint.stars.play(key);
+    this.sync();
+  }
+
+  /** Up again: the stars gone, the doll or pose in its own cell, standing. */
+  private getUp(): void {
+    if (!this.faint) return;
+    this.faint.stars?.destroy();
+    this.faint = null;
+    this.sprite.anims.stop();
+    const C = this.M.characters;
+    const [ax, ay] = this.battle?.anchor ?? C.anchor;
+    const [w, h] = this.battle?.cell ?? C.cell;
+    this.sprite.setOrigin(ax / w, ay / h);
+    this.shadow?.setScale(1);
+    this.play('idle');
+    this.sync();
+  }
+
+  /** How much of them shows, eased to `to` over `ms`. */
+  private fade(to: number, ms: number): void {
     this.seenTween?.stop();
-    this.seenTween = this.scene.tweens.addCounter({
-      from: this.seen,
-      to: on ? 0 : 1,
-      duration: on ? KO_FADE_MS : KO_BACK_MS,
-      onUpdate: (tw) => this.setSeen(tw.getValue() ?? (on ? 0 : 1)),
-    });
+    this.seenTween = this.scene.tweens.addCounter({ from: this.seen, to, duration: ms, onUpdate: (tw) => this.setSeen(tw.getValue() ?? to) });
   }
 
   /** Gone from sight at once, name and all (a Lantern Post teleport: leaving, or not yet arrived); `false`: back. */
@@ -847,8 +948,9 @@ export class Character {
     this.sprite.setAlpha(seen);
     this.shadow?.setAlpha(seen);
     this.bars?.setAlpha(seen);
-    this.tag?.setAlpha(seen);
+    this.tag?.setAlpha(seen * (this.knockedOut ? KO_TAG_ALPHA : 1));
     this.hpBar?.setAlpha(seen);
+    this.faint?.stars?.setAlpha(seen);
   }
 
   /** Hit: a red flash (then the world's tint again, via onSpawn). */
@@ -871,15 +973,30 @@ export class Character {
     const feet = (this.col + this.row + 1) * 8 + CHARACTER_BIAS + ground * HEIGHT_DEPTH;
     const depth = this.sittingAt?.depth ?? (this.depthFn ? this.depthFn(t.col, t.row, feet, this.sprite.getBounds(this.boundsCache)) : feet);
     this.sprite.setDepth(depth);
-    this.shadow?.setPosition(Math.round(x), Math.round(y)).setDepth(depth - 0.2);
-    this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05);
-    if (this.rest && !this.battle) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
+    // Fainting: the shadow widens as they tip, then lies under the lying body's middle (FAINT_SHADOW).
+    const faint = this.faint;
+    const ff = faint ? Number(this.sprite.frame.name) || 0 : 0;
+    const sw = faint ? FAINT_SHADOW[ff] : null;
+    const body = faint?.pose.body;
+    const sx = sw && body && ff >= 5 ? Math.round((body[0] + body[2]) / 2 - FAINT_ANCHOR[0]) : 0;
+    this.shadow?.setPosition(Math.round(x) + sx, Math.round(y)).setDepth(depth - 0.2).setScale(sw ? sw / (this.M.fx.shadow?.size?.[0] ?? sw) : 1, 1);
+    this.bars?.setPosition(Math.round(x), Math.round(y)).setDepth(depth + 0.05).setVisible(!faint);
+    if (faint?.stars) faint.stars.setPosition(Math.round(x) - FAINT_ANCHOR[0] + faint.pose.stars[0], Math.round(y) - FAINT_ANCHOR[1] + faint.pose.stars[1]).setDepth(depth + 0.1);
+    if (faint) {
+      // (The overlays the faint already has in it: a big hat, a topover, the lit glass, the resting weapon, an aura.)
+      for (const sp of [...(this.rest?.back ?? []), ...(this.rest?.front ?? [])]) sp.setVisible(false);
+      for (const b of this.bigs) b.sprite.setVisible(false);
+      this.litSprite?.setVisible(false);
+      this.glow?.setVisible(false);
+      this.aura?.hide();
+    } else if (this.rest && !this.battle) this.syncRest(Math.round(x), Math.round(y - this.lift), depth);
     else if (this.rest) for (const sp of [...this.rest.back, ...this.rest.front]) sp.setVisible(false);
-    if (this.aura?.on) this.syncAura(depth);
-    if (this.lit) this.syncLit(Math.round(x), Math.round(y - this.lift), depth);
-    for (const b of this.bigs) this.syncBig(b.piece, b.sprite, Math.round(x), Math.round(y - this.lift), depth + b.lift);
-    // The name sits just over the head (2 px above its first visible row); an alert goes above it.
-    const plateBottom = Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
+    if (this.aura?.on && !faint) this.syncAura(depth);
+    if (this.lit && !faint) this.syncLit(Math.round(x), Math.round(y - this.lift), depth);
+    if (!faint) for (const b of this.bigs) this.syncBig(b.piece, b.sprite, Math.round(x), Math.round(y - this.lift), depth + b.lift);
+    // The name sits just over the head (2 px above its first visible row), over the lying body once down; an alert goes
+    // above it.
+    const plateBottom = body && ff >= 5 ? Math.round(y) - FAINT_ANCHOR[1] + body[1] - 2 : Math.round(y) - this.M.characters.anchor[1] + this.head - 2;
     this.tag?.place(Math.round(x), plateBottom);
     let alertY = this.tag ? plateBottom - this.tag.height - 1 : Math.round(y) - this.M.characters.cell[1] - 2;
     if (this.hpBar) {
@@ -1017,6 +1134,7 @@ export class Character {
     this.overhead?.destroy();
     this.hpBar?.destroy();
     this.seenTween?.stop();
+    this.faint?.stars?.destroy();
     this.tag?.destroy();
     this.bubbleTimer?.remove();
     this.bubble?.destroy();
@@ -1029,6 +1147,8 @@ export class Character {
 
   /** The world y of the top of the head (its first visible row), for things shown over it. */
   get headY(): number {
+    const body = this.faint?.pose.body;
+    if (body) return this.sprite.y - FAINT_ANCHOR[1] + body[1];
     return this.sprite.y - this.M.characters.anchor[1] + this.head;
   }
 

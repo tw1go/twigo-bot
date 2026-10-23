@@ -299,6 +299,11 @@ _Avoid_: dead, killed (mobs die; players are knocked out)
 **Respawn**:
 Coming back after being knocked out, at the gate of the map you came in through.
 
+**Faint**:
+How a knocked-out character goes down: they buckle, kneel and fall forwards the way they face, then lie on the ground
+with dizzy eyes and stars over their head until they respawn.
+_Avoid_: death animation, dying
+
 **Blinded**:
 Caught in the golem's Lamp Glare: for a few seconds every attack you make misses.
 

@@ -3,7 +3,7 @@ import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
-import { Character, KO_FADE_MS, SPEED, dirForStep, dirToward } from '../characters/character';
+import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
 import { sanitize, startingOutfit } from '../characters/looks';
@@ -1318,7 +1318,9 @@ export class TownScene extends Phaser.Scene {
     if (!this.battleMap) return;
     const look = this.outfit;
     const b = cls ? await battleSheets(this, this.M.characters, this.M.classes!, cls, look) : null;
-    if ((adventure()?.cls ?? null) === cls && this.outfit === look) this.player.setBattle(b); // (not a look changed again meanwhile)
+    if ((adventure()?.cls ?? null) !== cls || this.outfit !== look) return; // (not a look changed again meanwhile)
+    this.player.setBattle(b);
+    this.player.readyFaint(); // (your faint in idle time: the doll's without a class)
   }
 
   /**
@@ -2884,21 +2886,21 @@ export class TownScene extends Phaser.Scene {
         // (The bar over your head: battle maps only; in town HP never changes.)
         return this.battleMap ? this.player.setHp(m.hp, m.maxHp) : this.player.setHp(0, 0);
       }
-      // Knocked out (0 HP): you fade out where you stand (KO_FADE_MS) and can't act, then the unconscious pop-up counts
-      // down what's left of the server's `reviveIn` (300 s), after which it puts you back at the way in; "Revive now"
-      // asks for that straight away.
+      // Knocked out (0 HP): you faint where you stand (characters/faint.ts: fall and lie there; a fade without your faint
+      // built yet) and can't act, then once you're down the unconscious pop-up counts down what's left of the server's
+      // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
       if (m.t === 'knocked-out' && m.id === myId) {
         this.knockedOut = true;
         this.stopFight();
         this.pending = null;
-        this.player.setKnockedOut(true);
+        const down = this.player.setKnockedOut(true);
         playSound('casino-lose', 0.1);
         const until = Date.now() + (m.reviveIn ?? 0);
         this.closeRevive();
         this.reviveLater = window.setTimeout(() => {
           this.reviveLater = undefined;
           if (this.knockedOut) showRevive(Math.max(0, until - Date.now()), () => this.link?.send({ t: 'revive' }));
-        }, KO_FADE_MS);
+        }, down);
         return;
       }
       if (m.t === 'respawn' && m.id === myId) {

@@ -119,12 +119,14 @@ export class OtherPlayers {
         return o.char?.setHp(m.hp, m.maxHp);
       case 'knocked-out':
         s.out = true;
-        return o.char?.setKnockedOut(true);
+        o.char?.setKnockedOut(true);
+        return;
       case 'respawn':
         // Back at the way in: there at once (no walk across the map), fading in.
         Object.assign(s, { col: m.col, row: m.row, sit: false, out: undefined });
         o.char?.place({ col: m.col, row: m.row });
-        return o.char?.setKnockedOut(false);
+        o.char?.setKnockedOut(false);
+        return;
       case 'rename':
         // A Rename Card: the new name over their head.
         s.nickname = m.nickname;
@@ -268,7 +270,7 @@ export class OtherPlayers {
       char.setNameTag(s.nickname, s.title);
       char.setParty(this.inParty(p.id));
       char.setJailed(!!s.jailed);
-      if (s.out) char.setKnockedOut(true);
+      if (s.out) char.setKnockedOut(true, true); // (already down: lying there, no fall)
       else if (s.maxHp) char.setHp(s.hp ?? s.maxHp, s.maxHp);
       char.sprite.setInteractive({ pixelPerfect: true, cursor: this.cursorCss });
       char.setZoom(this.zoom);
@@ -291,7 +293,9 @@ export class OtherPlayers {
     const look = this.looks.get(id);
     if (!this.battleFor || !look) return;
     const b = cls ? await this.battleFor(cls, look) : null;
-    if (o.state.cls === cls && this.all.get(id) === o) o.char?.setBattle(b); // (not if they left, or rejoined, meanwhile)
+    if (o.state.cls !== cls || this.all.get(id) !== o) return; // (not if they left, or rejoined, meanwhile)
+    o.char?.setBattle(b);
+    o.char?.readyFaint(); // (their faint in idle time: the doll's without a class)
   }
 
   private remove(id: string): void {
