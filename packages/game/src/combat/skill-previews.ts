@@ -636,7 +636,6 @@ function homeAfter(k: SkillKit, end: number): void {
 // the frame each hit lands on); a split one plays its `-back` half on the ground and its `-front` half over everyone, at
 // one anchor and time. `null` in a pose's ms list: the anim's own frame time.
 
-const SEED = '#84CC16'; // Seed Barrage's pebbles
 const PHANTOM = '#A3E635'; // Phantom Sticks' afterimages
 const AMBER = '#F59E0B'; // Hot Oil's drops
 
@@ -675,11 +674,13 @@ const slingshotLate: Skill[] = [
   {
     name: 'Headshot',
     run(k) {
+      // The aim closing on the target while the pull's held, then its gold tracer and the crit star.
       const t = k.pose('attack-heavy', [0, 1, 2, 3, 4, 5], [null, null, null, 250, null, null]);
+      k.at(t[0], () => k.fx('fx-slingshot-headshot-aim', k.body(1)));
       k.at(t[4], () => {
         const fork = k.launch('attack-heavy', 4);
         k.fx('fx-slingshot-launch', fork);
-        k.shot(BULLET, fork, k.body(1), { speed: 600, reveal: true, onArrive: () => k.hit(1, { fx: 'fx-slingshot-crit-star', kind: 'crit' }) });
+        k.shot('fx-slingshot-headshot', fork, k.body(1), { speed: 600, reveal: true, onArrive: () => k.hit(1, { fx: 'fx-slingshot-crit-star', kind: 'crit' }) });
       });
     },
   },
@@ -714,7 +715,7 @@ const slingshotLate: Skill[] = [
         if (f !== 2) return;
         k.at(t[i], () => {
           const fork = k.launch('attack-quick', 2);
-          k.shot(BULLET, fork, k.body(1), { speed: BULLET_SPEED * 1.3, reveal: true, fx: { tint: SEED }, onArrive: () => k.hit(1, { fx: 'fx-slingshot-hit-small' }) });
+          k.shot('fx-slingshot-seed', fork, k.body(1), { speed: BULLET_SPEED * 1.3, reveal: true, onArrive: () => k.hit(1, { fx: 'fx-slingshot-seed-hit' }) });
         });
       });
     },
@@ -735,8 +736,8 @@ const slingshotLate: Skill[] = [
         const end = lineEnd(k, fork, 2);
         const speed = BULLET_SPEED * 1.6;
         k.fx('fx-slingshot-launch', fork);
-        k.shot('fx-slingshot-pebble-pierce', fork, end, { speed, reveal: true, fadeOut: 120 });
-        [0, 1, 2].forEach((n) => k.at(t[4] + (dist(fork, k.body(n)) / speed) * 1000, () => k.hit(n, { fx: 'fx-slingshot-hit-pierce' })));
+        k.shot('fx-slingshot-longpull-shot', fork, end, { speed, reveal: true, fadeOut: 120 });
+        [0, 1, 2].forEach((n) => k.at(t[4] + (dist(fork, k.body(n)) / speed) * 1000, () => k.hit(n, { fx: 'fx-slingshot-longpull-hit' })));
       });
     },
   },
@@ -774,7 +775,7 @@ const slingshotLate: Skill[] = [
       [1, 0, 2].forEach((n, i) =>
         k.at(t[4] + i * 80, () => {
           const fork = k.launch('attack-heavy', 4);
-          k.shot('fx-slingshot-homing', fork, k.body(n), { speed: 220, minMs: 260, arc: i % 2 ? -16 : 16, turn: false, onArrive: () => k.hit(n, { fx: 'fx-slingshot-hit-small' }) });
+          k.shot('fx-slingshot-homing', fork, k.body(n), { speed: 220, minMs: 260, arc: i % 2 ? -16 : 16, turn: false, onArrive: () => k.hit(n, { fx: 'fx-slingshot-homing-hit' }) });
         }),
       );
     },
