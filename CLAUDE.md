@@ -1479,7 +1479,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
   out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
   (green, red and pulsing under 25%; players' bars green everywhere: over heads, the party panel; mobs' red) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
-  name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (fade out/in, no death pose);
+  name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (a 1.5 s fade out, `KO_FADE_MS`, 0.3 s back in; no lying-down pose yet), the unconscious pop-up (`ui/revive.ts`) only once your fade is done (TownScene `reviveLater`, its countdown still from the server's `reviveIn`);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,

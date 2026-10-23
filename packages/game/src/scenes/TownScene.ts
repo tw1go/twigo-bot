@@ -3,7 +3,7 @@ import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
-import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
+import { Character, KO_FADE_MS, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
 import { sanitize, startingOutfit } from '../characters/looks';
@@ -2884,18 +2884,25 @@ export class TownScene extends Phaser.Scene {
         // (The bar over your head: battle maps only; in town HP never changes.)
         return this.battleMap ? this.player.setHp(m.hp, m.maxHp) : this.player.setHp(0, 0);
       }
-      // Knocked out (0 HP): you fade out where you stand and can't act. The unconscious pop-up counts down the server's
-      // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
+      // Knocked out (0 HP): you fade out where you stand (KO_FADE_MS) and can't act, then the unconscious pop-up counts
+      // down what's left of the server's `reviveIn` (300 s), after which it puts you back at the way in; "Revive now"
+      // asks for that straight away.
       if (m.t === 'knocked-out' && m.id === myId) {
         this.knockedOut = true;
         this.stopFight();
         this.pending = null;
         this.player.setKnockedOut(true);
         playSound('casino-lose', 0.1);
-        return showRevive(m.reviveIn ?? 0, () => this.link?.send({ t: 'revive' }));
+        const until = Date.now() + (m.reviveIn ?? 0);
+        this.closeRevive();
+        this.reviveLater = window.setTimeout(() => {
+          this.reviveLater = undefined;
+          if (this.knockedOut) showRevive(Math.max(0, until - Date.now()), () => this.link?.send({ t: 'revive' }));
+        }, KO_FADE_MS);
+        return;
       }
       if (m.t === 'respawn' && m.id === myId) {
-        hideRevive();
+        this.closeRevive();
         this.knockedOut = false;
         this.player.place({ col: m.col, row: m.row });
         this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
@@ -3101,7 +3108,7 @@ export class TownScene extends Phaser.Scene {
         if (this.knockedOut) {
           this.knockedOut = false;
           this.player.setKnockedOut(false);
-          hideRevive();
+          this.closeRevive();
         }
         setParty(null); // the server sends your party (if you're still in one) right after
         // A reconnect (the bot restarted, a blip): what's on screen stays; only what's new is added.
@@ -3780,6 +3787,15 @@ export class TownScene extends Phaser.Scene {
 
   /** Knocked out (0 HP): faded out, no walking, moves or skills until the server respawns you. */
   private knockedOut = false;
+  /** The unconscious pop-up waiting for your fade out to end (a window timer: it runs on in a background tab). */
+  private reviveLater: number | undefined;
+
+  /** The unconscious pop-up gone, and one still waiting to show. */
+  private closeRevive(): void {
+    window.clearTimeout(this.reviveLater);
+    this.reviveLater = undefined;
+    hideRevive();
+  }
   /** Stunned (Wire Wolf's Live Floor) until then (performance.now()): no walking. */
   private stunUntil = 0;
   private get stunned(): boolean {
