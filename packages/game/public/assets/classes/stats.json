@@ -1192,9 +1192,13 @@
         "11-15": 0.05,
         "16-20": 0.03
       },
+      "levelPenalty": { "pct": 0.05, "everyLevels": 10, "from": 10 },
+      "levelPenaltyNote": "Repo addition (23 Oct 2026, the owner): higher gear is harder: each try's odds (successPct) x (1 - pct for every everyLevels item levels above from): Lv 10 as the table, Lv 20 x0.95, Lv 30 x0.90, Lv 40 x0.85; luck adds after (shared forge.ts successFor).",
       "neverLosesLevel": true,
       "currency": "none, whetstones only"
     },
+    "temper": { "minusPerTier": 2 },
+    "temperNote": "Repo addition (23 Oct 2026, the owner): a filled Temper Stone goes onto gear of its type at its own item level or above; each gear tier up it crosses (gearTiers: Low Lv 1-20, Mid 30-40) takes minusPerTier off its + (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). Shared forge.ts temperedPlus.",
     "weaponAura": {
       "appliesTo": "weapons only, in hand and resting, all directions, visible to everyone; also the item icon",
       "tiers": [

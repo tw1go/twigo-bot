@@ -17,7 +17,9 @@ import { itemName,
   findItem,
   fragmentsPerWhetstone,
   isGearDef,
+  levelOddsShare,
   newItem,
+  temperedPlus,
   lineText,
   repairKitsFor,
   repairKitsText,
@@ -379,6 +381,9 @@ export class ForgePopup {
     const odds = el('div', 'fg-row fg-odds');
     odds.append(el('span', 'fg-label', `Success to +${v.target}`), el('b', 'fg-num fg-chance', pct(v.chance)));
     parts.push(odds);
+    // (Higher gear is harder: stats.json enhancement.cost.levelPenalty.)
+    const share = levelOddsShare(D.stats, item!.level);
+    if (share < 1) parts.push(el('div', 'fg-have', `Lv ${item!.level} gear: odds ${Math.round((1 - share) * 100)}% lower`));
     if (v.luck > 0) parts.push(el('div', 'fg-luck', `Luck +${Math.round(v.luck * 100)}%`));
     for (const n of v.next) parts.push(el('div', 'fg-next', nextLine(n)));
     if (v.breaks) parts.push(el('div', 'fg-warn', `A fail now breaks it (it keeps its +; fixing it takes ${repairKitsText(D, item!)}).`));
@@ -482,7 +487,8 @@ export class ForgePopup {
     parts.push(b);
   }
 
-  /** A filled Temper Stone: "Crude Stick +2 → +7"; the item's own + is lost. */
+  /** A filled Temper Stone: "Crude Stick +2 → +7"; the item's own + is lost, and a gear tier up takes 2 off the stone's
+   *  (asked first: confirmTemper). */
   private renderApply(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
     const D = itemData()!;
     const stone = adventure()!.bag.find((b) => b.uid === this.tool);
@@ -496,15 +502,20 @@ export class ForgePopup {
     parts.push(what);
     if (!item) return;
     const why = applyRefusal(D, item, stone);
+    const plus = temperedPlus(D.stats, stone, item);
     if (!why) {
-      parts.push(el('div', 'fg-next', `${nameOf({ ...item, plus: 0 })} +${item.plus} → +${stone.plus}`));
+      parts.push(el('div', 'fg-next', `${nameOf({ ...item, plus: 0 })} +${item.plus} → +${plus}`));
+      if (plus < stone.plus) parts.push(el('div', 'fg-warn', tierUpLine(stone, item, plus)));
       if (item.plus > 0) parts.push(el('div', 'fg-warn', `Its own +${item.plus} is lost.`));
     }
     if (why && !this.message?.ok) parts.push(el('div', 'fg-warn', why));
     const b = el('button', 'fg-go', this.busy ? 'Applying…' : 'Apply');
     b.disabled = !!why || this.busy;
     b.classList.toggle('fg-ready', !why);
-    b.addEventListener('click', () => void this.run({ action: 'apply', item: item.uid, stone: stone.uid }));
+    b.addEventListener('click', async () => {
+      if (plus < stone.plus && !(await confirmTemper(stone, item, plus))) return;
+      void this.run({ action: 'apply', item: item.uid, stone: stone.uid });
+    });
     parts.push(b);
   }
 
@@ -874,6 +885,51 @@ export function confirmCombine(item: Item): Promise<boolean> {
     document.addEventListener('keydown', key, true);
     row.append(yes, ...(n ? [no] : []));
     box.append(el('div', 'fg-confirm-title', 'Combine fragments?'), flow, ...notes, row);
+    back.append(box);
+    document.body.append(back);
+    yes.focus();
+  });
+}
+
+/** "Lv 10 → Lv 30 is a gear tier up: the stone's +20 goes on as +18." */
+function tierUpLine(stone: Item, item: Item, plus: number): string {
+  return `Lv ${stone.level} → Lv ${item.level} is ${stone.plus - plus > 2 ? 'gear tiers' : 'a gear tier'} up: the stone's +${stone.plus} goes on as +${plus} (−${stone.plus - plus}).`;
+}
+
+/** "Apply it a tier up?": a filled Temper Stone onto higher-tier gear, which takes 2 off its + a tier (shared temperedPlus). */
+function confirmTemper(stone: Item, item: Item, plus: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const back = el('div', 'fg-confirm-back');
+    const box = el('div', 'fg-confirm');
+    box.setAttribute('role', 'alertdialog');
+    const row = el('div', 'fg-actions');
+    const yes = el('button', 'fg-go fg-ready', 'Apply');
+    const no = el('button', 'fg-go', 'Cancel');
+    const done = (ok: boolean) => {
+      back.remove();
+      document.removeEventListener('keydown', key, true);
+      resolve(ok);
+    };
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        done(false);
+      }
+    };
+    yes.addEventListener('click', () => done(true));
+    no.addEventListener('click', () => done(false));
+    back.addEventListener('click', (e) => e.target === back && done(false));
+    document.addEventListener('keydown', key, true);
+    row.append(yes, no);
+    const flow = el('div', 'fg-combine fg-combine-short');
+    flow.append(itemPicture(stone, 'showcase', 2), el('span', 'fg-combine-arrow', '»»»'), itemPicture({ ...item, plus }, 'showcase', 2));
+    box.append(
+      el('div', 'fg-confirm-title', `Apply it to your ${nameOf({ ...item, plus: 0 })}?`),
+      flow,
+      el('div', 'fg-warn', tierUpLine(stone, item, plus)),
+      ...(item.plus > 0 ? [el('div', 'fg-confirm-sub', `Its own +${item.plus} is lost.`)] : []),
+      row,
+    );
     back.append(box);
     document.body.append(back);
     yes.focus();

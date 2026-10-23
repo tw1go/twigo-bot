@@ -13,6 +13,8 @@ import {
   embedRefusal,
   enhanceRefusal,
   enhanceView,
+  successFor,
+  temperedPlus,
   fragmentsFor,
   itemAura,
   itemName,
@@ -91,7 +93,7 @@ test('enhance: a fail uses the stones, adds that bracket\'s luck, never loses a 
   assert.equal(item.luck, 0.16);
   const v = enhanceView(D, item, s.bag)!;
   assert.equal(v.target, step);
-  assert.equal(v.chance, Math.min(1, Math.round((cost.successPct[step] + 0.16) * 1000) / 1000));
+  assert.equal(v.chance, Math.min(1, Math.round((successFor(D.stats, step, item.level) + 0.16) * 1000) / 1000), "the item's level's odds");
   // A roll just under the odds with luck succeeds, one just over doesn't.
   enhance(D, s, item.uid, undefined, always(v.chance - 0.001));
   assert.equal(item.plus, 6);
@@ -546,7 +548,7 @@ test('Agimat Pliers: the agimat back in the bag just as it was (and it embeds ag
   assert.ok(head.agimats[1]);
 });
 
-test('Temper Stone: draw +7 from a Lv 10 weapon (it goes to +0), apply it to another class\'s +2 Lv 10 weapon (+7); the wrong level, type or a higher + refused', () => {
+test('Temper Stone: draw +7 from a Lv 10 weapon (it goes to +0), apply it to another class\'s +2 Lv 10 weapon (+7); a lower level, the wrong type or a higher + refused', () => {
   const sling10 = piece('weapon-crude-slingshot', 7);
   const s = holder([sling10]);
   tools(s, 'temper-stone', 2);
@@ -558,13 +560,14 @@ test('Temper Stone: draw +7 from a Lv 10 weapon (it goes to +0), apply it to ano
   const stone = s.bag.find((b) => b.defId === 'temper-stone-filled')!;
   assert.deepEqual([stone.plus, stone.level, stone.lock, stone.bound], [7, 10, 'weapon', false]);
   assert.equal(itemName(D, stone), 'Temper Stone (+7, Lv 10 Weapon)');
-  // Refused: a Lv 20 weapon, a body piece, a +9 weapon (nothing changes).
-  const lv20 = piece('weapon-sturdy-stick', 2);
+  // Refused: a lower-level weapon, a body piece, a +9 weapon (nothing changes).
+  const low = piece('weapon-crude-stick', 2);
+  low.level = 5;
   const body = piece('armor-hemp-body', 0);
   body.level = 10;
   const nine = piece('weapon-crude-greatstick', 9);
-  s.bag.push(lv20, body, nine);
-  assert.equal(forge(D, s, { action: 'apply', item: lv20.uid, stone: stone.uid }, always(0), uid).message, 'Needs a Lv 10 item.');
+  s.bag.push(low, body, nine);
+  assert.equal(forge(D, s, { action: 'apply', item: low.uid, stone: stone.uid }, always(0), uid).message, 'Needs a Lv 10 item or higher.');
   assert.equal(forge(D, s, { action: 'apply', item: body.uid, stone: stone.uid }, always(0), uid).message, 'Needs a Weapon.');
   assert.equal(forge(D, s, { action: 'apply', item: nine.uid, stone: stone.uid }, always(0), uid).message, 'This item is already +7 or higher.');
   // Another class's Lv 10 weapon at +2: +7, the stone used up; its agimats and lines stay.
@@ -593,6 +596,44 @@ test('Temper Stone: draw +7 from a Lv 10 weapon (it goes to +0), apply it to ano
   forge(D, s, { action: 'draw', item: again.uid }, always(0), uid);
   const filled = s.bag.filter((b) => b.defId === 'temper-stone-filled');
   assert.deepEqual(filled.map((f) => [f.plus, f.bound, f.count]), [[4, true, 1], [5, false, 1]], 'one slot each; bound from bound gear');
+});
+
+test('Temper Stone up the gear tiers: Lv 10 +20 onto Lv 20 keeps +20, onto Lv 30 or 40 (Mid) is +18; a + it can\'t beat, or one used up by the tier, refused', () => {
+  const draw = (plus: number) => {
+    const s = holder([piece('weapon-crude-slingshot', plus)]);
+    tools(s, 'temper-stone', 1);
+    forge(D, s, { action: 'draw', item: s.bag[0].uid }, always(0), uid);
+    return { s, stone: s.bag.find((b) => b.defId === 'temper-stone-filled')! };
+  };
+  for (const [id, want] of [['weapon-sturdy-stick', 20], ['weapon-fine-stick', 18], ['weapon-polished-stick', 18]] as const) {
+    const { s, stone } = draw(20);
+    const to = piece(id, 0);
+    s.bag.push(to);
+    assert.equal(temperedPlus(D.stats, stone, to), want, id);
+    const r = forge(D, s, { action: 'apply', item: to.uid, stone: stone.uid }, always(0), uid);
+    assert.equal(r.outcome, 'applied', r.message);
+    assert.equal(to.plus, want, `${id} (Lv ${to.level})`);
+  }
+  // +17 onto a Mid +16: +15 is no better, refused; +2 onto Mid would be +0: refused.
+  const { s, stone } = draw(17);
+  const mid = piece('weapon-fine-stick', 16);
+  s.bag.push(mid);
+  assert.equal(forge(D, s, { action: 'apply', item: mid.uid, stone: stone.uid }, always(0), uid).message, 'This item is already +15 or higher.');
+  const two = draw(2);
+  const mid0 = piece('weapon-fine-stick', 0);
+  two.s.bag.push(mid0);
+  assert.equal(forge(D, two.s, { action: 'apply', item: mid0.uid, stone: two.stone.uid }, always(0), uid).message, 'Its +2 is too little to carry up a tier.');
+  assert.equal(mid0.plus, 0);
+});
+
+test('enhancing higher gear: each try\'s odds 5% lower (of themselves) for every 10 item levels above Lv 10; luck adds after', () => {
+  const pct = S.enhancement.cost.successPct;
+  for (const [level, share] of [[1, 1], [10, 1], [19, 1], [20, 0.95], [30, 0.9], [40, 0.85]] as const) {
+    assert.ok(Math.abs(successFor(D.stats, 5, level) - pct[5] * share) < 1e-9, `Lv ${level}`);
+  }
+  const it = piece('weapon-fine-stick', 4);
+  it.luck = 0.1;
+  assert.equal(enhanceView(D, it, [])!.chance, Math.min(1, Math.round((pct[5] * 0.9 + 0.1) * 1000) / 1000));
 });
 
 test('the sari-sari store: Agimat Pliers and empty Temper Stones in Smithing for Kowens (their own prices); filled stones aren\'t sold', () => {

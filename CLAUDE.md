@@ -129,6 +129,9 @@ Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
+- `classes/stats.json`: `enhancement.cost.levelPenalty` (enhance odds 5% lower a 10 item levels above Lv 10) and
+  `enhancement.temper.minusPerTier` (a Temper Stone's + less 2 a gear tier up; onto its item level or higher), with their
+  notes (23 Oct 2026); `items/items.json` the two Temper Stones' `about` saying so.
 - `classes/stats.json`: `disassembly.fragments.formula` "0 + 3 * …" (+ `formulaNote`: no fragments from +0 gear; was 2 + …, 13 Oct 2026).
 - `classes/stats.json`: `disassembly.agimat.chance` (blue 0.5, orange 1; brown, white and grey none; 11 Oct 2026: was
   every slotted item, always one) and its `from` text.
@@ -1434,7 +1437,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   training gear, broken, +20), `enhanceView` (stones `whetstonesPerTry[target]`, odds `successPct + luck`, `nextStats`:
   ATK/DEF, accessories' lines), `luckPerFail`, `breaksFrom` (+16), `repairRefusal`, `embedRefusal` (gear Lv ≥ agimat, stats.json agimats.onlyIn (repo addition: crit rate / crit damage head and hands only, damage amp feet and body only; disassembly rolls only fitting stats, `rollAgimatStat`'s slot; the agimat tooltip says it),
   slot lock, any stats (the same one twice too), rare ones up to stats.json agimats.rarePerItem (repo addition: 2, both slots; was one)), `fragmentsFor` (3 × the stones to its +: only gear with a + gives any; stats.json disassembly.fragments.formula, a repo change 13 Oct 2026, was 2 + that; the confirm boxes say "Nothing" when nothing comes back), `disassemblyYield`, `auraFor` /
-  `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (success +1, luck 0; fail: stones
+  `itemAura`); rolls in bot `web/forge.ts` (pure, tested `forge.test.ts`): `enhance` (odds `successFor(…, item.level)`: stats.json enhancement.cost.levelPenalty, a repo
+  addition, ×(1 − 5% for every 10 item levels above Lv 10), luck added after; the popup's "Lv 40 gear: odds 15% lower";
+  success +1, luck 0; fail: stones
   used, luck += its bracket's; from +16 broken, keeps its +, `unequipBroken`), `repair` (kits of its tier, as many as the + it kept takes: stats.json enhancement.cost.repairKits, a repo addition, +15 1, +16/+17 2, +18 3, +19 4; shared `repairKitsFor` / `repairKitsText`; the Repair window shows "Repair Kits n / N"), `embed` (a full
   slot answers `confirm` until `replace`; the old agimat breaks), `disassemble` (bag only; fragments + from slotted affix gear (blue, orange) maybe an
   agimat of its level locked to its slot: stats.json disassembly.agimat.chance by affix tier, a repo addition, blue 0.5,
@@ -1444,8 +1449,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   room in your bag first."), `drawPlus` (an empty Temper Stone, `forge: temper`: the item's + into a filled stone,
   `temper-stone-filled` (`forge: tempered`, `noStack`; its Item's `plus` = the + held, `level` = the item level, `lock` =
   the type, an equipment slot; bound if the item was; named "Temper Stone (+7, Lv 10 Weapon)"), the item to +0; broken:
-  "Repair it first.") and `applyPlus` (a filled stone onto gear of its type and item level with a lower +: it takes the
-  stone's +, its own is lost; "Needs a Weapon" / "Needs a Lv 10 item" / "This item is already +7 or higher."; training gear
+  "Repair it first.") and `applyPlus` (a filled stone onto gear of its type at its item level or above with a lower +: it takes the
+  stone's +, less stats.json enhancement.temper.minusPerTier (2) for each gear tier up (gearTiers: Low Lv 1-20 → Mid
+  30-40; shared `temperedPlus`; the popup asks first: `confirmTemper`), its own is lost; "Needs a Weapon" / "Needs a Lv
+  10 item or higher." / "This item is already +7 or higher." / "Its +2 is too little to carry up a tier."; training gear
   never) (shared `removeRefusal` / `drawRefusal` / `applyRefusal`, `toolOf`; actions 'remove' {item, slot}, 'draw' {item},
   'apply' {item, stone}; the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
   fx-enhance-success with their sounds; tested); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
