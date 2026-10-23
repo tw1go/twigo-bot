@@ -1701,7 +1701,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   stage loads every FX its class's scripts name (`skillFx`, a dry run); the kit's fx `scale` / `tint`, `leap`, `echo`
   (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
   the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
-  filler never casts a charge-up), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
+  filler never casts a charge-up; you stand still while it's held: the step under way finished, then no walking by keys,
+  clicks or the auto-cast and no mobility move till it fires: `charging` in walkTo, moveTo, keyStep, mobility), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
   move), `spinUntil`, `leap` (`Character.leapTo`, everyone), `mob-hits` (each later hit's number waits for the script's
   own hit on that mob, 1.5 s at most: `laterCast` / `laterCredit` / `laterHit`), `mob-stun` / `mob-debuff` (world/mobs.ts
   `stun` / `debuff`: their marks from `combat/utility-looks.ts`, looping and following the mob: the stun stars on its

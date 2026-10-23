@@ -1747,6 +1747,11 @@ export class TownScene extends Phaser.Scene {
     if (!ch || !c || !this.battleMap || this.knockedOut || skillView(name)?.locked) return false;
     if (this.time.now < (this.castReady.get(name) ?? 0)) return false; // (cooling down: the press says so as ever)
     this.stopChannel();
+    // Standing still to charge: the step under way finished, then nothing more walked (keys, clicks, the auto-cast's
+    // walking into reach, a mobility move) till it's let go (walkTo, keyStep, moveTo, mobility check `charging`).
+    this.clickTo = null;
+    this.pending = null;
+    if (!this.player.isIdle) this.player.walk([this.player.heading]);
     const dir = this.player.facing;
     // The stage's frames up to the held one (the longest), held until it's let go.
     const frames = this.posesOf(c.id, ch.idx, true);
@@ -1905,7 +1910,7 @@ export class TownScene extends Phaser.Scene {
     const sk = skillView(name);
     if (!sk || sk.locked) return 'no'; // (from its unlock level: the bar says when; the town ignores it before)
     const now = this.time.now;
-    if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside || this.knockedOut) return 'no';
+    if (now < (this.moveReady.get(kind) ?? 0) || this.player.busy || this.player.isSitting || this.inside || this.knockedOut || this.charging) return 'no';
     if (!this.canPay(name)) {
       this.lowMp(this.mpOf(name), true);
       return 'no';
@@ -3665,7 +3670,7 @@ export class TownScene extends Phaser.Scene {
    * the wall through either of its two halves. Pressing into a wall just turns the player.
    */
   private keyStep(): Tile | null {
-    const dir = this.knockedOut || this.stunned ? null : this.heldDir();
+    const dir = this.knockedOut || this.stunned || this.charging ? null : this.heldDir();
     // On ice with nothing held: on you slide (CONTEXT.md Ice). On a belt: it carries you.
     const sliding = !dir && !this.knockedOut && !this.stunned ? (this.iceSlide() ?? this.beltCarry()) : null;
     if (sliding) return sliding;
@@ -4220,6 +4225,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Just walk there (a tile you can't get to: the nearest one you can), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
+    if (this.charging) return; // (standing still while a charge-up is held)
     this.stopFight(); // walking yourself stops an auto-cast
     this.stopChannel(); // (and a channel or windup)
     this.pending = null;
@@ -4284,7 +4290,7 @@ export class TownScene extends Phaser.Scene {
   }
 
   private walkTo(target: Tile): boolean {
-    if (this.knockedOut || this.stunned) return false;
+    if (this.knockedOut || this.stunned || this.charging) return false;
     const path = this.grid.findPath(this.player.heading, target);
     if (!path) return false;
     this.setBuildingAlert(null); // leaving the door we were at
