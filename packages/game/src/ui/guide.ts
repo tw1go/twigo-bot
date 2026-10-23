@@ -256,7 +256,7 @@ const TOPICS: Topic[] = [
     text: [
       'Make your gear stronger with **whetstones** (Rough Whetstones: the sari-sari store’s **Smithing** tab, the Golem, or fragments).',
       '• **Click a whetstone** in your combat bag: the **Enhance** window opens. Drag (or click) a weapon, armor piece or accessory in: only gear of the whetstone’s tier (Rough: item **Lv 1–20**). Worn gear works too',
-      '• Add whetstones with **+** or drag the stack in. A try takes more as the + rises (**1** for +1 … **20** for +20); the window shows the odds (lower on higher gear: **5%** less of them for every 10 item levels above Lv 10) and what the next + gives',
+      '• Add whetstones with **+** or drag the stack in. A try takes more as the + rises (**1** for +1 … **20** for +20); the window shows the odds (lower on higher gear: **10%** less of them for Lv 30-40 gear) and what the next + gives',
       '• A fail uses the whetstones but adds **luck** to your next try at that step (**Luck +10%**…); a success resets it. An item **never loses a +**',
       '• From **+16** a fail **breaks** the item: it keeps its + but gives nothing (and comes off) until fixed. **Click a Repair Kit** and drag the broken item in. A broken **+15** takes **1** kit, **+16** and **+17** take **2**, **+18** takes **3**, **+19** takes **4**',
       '• Weapons and armor gain base ATK or DEF: **+3%** a + up to +10, **+8%** up to +15, **+15%** at +16 and **+20%** each from **+17 to +20** (about 2.6× the base at +20). Armor gains at least **1 DEF** a + from +11 and **2** from +17',

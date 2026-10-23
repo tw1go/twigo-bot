@@ -148,16 +148,17 @@ export const enhanceMax = (data: StatsData) => itemStats(data).enhancement.max;
 /** Whetstones one try at `target` (+1 … +20) uses (enhancement.cost.whetstonesPerTry). */
 export const stonesFor = (data: StatsData, target: number) => itemStats(data).enhancement.cost.whetstonesPerTry[target] ?? 0;
 
-/** A try's own odds at `target` before luck (enhancement.cost.successPct). */
+/** A try's own odds at `target` before luck (enhancement.cost.successPct), lower for an item of a higher gear tier
+ *  (`level`: enhancement.cost.levelPenalty). */
 export function successFor(data: StatsData, target: number, level = 0): number {
   const C = itemStats(data).enhancement.cost;
   const base = C.successPct[target] ?? 0;
   const P = C.levelPenalty;
-  if (!P || level <= P.from) return base;
-  return base * Math.max(0, 1 - P.pct * Math.floor((level - P.from) / P.everyLevels));
+  if (!P || !level) return base;
+  return base * Math.max(0, 1 - P.pctPerTier * tiersUp(data, 1, level));
 }
 
-/** How much of a try's odds an item level keeps (stats.json enhancement.cost.levelPenalty): 1 at Lv 10, 0.85 at Lv 40. */
+/** How much of a try's odds an item level keeps (stats.json enhancement.cost.levelPenalty): 1 for Low gear (Lv 1-20), 0.9 for Mid (Lv 30-40). */
 export const levelOddsShare = (data: StatsData, level: number) => (successFor(data, 1, level) || 1) / (successFor(data, 1) || 1);
 
 /** The luck a fail at `target` adds to the next try at that step (enhancement.cost.luckPerFail: "1-5", "6-10"…). */

@@ -383,7 +383,7 @@ export class ForgePopup {
     parts.push(odds);
     // (Higher gear is harder: stats.json enhancement.cost.levelPenalty.)
     const share = levelOddsShare(D.stats, item!.level);
-    if (share < 1) parts.push(el('div', 'fg-have', `Lv ${item!.level} gear: odds ${Math.round((1 - share) * 100)}% lower`));
+    if (share < 1) parts.push(el('div', 'fg-have', `Lv ${item!.level} gear (a higher tier): odds ${Math.round((1 - share) * 100)}% lower`));
     if (v.luck > 0) parts.push(el('div', 'fg-luck', `Luck +${Math.round(v.luck * 100)}%`));
     for (const n of v.next) parts.push(el('div', 'fg-next', nextLine(n)));
     if (v.breaks) parts.push(el('div', 'fg-warn', `A fail now breaks it (it keeps its +; fixing it takes ${repairKitsText(D, item!)}).`));

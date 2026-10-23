@@ -147,7 +147,7 @@ export interface ItemStats {
       breaks: string;
       repairKits?: Record<string, number | string>;
       /** Higher gear is harder (a repo addition): the odds x (1 - pct for every everyLevels item levels above from). */
-      levelPenalty?: { pct: number; everyLevels: number; from: number };
+      levelPenalty?: { pctPerTier: number };
     };
     /** A filled Temper Stone up a gear tier (a repo addition): minusPerTier off its + for each tier it crosses. */
     temper?: { minusPerTier: number };

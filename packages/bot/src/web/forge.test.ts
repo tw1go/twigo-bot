@@ -626,9 +626,9 @@ test('Temper Stone up the gear tiers: Lv 10 +20 onto Lv 20 keeps +20, onto Lv 30
   assert.equal(mid0.plus, 0);
 });
 
-test('enhancing higher gear: each try\'s odds 5% lower (of themselves) for every 10 item levels above Lv 10; luck adds after', () => {
+test('enhancing higher gear: each try\'s odds 10% lower (of themselves) for Mid gear (Lv 30-40), as the table for Low (Lv 1-20); luck adds after', () => {
   const pct = S.enhancement.cost.successPct;
-  for (const [level, share] of [[1, 1], [10, 1], [19, 1], [20, 0.95], [30, 0.9], [40, 0.85]] as const) {
+  for (const [level, share] of [[1, 1], [10, 1], [20, 1], [30, 0.9], [40, 0.9]] as const) {
     assert.ok(Math.abs(successFor(D.stats, 5, level) - pct[5] * share) < 1e-9, `Lv ${level}`);
   }
   const it = piece('weapon-fine-stick', 4);
