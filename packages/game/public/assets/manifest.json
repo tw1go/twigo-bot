@@ -22698,7 +22698,7 @@
         37
       ],
       "layer": "ground",
-      "note": "Atsarah's Brine Splash, radius 2 tiles; anchor = her feet. Back half: the far side of the ring, behind the body. (23 Oct 2026, Mac's PixelLab)"
+      "note": "Delemon's Brine Splash, radius 2 tiles; anchor = her feet. Back half: the far side of the ring, behind the body. (23 Oct 2026, Mac's PixelLab)"
     },
     "fx-silong-brine-splash-front": {
       "file": "fx/silong/fx-silong-brine-splash-front.png",
@@ -22714,7 +22714,7 @@
         37
       ],
       "layer": "front",
-      "note": "Atsarah's Brine Splash, radius 2 tiles; anchor = her feet. Front half: the near side, same anchor and timing. (23 Oct 2026, Mac's PixelLab)"
+      "note": "Delemon's Brine Splash, radius 2 tiles; anchor = her feet. Front half: the near side, same anchor and timing. (23 Oct 2026, Mac's PixelLab)"
     },
     "fx-silong-lid-spin": {
       "file": "fx/silong/fx-silong-lid-spin.png",
@@ -22730,7 +22730,7 @@
         10
       ],
       "layer": "front",
-      "note": "Atsarah's Lid Spin: her jar lid spinning; the game flies it out 7 tiles and back; anchor = the centre (23 Oct 2026, Mac's PixelLab)"
+      "note": "Delemon's Lid Spin: her jar lid spinning; the game flies it out 7 tiles and back; anchor = the centre (23 Oct 2026, Mac's PixelLab)"
     },
     "fx-silong-rice-fall": {
       "file": "fx/silong/fx-silong-rice-fall.png",

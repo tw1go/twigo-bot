@@ -1,3 +1,4 @@
+import { fakeLogin } from '../session';
 import { setTrailOn, trailOn } from '../world/quest-trail';
 import { playSound, setSound, soundSettings } from '../audio/sound';
 import { api, setAppToken } from '../net/endpoints';
@@ -59,6 +60,15 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   const openKeys = el('button', 'st-button', 'Keybinds');
   const open = el('button', 'st-button', 'Credits');
   more.append(openKeys, open);
+  // Dev: the GM tools (ui/gm-tools.ts), on the dev server with a pretend login.
+  if (import.meta.env.DEV && fakeLogin()) {
+    const gm = el('button', 'st-button', 'GM tools');
+    gm.addEventListener('click', () => {
+      close();
+      dispatchEvent(new Event('mk-gm-open'));
+    });
+    more.append(gm);
+  }
   main.append(more); // (across both columns)
   const show = (which: 'keys' | 'credits' | null) => {
     main.hidden = which !== null;

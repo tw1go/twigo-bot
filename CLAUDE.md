@@ -161,6 +161,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade; their icons the art folder's
   items/palengke/art, 21 Oct 2026, each matched to its kind by `_icons.csv`'s recoloured_from); `items/items.json`
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
+  Ang Silong's (23 Oct 2026, the owner): B1's jar mini boss is Delemon (was Atsarah: dungeons.json and the floors'
+  layout), the Ice Machine's body on the Ice Plant's north wall (the layout's K, cols 40-49; `bossTile` and
+  `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7); the B3 door opens as the
+  closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
   `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
   asked, 23 Oct 2026), twice the mob zones' spawn points (23 Oct 2026: 80 a zone, the Fish Market's 56 on baha,
@@ -1078,7 +1082,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
   the Palengke's hatch label, click and glow after palengke-14. Its mini bosses' moves (part 2, 21 Oct 2026: bot
   `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
-  Atsarah's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
+  Delemon's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
   too) and Lid Spin (out and back along its line), Sakristan's Rice Rain (each circle's spilled rice:
   `MobRoom.spill`) and Belly Flop (he lands there), Mono Lisa's Chair Barrage and Split (two fakes, blocked, all three
   small: Mobs `rescale`, a glint on her; gone after 6 s), Sangkalancelot's shell (`MobRoom.frontBlock` 100% from his
@@ -1087,12 +1091,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
   tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (Mac's
   PixelLab fx-silong-* since 23 Oct 2026, the art folder's fx/mob-boss-pixellab/silong: Brine Splash as `-back` / `-front`
-  halves at Atsarah's feet, fitted to its circle (both halves one scale; the flop dust, hook shadow and ambush burst
+  halves at Delemon's feet, fitted to its circle (both halves one scale; the flop dust, hook shadow and ambush burst
   grown to theirs only when short: `circleScale`'s `grow`), the charge's frost mirrored when Sangkalancelot charges left on screen, the Ice Slick a 2 x 2
   diamond per block of the floor's even grid its tiles touch; code stand-ins while a sheet isn't loaded) and the boss bar
   in a mini boss's room. Ang Makinang Yelo (part 3, 21 Oct 2026; the same `FloorBosses`
   on B3, `last`): placed on its body's (K) middle, still and silent, its reach as far as the body goes (5) so the tiles
-  round it are next to it, with Call the Frost's two Frost Scales by its fan (the map's `bossTile`, [53,28]); Ice Block
+  round it are next to it, with Call the Frost's two Frost Scales by its fan (the map's `bossTile`, [44,28]: its body moved to the middle of the Ice Plant's north wall, cols 40-49, and the fan under the middle of its face, 23 Oct 2026; the breath 10 tiles long, its art scaled to it: `breathScale`); Ice Block
   Drop (tiles under up to 3 players, 5 enraged; each a wall on the floor's map for 12 s: `iceBlocks`, then open again),
   Freezer Breath (a 120° cone of 7 from the fan along +row, i.e. down-left; nothing for whoever an ice block stands
   between them and the fan: `shielded`; `data.chill` 2 for part 4), Belt Rush (a line down one belt, `data.belt`,

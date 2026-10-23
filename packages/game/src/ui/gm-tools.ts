@@ -6,7 +6,7 @@ import { fakeName } from '../session';
 import { toast } from './toast';
 
 // 🛠 The GM tools (the dev server only: `npm run dev:game`, a pretend login): a small panel at the left edge, folded to a
-// "GM" tab. HP and MP (can't be knocked out, skills cost no MP: the testing switches, for anyone here; a full heal), your
+// "🛠 GM" tab (Settings → GM tools opens it too). HP and MP (can't be knocked out, skills cost no MP: the testing switches, for anyone here; a full heal), your
 // level and XP, Kusing, the quests under way (a step done, or all of it, rewards and all), a jump to a tile or another
 // map, a free run of a dungeon from anywhere, and every mob near you down (its XP, loot and quest kills yours). The dev town does each (scripts/dev-town.ts:
 // /__gm, /__xp, /__give), the same code the bot runs; the quests are the page's pretend store's.
@@ -28,15 +28,19 @@ export function mountGmTools(h: GmHooks): () => void {
   const root = el('div', '');
   root.id = 'gm-tools';
   let open = localStorage.getItem('mk_gm_open') === '1';
-  const tab = button('GM', () => {
-    open = !open;
+  const setOpen = (on: boolean) => {
+    open = on;
     try {
       localStorage.setItem('mk_gm_open', open ? '1' : '0');
     } catch {
       // (folded again next time)
     }
     render();
-  });
+  };
+  const tab = button('🛠 GM', () => setOpen(!open));
+  // (Settings → GM tools opens it too.)
+  const fromSettings = () => setOpen(true);
+  addEventListener('mk-gm-open', fromSettings);
   tab.className = 'gm-tab';
   const body = el('div', 'gm-body');
   root.append(tab, body);
@@ -132,6 +136,7 @@ export function mountGmTools(h: GmHooks): () => void {
   render();
   return () => {
     for (const off of offs) off();
+    removeEventListener('mk-gm-open', fromSettings);
     clearInterval(tick);
     root.remove();
   };
