@@ -921,10 +921,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   from `flashAt` and a yellow flash on its dial). Mini bosses wear their kind's `miniLook`; the palengke's leveling for
   their names and size (Mobs `levelingKey`, the 'palengke-leveling' json). Zone mobs never step on the field boss's
   `arena` where it has no pit (`inArena`). Their hurt and death sets as every mob's (22 Oct 2026). Their FX
-  (21 Oct 2026, the art folder's fx/palengke, script-built; manifest fx `fx-payong-*` … `fx-timbangan-*`, loaded on the
+  (Mac's PixelLab ones since 23 Oct 2026, the art folder's fx/mob-boss-pixellab/palengke, the same names as the 21 Oct
+  script-built ones; manifest fx `fx-payong-*` … `fx-timbangan-*`, loaded on the
   Palengke and Silong maps only: queue.ts `PALENGKE_FX`): each kind's attack effect on its attack frame (world/mobs.ts
   `ATTACK_FX`: the Payong's poke and its open umbrella's shimmer, the Sobber's tear burst, the Jars' clink on their target,
-  the Sako's slam dust, the Chomper's bite; a frost recolour plays its original's), the "blocked" arc, the thrown chair
+  the Sako's slam dust, the Chomper's bite; a frost recolour plays its original's; the poke and the "blocked" arc point
+  right, mirrored for a facing to the left on screen: w, sw, nw), the "blocked" arc, the thrown chair
   and its landing, the Lurker's ripple while hidden and its splash as it rises, the Sentinel's dial flash, the tear cloud
   and the spilled rice (TownScene); each drawn in code while its sheet isn't loaded (`fxArt`). Dev: `?palengkemobs=demo` (the nearest mob of each
   kind through every anim, a facing a round), `?minibosses=now` (the palengke's too).
@@ -958,10 +960,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   for arrivals. Game: `world/great-scale.ts` `GreatScaleView` (the telegraphs, its move anims timed so the hit frame
   lands on the hit, the held player lifted 12 px in a dashed ring, the pan's sheets drawn in code, dust where the
   Sentinels drop, a white burst on each Pan Slam, the gold bell to click, the boss bar in its arena, the HUD's field
-  boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); its FX the art folder's fx-scale-* (21 Oct 2026:
-  the pan's warning in each Pan Slam circle and its impact, the Weigh-in ring round the held player, Kulang sa Timbang's
-  cone (se / ne art, mirrored for sw / nw) hitting on its frame 3, the Sentinels' call, the enrage at its dial, the bell
-  over its tile; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
+  boss timer with its dial (manifest ui.greatScaleHead) and "Awake! Go to the hall"); its FX Mac's PixelLab fx-scale-* (23 Oct 2026, the art folder's
+  fx/mob-boss-pixellab; the bell the 21 Oct one): the pan's warning in each Pan Slam circle and its impact, the Weigh-in
+  chain ring round the held player (`-back` behind them, `-front` over them), Kulang sa Timbang's cone (se / ne art,
+  mirrored on its anchor, its narrow end on its feet, for sw / nw; at 70%: `CONE_ALPHA`) hitting on its frame 3, the
+  Sentinels' call, the enrage's red ring on the ground at its feet, the bell over its tile. Area pieces are scaled to their
+  red warning (`world/fx-fit.ts`: each sheet's reach from its anchor over every frame, nearest-neighbour, x and y alike,
+  worked out as the move plays): the pan's warning to each Pan Slam circle, the enrage ring to its body (mobs.json
+  radius), the cone out to the cone's full length (`coneScale`); the rest (the pan's impact, the Weigh-in ring, the
+  call) at its 1.5x (`size`, mobs.json scale); code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
   wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
   dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
   cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
@@ -1042,8 +1049,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   front, open 1.2 s after each Cleaver Charge) and his hook shadows from 50%, Frosty Tubbs' Ambush (under the ice:
   `setFlags` hidden) and Ice Slick (a cone of ice for 5 s), the calls; a mini boss's moves stop as it resets or falls.
   The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
-  tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (code
-  placeholders) and the boss bar in a mini boss's room. Ang Makinang Yelo (part 3, 21 Oct 2026; the same `FloorBosses`
+  tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (Mac's
+  PixelLab fx-silong-* since 23 Oct 2026, the art folder's fx/mob-boss-pixellab/silong: Brine Splash as `-back` / `-front`
+  halves at Atsarah's feet, fitted to its circle (both halves one scale; the flop dust, hook shadow and ambush burst
+  grown to theirs only when short: `circleScale`'s `grow`), the charge's frost mirrored when Sangkalancelot charges left on screen, the Ice Slick a 2 x 2
+  diamond per block of the floor's even grid its tiles touch; code stand-ins while a sheet isn't loaded) and the boss bar
+  in a mini boss's room. Ang Makinang Yelo (part 3, 21 Oct 2026; the same `FloorBosses`
   on B3, `last`): placed on its body's (K) middle, still and silent, its reach as far as the body goes (5) so the tiles
   round it are next to it, with Call the Frost's two Frost Scales by its fan (the map's `bossTile`, [53,28]); Ice Block
   Drop (tiles under up to 3 players, 5 enraged; each a wall on the floor's map for 12 s: `iceBlocks`, then open again),
