@@ -160,9 +160,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
   `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
-  asked, 23 Oct 2026), and twice the mob zones' spawn points (23 Oct 2026: 80 a zone, the Fish Market's 56 on baha,
+  asked, 23 Oct 2026), twice the mob zones' spawn points (23 Oct 2026: 80 a zone, the Fish Market's 56 on baha,
   spread out from the art folder's 40; copying the map over again loses them) with stats.json
-  `aliveperZoneIn.palengke` 40 and mobs.json's Garapon Jars `alive` 20 / Banyera Lurkers 28.
+  `aliveperZoneIn.palengke` 40 and mobs.json's Garapon Jars `alive` 20 / Banyera Lurkers 28, and the Market Hall's four
+  doorways open (23 Oct 2026: the middle two tiles of each door piece, where its art is a doorway, were blocked, so the
+  hall was cut off on foot since the first map; north (133-134, 79), west (109, 105-106), south (144-145, 139), east
+  (169, 104-105) through the clock-tower front).
 - The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
   (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
