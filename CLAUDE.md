@@ -1112,7 +1112,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Lantern Post to travel."): a tab per map (Town, Slums, Old Market; opening on the map you're in), each its map alone:
   manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond (the Old
   Market: a plain diamond, NOT_DRAWN), at a whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab
-  shares; a smaller one fills it, up to FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`), with the Slums'
+  shares; a smaller one fills it, up to FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`; no scrollbars:
+  bigger than its box (a phone), it's dragged, `dragToScroll`: a press moving 4 px is a drag and its click is swallowed), with the Slums'
   zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
   maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
   diamond `.mm-gate` and its name: a stand-in until there's an icon) and a teleporter icon per post

@@ -2148,7 +2148,10 @@
       #map-menu .mm-title { font-size: calc(22px * var(--text)); font-weight: 700; color: #fff; }
       #map-menu .mm-close { position: absolute; right: 0; top: 0; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: calc(26px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       #map-menu .mm-close:hover { color: #fff; }
-      #map-menu .mm-inset { flex: none; overflow: auto; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; }
+      #map-menu .mm-inset { flex: none; overflow: auto; scrollbar-width: none; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; touch-action: none; }
+      #map-menu .mm-inset::-webkit-scrollbar { display: none; }
+      #map-menu .mm-inset.mm-can-drag { cursor: grab; }
+      #map-menu .mm-inset.mm-dragging { cursor: grabbing; }
       #map-menu .mm-stage { position: relative; width: calc(428px * var(--k)); height: calc(220px * var(--k)); }
       #map-menu .mm-world { position: absolute; display: block; width: calc(428px * var(--k)); height: calc(220px * var(--k)); image-rendering: pixelated; user-select: none; }
       /* A map the picture doesn't have yet (the Lumang Palengke): a plain diamond where it lies (clip-path set in code). */
