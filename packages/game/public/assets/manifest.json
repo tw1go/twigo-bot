@@ -22082,15 +22082,15 @@
     "fx-hilot-spirit-smoke": {
       "file": "fx/hilot/fx-hilot-spirit-smoke.png",
       "frame": [
-        52,
-        96
+        35,
+        64
       ],
       "frames": 16,
       "fps": 8,
       "loop": true,
       "anchor": [
-        26,
-        91
+        17,
+        61
       ],
       "layer": "front",
       "note": "Spirit Smoke: the smoke curling round the mob; anchor = the mob's feet; follow the mob and loop while the ticks last"
