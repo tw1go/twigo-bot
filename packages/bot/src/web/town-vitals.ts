@@ -52,6 +52,8 @@ export class Vitals {
   private readonly all = new Map<string, Vital>();
   /** Members who can't be knocked out (a Game Master testing: CONTEXT.md Unkillable): their HP stops at 1. */
   private readonly unkillable = new Set<string>();
+  /** Members whose skills cost no MP (a Game Master testing): `spend` and `hasMp` always say yes, nothing taken. */
+  private readonly freeMp = new Set<string>();
 
   constructor(private readonly regen: StatsData['regen']) {}
 
@@ -91,6 +93,17 @@ export class Vitals {
     v.mp = Math.min(v.mp, max.mp);
   }
 
+  /** Skills cost no MP (`on`), or cost it again. */
+  setFreeMp(user: string, on: boolean): void {
+    if (on) this.freeMp.add(user);
+    else this.freeMp.delete(user);
+  }
+
+  /** Whether their skills cost no MP. */
+  isFreeMp(user: string): boolean {
+    return this.freeMp.has(user);
+  }
+
   /** Can't be knocked out (`on`), or can again: hits still land, HP stops at 1. */
   setUnkillable(user: string, on: boolean): void {
     if (on) this.unkillable.add(user);
@@ -123,7 +136,7 @@ export class Vitals {
   spend(user: string, mp: number): boolean {
     const v = this.all.get(user);
     if (!v || v.outUntil) return false;
-    if (mp <= 0) return true;
+    if (mp <= 0 || this.freeMp.has(user)) return true;
     if (v.mp < mp) return false;
     v.mp -= mp;
     return true;
@@ -132,7 +145,7 @@ export class Vitals {
   /** Whether they have this much MP now (0: always). */
   hasMp(user: string, mp: number): boolean {
     const v = this.all.get(user);
-    return mp <= 0 || (!!v && !v.outUntil && v.mp >= mp);
+    return mp <= 0 || (!!v && !v.outUntil && (this.freeMp.has(user) || v.mp >= mp));
   }
 
   /** Whether they're at their most of it. */

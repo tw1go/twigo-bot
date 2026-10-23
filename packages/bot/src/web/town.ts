@@ -1400,7 +1400,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           const ids = mobs?.debuff(p.id, [p.col, p.row], m.buff, def.stats, 0, mobTarget, def.rangeTiles ?? 1, now, true) ?? [];
           if (!ids.length) return send(c, { t: 'buff-refused', buff: m.buff, reason: 'target' });
         }
-        const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? v.mp : 0, at: [p.col, p.row] }, m.buff, party, target, now);
+        const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? (vitals.isFreeMp(c.userId) ? Infinity : v.mp) : 0, at: [p.col, p.row] }, m.buff, party, target, now);
         if (!r.ok) return send(c, { t: 'buff-refused', buff: m.buff, reason: r.reason, ...(r.ms ? { ms: r.ms } : {}) });
         if (r.debuff && mobs) {
           mobs.debuff(p.id, [p.col, p.row], m.buff, r.debuff, (r.buff.durationSec ?? 0) * 1000, mobTarget, r.buff.rangeTiles ?? 1, now);
@@ -1853,10 +1853,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'testing': {
         // A Game Master's testing switches (Settings → Testing): anyone else's message is ignored.
-        if (!opts.testing || !opts.gm?.(c.userId) || typeof m.unkillable !== 'boolean') return;
-        const testing = opts.testing.set(c.userId, { unkillable: m.unkillable });
+        const change: Partial<TestingSettings> = {};
+        if (typeof m.unkillable === 'boolean') change.unkillable = m.unkillable;
+        if (typeof m.freeMp === 'boolean') change.freeMp = m.freeMp;
+        if (!opts.testing || !opts.gm?.(c.userId) || !Object.keys(change).length) return;
+        const testing = opts.testing.set(c.userId, change);
         vitals?.setUnkillable(c.userId, testing.unkillable);
-        console.log(`[testing] ${p.nickname} unkillable ${testing.unkillable ? 'on' : 'off'}`);
+        vitals?.setFreeMp(c.userId, testing.freeMp);
+        console.log(`[testing] ${p.nickname} unkillable ${testing.unkillable ? 'on' : 'off'}, free MP ${testing.freeMp ? 'on' : 'off'}`);
         return send(c, { t: 'testing', testing });
       }
     }
@@ -1980,6 +1984,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const gm = !!opts.gm?.(userId);
       const testing = gm ? opts.testing.get(userId) : null;
       vitals?.setUnkillable(userId, !!testing?.unkillable);
+      vitals?.setFreeMp(userId, !!testing?.freeMp);
       if (testing) send(c, { t: 'testing', testing });
     }
     if (H) {
