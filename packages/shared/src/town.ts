@@ -8,6 +8,12 @@ import type { Item, LootGot } from './items.js';
 import type { TradeEnd, TradeRefusal, TradeView, TradePut } from './trade.js';
 import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 import type { PrivacySettings } from './friends.js';
+
+/** A Game Master's testing switches (Settings → Testing), kept for them by the server. `unkillable` (CONTEXT.md
+ *  Unkillable): hits land as ever, but their HP never goes below 1, so they're never knocked out. */
+export interface TestingSettings {
+  unkillable: boolean;
+}
 import type { EventPotion } from './events.js';
 
 export type TownDir = 's' | 'se' | 'e' | 'ne' | 'n' | 'nw' | 'w' | 'sw';
@@ -304,6 +310,9 @@ export type TownClientMessage =
   | { t: 'reunite' }
   /** Change your privacy settings (Settings → Privacy): only what's given changes. */
   | { t: 'privacy'; whispers?: PrivacySettings['whispers']; balance?: PrivacySettings['balance']; status?: PrivacySettings['status'] }
+  /** A Game Master's testing switches (Settings → Testing; CONTEXT.md Unkillable): only what's given changes; anyone
+   *  else's is ignored. */
+  | { t: 'testing'; unkillable?: boolean }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */
@@ -845,6 +854,8 @@ export type TownServerMessage =
   | { t: 'whisper-refused'; reason: WhisperRefusal; name: string }
   /** Your privacy settings (on arrival and after a change). */
   | { t: 'privacy'; privacy: PrivacySettings }
+  /** Your testing switches (Game Masters only: on arrival and after a change). */
+  | { t: 'testing'; testing: TestingSettings }
   /** The Halloween event as you see it (on arrival and on every change; null: it's off), and whether its decorations
    *  are up (their own window: from before the event starts). */
   | { t: 'halloween'; view: HalloweenView | null; decorations?: boolean }

@@ -19,7 +19,7 @@ import { type LootRoll, LootRolls } from './town-roll.js';
 import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
-import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
+import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, TestingSettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
 import { SILONG_FLOORS, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
@@ -279,6 +279,9 @@ export interface TownOptions {
   /** Members' privacy settings (web/privacy.ts in the bot; in memory on the game's dev server): who may whisper them.
    *  Without it, everyone may whisper everyone. */
   privacy?: { get(userId: string): PrivacySettings; set(userId: string, change: Partial<PrivacySettings>): PrivacySettings };
+  /** Game Masters' testing switches (web/testing.ts in the bot; in memory on the game's dev server): only `gm` members'
+   *  are read or changed. Without it, no testing switches. */
+  testing?: { get(userId: string): TestingSettings; set(userId: string, change: Partial<TestingSettings>): TestingSettings };
   /** The Halloween event (web/halloween.ts: its window, Mikko Kalabasa, Biikko Kalabasa, the Manananggal; its director
    *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
    *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
@@ -1848,6 +1851,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!Object.keys(change).length) return;
         return send(c, { t: 'privacy', privacy: opts.privacy.set(c.userId, change) });
       }
+      case 'testing': {
+        // A Game Master's testing switches (Settings → Testing): anyone else's message is ignored.
+        if (!opts.testing || !opts.gm?.(c.userId) || typeof m.unkillable !== 'boolean') return;
+        const testing = opts.testing.set(c.userId, { unkillable: m.unkillable });
+        vitals?.setUnkillable(c.userId, testing.unkillable);
+        console.log(`[testing] ${p.nickname} unkillable ${testing.unkillable ? 'on' : 'off'}`);
+        return send(c, { t: 'testing', testing });
+      }
     }
   };
 
@@ -1964,6 +1975,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     tellParty(userId); // back (or in another area): their new id and where they are
     friendArrived(userId, room, !!old);
     if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
+    // A Game Master's testing switches (and only a Game Master's: rights taken away, they no longer count).
+    if (opts.testing) {
+      const gm = !!opts.gm?.(userId);
+      const testing = gm ? opts.testing.get(userId) : null;
+      vitals?.setUnkillable(userId, !!testing?.unkillable);
+      if (testing) send(c, { t: 'testing', testing });
+    }
     if (H) {
       send(c, { t: 'halloween', view: H.view(room, Date.now(), (u) => conns.get(u)?.player.id), decorations: H.decorations(Date.now()) });
       if (H.carrier === userId) tellHalloween(); // (back: their dazed upper half shows behind them again)

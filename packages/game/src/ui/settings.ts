@@ -7,6 +7,7 @@ import { toast } from './toast';
 import { TEXT_SIZES, setTextSize, textSize } from './text-size';
 import { isDesktopApp } from '../net/platform';
 import { changePrivacy, privacy } from '../net/privacy';
+import { changeTesting, testing } from '../net/testing';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
@@ -37,6 +38,7 @@ export function showSettings(o: { loggedIn: boolean; onClose?: () => void }): vo
   left.append(audio(), display());
   right.append(leave());
   if (o.loggedIn && privacy()) right.append(privacySection());
+  if (o.loggedIn && testing()) right.append(testingSection()); // (Game Masters only: the town tells nobody else)
   if (o.loggedIn) right.append(account());
   main.append(left, right);
   // Pages: Settings, and from its buttons Keybinds and Credits (each with Back).
@@ -129,6 +131,33 @@ function audio(): HTMLElement {
   folk.append(folkBox, el('span', undefined, 'Mute gossip murmur'));
 
   section.append(el('h3', 'st-heading', 'Audio'), music.row, sfx.row, mute, folk);
+  return section;
+}
+
+/** Testing (Game Masters only; CONTEXT.md Unkillable): can't be knocked out, kept by the town's server (net/testing.ts)
+ *  until turned off. */
+function testingSection(): HTMLElement {
+  const section = el('section', 'st-section');
+  const row = el('label', 'st-row st-check');
+  const box = el('input');
+  box.type = 'checkbox';
+  const draw = () => (box.checked = !!testing()?.unkillable);
+  draw();
+  // (Drawn as the town last said: the server answers a change with the switches now.)
+  box.addEventListener('change', () => {
+    playSound('click');
+    if (!changeTesting({ unkillable: box.checked })) {
+      toast('Can’t reach the town right now.', 2600, 'bad');
+      return draw();
+    }
+    toast(box.checked ? 'Unkillable: your HP stops at 1.' : 'You can be knocked out again.', 2400);
+  });
+  row.append(box, el('span', undefined, 'Can’t be knocked out'));
+  section.append(
+    el('h3', 'st-heading', 'Testing'),
+    row,
+    el('p', 'st-note', 'Game Masters only. Hits still land, but your HP stops at 1, so you can fight on through quests and levels. Stays on until you turn it off.'),
+  );
   return section;
 }
 

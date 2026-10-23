@@ -51,6 +51,7 @@ import { announce } from '../ui/announce';
 import { OnlineList, showFriendRequest } from '../ui/online';
 import { answer as friendAnswer, askByName, blockByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
 import { setPrivacy, setPrivacyLink } from '../net/privacy';
+import { setTesting, setTestingLink } from '../net/testing';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
@@ -2427,6 +2428,7 @@ export class TownScene extends Phaser.Scene {
     setPartyLink(link);
     setFriendsLink(link);
     setPrivacyLink(link);
+    setTestingLink(link);
     this.others.inParty = inParty;
     if (member) {
       const C = this.M.characters;
@@ -2610,6 +2612,7 @@ export class TownScene extends Phaser.Scene {
       }
       if (m.t === 'whisper-refused') return chat.notice(m.reason === 'self' ? "You can't whisper yourself." : m.reason === 'offline' ? `${m.name} isn't online.` : `${m.name} isn't taking whispers.`);
       if (m.t === 'privacy') return setPrivacy(m.privacy);
+      if (m.t === 'testing') return setTesting(m.testing);
       // The Scrap Warrens: the gate's panel, an invite, going in and out, the run's tracker, its bosses' moves.
       if (m.t === 'warrens-gate') return showWarrensGate(m.gate, (what) => link.send(what === 'open' ? { t: 'warrens-open' } : what === 'practice' ? { t: 'warrens-practice' } : { t: 'warrens-join' }));
       if (m.t === 'warrens-invite') return showWarrensInvite(m.from, m.ms, (join) => link.send(join ? { t: 'warrens-join', run: m.run } : { t: 'warrens-decline', run: m.run }));
