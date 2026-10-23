@@ -1,0 +1,994 @@
+{
+ "version": 1,
+ "note": "Quest cutscenes (23 Oct 2026, cutscenes/src/build_cutscenes.py). Each scene plays once per player (seen flags with the quest progress), can be skipped, and can be watched again from the quest log. Everything in them is art, FX and sounds the game already has; names in the notes are what to look for where a key differs. Repo changes (23 Oct 2026): the words in English (titles, bubbles, banners, the finale's last line, as the game's quests since #104); palengke-gate only while Q1 isn't done; huling-suki also plays as the bell is rung (afterStep); rules.map and trigger documented.",
+ "rules": {
+  "skip": "Esc, or the Skip button on the bottom bar: jumps to the end state (quest step done, NPCs where the scene leaves them, bars off).",
+  "safe": "While a scene plays you can't move, attack or be hit (the server treats you as away for at most 60 s; it ends the moment the scene does).",
+  "others": "Only you see your scene. Other players see you standing still with a small \"...\" bubble.",
+  "once": "A scene plays the first time its trigger happens (never on login for someone already past it); the quest log has \"Watch again\" on every done quest that has a scene.",
+  "map": "A scene plays on its own map (`map`): its moment elsewhere (the Tanod's last order reported over the radio from town) waits, and it plays the next time you walk onto its map."
+ },
+ "steps": {
+  "bars": "{\"bars\": true|false}: the black letterbox bars slide in (and the HUD fades out) or out (HUD back). Every scene starts with bars on and ends with bars off.",
+  "camera": "{\"camera\": [col,row] | \"<npc id>\" | \"player\", \"ms\": pan time (0 = cut), \"zoom\": optional, \"hold\": optional ms after}. The camera stops following you while a scene runs; \"player\" pans back to you.",
+  "fade": "{\"fade\": \"out\"|\"in\", \"ms\": 300}: to the night navy (#111827) and back. Anything moved while faded out jumps there.",
+  "wait": "{\"wait\": ms}",
+  "say": "{\"say\": \"<npc id>\" | \"player\" | \"narrator\", \"lines\": [...]} or {\"say\": id, \"quest\": \"<quest id>\", \"part\": \"give\"|\"report\"|\"talk\"}: the normal dialog box, clicked through as usual; the scene goes on when the last line is clicked. \"narrator\": the box with no name and no portrait, in italics.",
+  "bubble": "{\"bubble\": id, \"text\": \"...\", \"ms\": 1800}: the speech bubble the town NPCs already use (no box, no click). \"!\", \"?\" and \"...\" are bubbles too.",
+  "walk": "{\"walk\": id | \"player\", \"to\": [col,row], \"wait\": true}: along the grid at their own speed; \"wait\": false lets the next step start at once.",
+  "place": "{\"place\": id, \"at\": [col,row], \"face\": dir}: puts someone there at once (use while faded out).",
+  "face": "{\"face\": id, \"dir\": \"se\"... | \"<other id>\" | \"player\"}",
+  "anim": "{\"anim\": id, \"play\": \"wave\"|\"cheer\"|\"whistle\"|\"idle-ready\"...}: an NPC anim from the manifest (wave, cheer, Tanod whistle) or a player pose; plays once then back to idle.",
+  "hop": "{\"hop\": id, \"px\": 6}: a quick jump in place (a start, a \"!\" moment): a tween, no sheet.",
+  "nod": "{\"nod\": id}: a 2 px dip and back, twice (a nod), a tween.",
+  "fx": "{\"fx\": \"<manifest fx key>\", \"at\": [col,row] | id, \"dx\": px right, \"dy\": px up, \"layer\": \"front\"|\"ground\"}",
+  "sound": "{\"sound\": \"<sound name>\"}: the sounds the game has; skip quietly if one is missing.",
+  "shake": "{\"shake\": ms, \"power\": 0.004}",
+  "icon": "{\"icon\": \"<asset path>\", \"at\": [col,row] | id, \"dx\": px, \"dy\": px, \"rise\": px, \"ms\": ms, \"glint\": true}: an item icon shown in the world (the Honest Weight, the ledger page), rising or held; \"hide\": true removes it. No new art: the item icons the game has.",
+  "lights": "{\"lights\": \"<palengke section id>\" | \"all\", \"ms\": per section}: the Palengke string lights on for this player (world/objects.ts lit sections), section by section from the plaza out, a soft chime each.",
+  "ghosts": "{\"ghosts\": [{\"at\": [col,row], \"look\": \"random\"|\"<npc id>\", \"face\": dir, \"do\": \"wave\"|\"nod\"|null}], \"around\": [col,row], \"count\": n, \"radius\": tiles, \"ms\": shown}: old vendors as pale see-through figures (a doll with a random look, or an NPC sheet; filled #BFD4FF at 35%, a 1 px bob, fade in 600 ms and out 900 ms). \"around\"/\"count\": that many more at free tiles in front of stalls within \"radius\".",
+  "banner": "{\"banner\": \"text\", \"sub\": \"text\", \"ms\": 2500}: big centred words over the bars (a title earned, a place reached), in the title font.",
+  "end": "{\"end\": true}: optional; the scene also ends after its last step (bars off, camera back on you, the HUD back).",
+  "trigger": "{\"firstEnter\": map, \"whenNotDone\": quest} | {\"questGive\"|\"questReport\": quest, \"before\"|\"after\"|\"instead\": \"lines\", \"afterStep\": objective id} | {\"questDone\": quest}; \"outOfCombat\": true waits until nothing has hit you or been hit by you for 4 s. afterStep: also as soon as that objective of the quest is done (the finale: Q14's bell)."
+ },
+ "scenes": {
+  "town-arrival": {
+   "title": "First night in Mikazuki",
+   "map": "town",
+   "trigger": {
+    "firstEnter": "town",
+    "whenNotDone": "main-01-class"
+   },
+   "about": "A new player's first time in town: the moon, the plaza, then the Tanod waving you over.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "camera": [
+      34,
+      30
+     ],
+     "ms": 0,
+     "zoom": 1.5
+    },
+    {
+     "wait": 600
+    },
+    {
+     "banner": "Mikazuki",
+     "sub": "a cosy town under a crescent moon",
+     "ms": 2600
+    },
+    {
+     "camera": [
+      38,
+      51
+     ],
+     "ms": 2600
+    },
+    {
+     "anim": "tanod",
+     "play": "whistle"
+    },
+    {
+     "sound": "busted"
+    },
+    {
+     "face": "tanod",
+     "dir": "player"
+    },
+    {
+     "anim": "tanod",
+     "play": "wave"
+    },
+    {
+     "bubble": "tanod",
+     "text": "Hey, new face! Over here!",
+     "ms": 2200
+    },
+    {
+     "camera": "player",
+     "ms": 1600
+    },
+    {
+     "bars": false
+    }
+   ]
+  },
+  "tanod-weapon": {
+   "title": "A weapon for the town",
+   "map": "town",
+   "trigger": {
+    "questDone": "main-01-class"
+   },
+   "about": "After you pick a class: your training weapon flashes in, you take your ready stance, and the Tanod points the way to the Slums.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "face": "player",
+     "dir": "tanod"
+    },
+    {
+     "fx": "fx-level-up-sparks",
+     "at": "player",
+     "layer": "front"
+    },
+    {
+     "anim": "player",
+     "play": "idle-ready"
+    },
+    {
+     "sound": "combat-level-up"
+    },
+    {
+     "wait": 900
+    },
+    {
+     "anim": "tanod",
+     "play": "cheer"
+    },
+    {
+     "bubble": "tanod",
+     "text": "Now you look like a watchman!",
+     "ms": 2000
+    },
+    {
+     "face": "tanod",
+     "dir": "w"
+    },
+    {
+     "camera": [
+      3,
+      35
+     ],
+     "ms": 2400,
+     "hold": 900
+    },
+    {
+     "bubble": "tanod",
+     "text": "The Slums are past the west gate.",
+     "ms": 2200
+    },
+    {
+     "camera": "player",
+     "ms": 1800
+    },
+    {
+     "bars": false
+    }
+   ]
+  },
+  "golem-reveal": {
+   "title": "Something in the Golem Pit",
+   "map": "slums",
+   "trigger": {
+    "questReport": "tanod-12",
+    "after": "lines"
+   },
+   "about": "After the Tanod's last order is handed in: a cut to the Golem Pit, the junk shudders and the lamp head lights up, then back to you.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "fade": "out",
+     "ms": 400
+    },
+    {
+     "camera": [
+      21,
+      96
+     ],
+     "ms": 0,
+     "zoom": 1.5
+    },
+    {
+     "fade": "in",
+     "ms": 500
+    },
+    {
+     "wait": 500
+    },
+    {
+     "shake": 700,
+     "power": 0.004
+    },
+    {
+     "sound": "golem-enrage"
+    },
+    {
+     "fx": "fx-mobility-dust",
+     "at": [
+      21,
+      96
+     ],
+     "layer": "ground"
+    },
+    {
+     "wait": 600
+    },
+    {
+     "fx": "fx-silong-split-glint",
+     "at": [
+      21,
+      96
+     ],
+     "dy": 70,
+     "layer": "front"
+    },
+    {
+     "banner": "Scrapheap Golem",
+     "sub": "the Golem Pit, west Slums",
+     "ms": 2200
+    },
+    {
+     "fade": "out",
+     "ms": 400
+    },
+    {
+     "camera": "player",
+     "ms": 0
+    },
+    {
+     "fade": "in",
+     "ms": 400
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "If the Golem is up, it shows as it is; if not, the empty pit with the dust and the glint where its head would be. The dust and the glint are stand-ins from the game's FX (fx-mobility-dust, fx-silong-split-glint at the lamp head's height)."
+  },
+  "palengke-gate": {
+   "title": "Still Open?",
+   "map": "palengke",
+   "trigger": {
+    "firstEnter": "palengke",
+    "whenNotDone": "palengke-01"
+   },
+   "about": "First step through the gate: the dark, closed market, then the one lit stall and Aling Conching waving you over.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "camera": [
+      272,
+      104
+     ],
+     "ms": 0
+    },
+    {
+     "wait": 500
+    },
+    {
+     "banner": "Old Market",
+     "sub": "closed since the typhoon",
+     "ms": 2600
+    },
+    {
+     "camera": [
+      236,
+      104
+     ],
+     "ms": 2600,
+     "hold": 600
+    },
+    {
+     "camera": [
+      262,
+      99
+     ],
+     "ms": 2000
+    },
+    {
+     "face": "aling-conching",
+     "dir": "player"
+    },
+    {
+     "anim": "aling-conching",
+     "play": "wave"
+    },
+    {
+     "bubble": "aling-conching",
+     "text": "Oh, a customer!",
+     "ms": 1800
+    },
+    {
+     "camera": "player",
+     "ms": 1400
+    },
+    {
+     "walk": "player",
+     "to": [
+      264,
+      100
+     ]
+    },
+    {
+     "face": "player",
+     "dir": "aling-conching"
+    },
+    {
+     "say": "aling-conching",
+     "quest": "palengke-01",
+     "part": "give"
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "Hearing the give lines here counts as Q1 given (the same as clicking her). The !-marker over her goes once it plays."
+  },
+  "pido-flashlight": {
+   "title": "You're Not a Ghost",
+   "map": "palengke",
+   "trigger": {
+    "questReport": "palengke-01",
+    "before": "lines"
+   },
+   "about": "Mang Pido walks up and shines his flashlight in your face before he says hello.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "walk": "mang-pido",
+     "to": "player",
+     "stopAt": 2
+    },
+    {
+     "face": "mang-pido",
+     "dir": "player"
+    },
+    {
+     "fx": "fx-silong-split-glint",
+     "at": "player",
+     "dy": 24,
+     "layer": "front"
+    },
+    {
+     "sound": "click"
+    },
+    {
+     "bubble": "player",
+     "text": "!",
+     "ms": 900
+    },
+    {
+     "wait": 500
+    },
+    {
+     "say": "mang-pido",
+     "quest": "palengke-01",
+     "part": "report"
+    },
+    {
+     "walk": "mang-pido",
+     "to": "home",
+     "wait": false
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "No flashlight art: fx-silong-split-glint on the player's face, tinted pale yellow, stands in for the beam."
+  },
+  "tisay-found": {
+   "title": "I Thought You Were a Sack",
+   "map": "palengke",
+   "trigger": {
+    "questGive": "palengke-07",
+    "before": "lines"
+   },
+   "about": "Tisay is digging through boxes; she jumps when you come up behind her.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "face": "tisay",
+     "dir": "nw"
+    },
+    {
+     "wait": 700
+    },
+    {
+     "hop": "tisay",
+     "px": 6
+    },
+    {
+     "bubble": "tisay",
+     "text": "!",
+     "ms": 900
+    },
+    {
+     "face": "tisay",
+     "dir": "player"
+    },
+    {
+     "say": "tisay",
+     "quest": "palengke-07",
+     "part": "give"
+    },
+    {
+     "bars": false
+    }
+   ]
+  },
+  "jun-and-tisay": {
+   "title": "The page",
+   "map": "palengke",
+   "trigger": {
+    "questDone": "palengke-12"
+   },
+   "about": "After the truth: Tisay comes to Kuya Jun's counter, says nothing, and gives him the ledger page. They stand together for a moment.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "fade": "out",
+     "ms": 400
+    },
+    {
+     "place": "tisay",
+     "at": [
+      110,
+      156
+     ],
+     "face": "ne"
+    },
+    {
+     "camera": [
+      113,
+      154
+     ],
+     "ms": 0
+    },
+    {
+     "fade": "in",
+     "ms": 500
+    },
+    {
+     "walk": "tisay",
+     "to": [
+      113,
+      154
+     ]
+    },
+    {
+     "face": "tisay",
+     "dir": "kuya-jun"
+    },
+    {
+     "face": "kuya-jun",
+     "dir": "tisay"
+    },
+    {
+     "bubble": "tisay",
+     "text": "...",
+     "ms": 1400
+    },
+    {
+     "icon": "items/quest/item-quest-ledger-page.png",
+     "at": "tisay",
+     "dy": 30,
+     "ms": 1200
+    },
+    {
+     "icon": "items/quest/item-quest-ledger-page.png",
+     "hide": true
+    },
+    {
+     "nod": "kuya-jun"
+    },
+    {
+     "face": "tisay",
+     "dir": "se"
+    },
+    {
+     "face": "kuya-jun",
+     "dir": "se"
+    },
+    {
+     "wait": 2200
+    },
+    {
+     "fade": "out",
+     "ms": 500
+    },
+    {
+     "place": "tisay",
+     "at": "home"
+    },
+    {
+     "camera": "player",
+     "ms": 0
+    },
+    {
+     "fade": "in",
+     "ms": 400
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "The page is the Q11 quest item icon."
+  },
+  "honest-weight": {
+   "title": "The Honest Weight",
+   "map": "palengke",
+   "trigger": {
+    "questReport": "palengke-13",
+    "after": "lines"
+   },
+   "about": "Kuya Jun forges the Honest Weight at his counter: three clangs, sparks, and the weight rises over him.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "camera": "kuya-jun",
+     "ms": 900
+    },
+    {
+     "face": "kuya-jun",
+     "dir": "nw"
+    },
+    {
+     "fx": "fx-broom-chain-spark",
+     "at": "kuya-jun",
+     "dy": 16,
+     "layer": "front"
+    },
+    {
+     "sound": "combat-repair"
+    },
+    {
+     "shake": 150,
+     "power": 0.002
+    },
+    {
+     "wait": 550
+    },
+    {
+     "fx": "fx-broom-chain-spark",
+     "at": "kuya-jun",
+     "dy": 16,
+     "layer": "front"
+    },
+    {
+     "sound": "combat-repair"
+    },
+    {
+     "shake": 150,
+     "power": 0.002
+    },
+    {
+     "wait": 550
+    },
+    {
+     "fx": "fx-broom-chain-spark",
+     "at": "kuya-jun",
+     "dy": 16,
+     "layer": "front"
+    },
+    {
+     "sound": "combat-repair"
+    },
+    {
+     "shake": 250,
+     "power": 0.003
+    },
+    {
+     "face": "kuya-jun",
+     "dir": "player"
+    },
+    {
+     "icon": "items/quest/item-quest-honest-weight-64.png",
+     "at": "kuya-jun",
+     "dy": 40,
+     "rise": 18,
+     "ms": 1800,
+     "glint": true
+    },
+    {
+     "sound": "combat-loot-pickup"
+    },
+    {
+     "icon": "items/quest/item-quest-honest-weight-64.png",
+     "hide": true
+    },
+    {
+     "camera": "player",
+     "ms": 900
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "Sparks are fx-broom-chain-spark and the clang is the repair sound; swap in better ones if the Forge has them."
+  },
+  "scale-bell": {
+   "title": "The bell in the pan",
+   "map": "palengke",
+   "trigger": {
+    "questGive": "palengke-14",
+    "after": "lines"
+   },
+   "about": "Aling Conching looks toward the hall; the camera follows to the Great Scale's stand, where the bell glints in its pan.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "face": "aling-conching",
+     "dir": "w"
+    },
+    {
+     "camera": [
+      168,
+      104
+     ],
+     "ms": 2600
+    },
+    {
+     "camera": [
+      139,
+      106
+     ],
+     "ms": 1800
+    },
+    {
+     "fx": "fx-scale-bell",
+     "at": [
+      138,
+      103
+     ],
+     "dx": -12,
+     "dy": 4,
+     "layer": "front"
+    },
+    {
+     "sound": "great-scale-bell"
+    },
+    {
+     "banner": "The Great Scale",
+     "sub": "wakes every 2 hours",
+     "ms": 2400
+    },
+    {
+     "fade": "out",
+     "ms": 400
+    },
+    {
+     "camera": "player",
+     "ms": 0
+    },
+    {
+     "fade": "in",
+     "ms": 400
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "The bell is fx-scale-bell (the ringing bell the Great Scale already plays), sitting in the stand's pan."
+  },
+  "huling-suki": {
+   "title": "The Last Regular",
+   "map": "palengke",
+   "trigger": {
+    "questReport": "palengke-14",
+    "instead": "lines",
+    "outOfCombat": true,
+    "afterStep": "bell"
+   },
+   "about": "The finale, after the Great Scale falls (each player with Q14, once they're out of combat): the Honest Weight on the pan, the needle settles, the bell rolls out, Aling Conching rings it, the whole market lights up and the old vendors appear for a moment.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "fade": "out",
+     "ms": 500
+    },
+    {
+     "camera": [
+      139,
+      106
+     ],
+     "ms": 0,
+     "zoom": 1.5
+    },
+    {
+     "fade": "in",
+     "ms": 600
+    },
+    {
+     "icon": "items/quest/item-quest-honest-weight-64.png",
+     "at": [
+      138,
+      103
+     ],
+     "dx": -12,
+     "dy": 4,
+     "rise": -24,
+     "ms": 1200
+    },
+    {
+     "sound": "combat-agimat-embed"
+    },
+    {
+     "say": "narrator",
+     "lines": [
+      "You place the Honest Weight on the pan."
+     ]
+    },
+    {
+     "shake": 600,
+     "power": 0.002
+    },
+    {
+     "wait": 400
+    },
+    {
+     "sound": "click"
+    },
+    {
+     "say": "narrator",
+     "lines": [
+      "The needle swings... and settles dead centre. The hall clock ticks once."
+     ]
+    },
+    {
+     "fx": "fx-scale-bell",
+     "at": [
+      138,
+      103
+     ],
+     "dx": -12,
+     "dy": 4,
+     "layer": "front"
+    },
+    {
+     "sound": "great-scale-bell"
+    },
+    {
+     "say": "narrator",
+     "lines": [
+      "The market bell rolls out of the other pan."
+     ]
+    },
+    {
+     "icon": "items/quest/item-quest-honest-weight-64.png",
+     "hide": true
+    },
+    {
+     "fade": "out",
+     "ms": 700
+    },
+    {
+     "camera": [
+      262,
+      100
+     ],
+     "ms": 0,
+     "zoom": 1.5
+    },
+    {
+     "fade": "in",
+     "ms": 700
+    },
+    {
+     "face": "aling-conching",
+     "dir": "s"
+    },
+    {
+     "fx": "fx-scale-bell",
+     "at": "aling-conching",
+     "dy": 46,
+     "layer": "front"
+    },
+    {
+     "sound": "great-scale-bell"
+    },
+    {
+     "shake": 300,
+     "power": 0.002
+    },
+    {
+     "sound": "great-scale-bell"
+    },
+    {
+     "lights": "all",
+     "ms": 350
+    },
+    {
+     "ghosts": [],
+     "around": [
+      262,
+      100
+     ],
+     "count": 4,
+     "radius": 9,
+     "ms": 4000
+    },
+    {
+     "camera": [
+      200,
+      140
+     ],
+     "ms": 2200
+    },
+    {
+     "ghosts": [],
+     "around": [
+      200,
+      140
+     ],
+     "count": 6,
+     "radius": 10,
+     "ms": 4000
+    },
+    {
+     "camera": [
+      123,
+      184
+     ],
+     "ms": 2600
+    },
+    {
+     "ghosts": [
+      {
+       "at": [
+        121,
+        186
+       ],
+       "look": "tisay",
+       "face": "ne",
+       "do": "wave"
+      }
+     ],
+     "around": [
+      123,
+      184
+     ],
+     "count": 3,
+     "radius": 8,
+     "ms": 4200
+    },
+    {
+     "face": "tisay",
+     "dir": "sw"
+    },
+    {
+     "anim": "tisay",
+     "play": "wave"
+    },
+    {
+     "camera": [
+      113,
+      153
+     ],
+     "ms": 1800
+    },
+    {
+     "ghosts": [
+      {
+       "at": [
+        112,
+        151
+       ],
+       "look": "kuya-jun",
+       "face": "se",
+       "do": "nod"
+      }
+     ],
+     "ms": 4200
+    },
+    {
+     "face": "kuya-jun",
+     "dir": "nw"
+    },
+    {
+     "nod": "kuya-jun"
+    },
+    {
+     "fade": "out",
+     "ms": 700
+    },
+    {
+     "camera": [
+      262,
+      100
+     ],
+     "ms": 0
+    },
+    {
+     "fade": "in",
+     "ms": 700
+    },
+    {
+     "say": "aling-conching",
+     "lines": [
+      "The market is open, dear. You're the last regular of the old market, and the first regular of the new one."
+     ]
+    },
+    {
+     "banner": "The Last Regular",
+     "sub": "title earned",
+     "ms": 3000
+    },
+    {
+     "camera": "player",
+     "ms": 0
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "Runs in place of Q14's report lines (it says its own). It plays as soon as you've rung the bell (trigger afterStep: Q14's 'bell' objective done), once you're out of combat; talking to Aling Conching with Q14 still to report plays it too, if it hasn't. Its report happens as it ends (or on Skip). The ghost at Tisay is her mother, Aling Rosa (Tisay's sheet); the one at Kuya Jun's counter is his father, Mang Ramon (Jun's sheet). Jun and Tisay must be at their after-Q12 spots for this."
+  },
+  "cellar-key": {
+   "title": "Now's the time",
+   "map": "palengke",
+   "trigger": {
+    "questReport": "palengke-15",
+    "after": "lines"
+   },
+   "about": "Mang Pido's key: the camera goes to the cellar hatch in the hall, cold mist rises from it, and the lock clicks.",
+   "steps": [
+    {
+     "bars": true
+    },
+    {
+     "camera": [
+      118,
+      123
+     ],
+     "ms": 2600
+    },
+    {
+     "fx": "fx-buff-mist-back",
+     "at": [
+      119,
+      123
+     ],
+     "layer": "ground"
+    },
+    {
+     "fx": "fx-buff-mist-front",
+     "at": [
+      119,
+      123
+     ],
+     "layer": "front"
+    },
+    {
+     "sound": "bakod-unlock"
+    },
+    {
+     "wait": 1400
+    },
+    {
+     "banner": "The Cellar",
+     "sub": "the old cold storage",
+     "ms": 2400
+    },
+    {
+     "camera": "player",
+     "ms": 2000
+    },
+    {
+     "bars": false
+    }
+   ],
+   "note": "The mist is the buff mist pair (fx-buff-mist-back/-front), tinted icy blue."
+  }
+ }
+}

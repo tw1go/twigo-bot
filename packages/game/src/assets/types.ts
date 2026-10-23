@@ -45,7 +45,12 @@ export interface Manifest {
   /** The six classes' art (data in classes/classes.json): combat poses, resting weapons, launch points. */
   classes?: ClassesDefs;
   /** The quests file, and the colour of each quest type. */
-  quests?: { file: string; colours: Record<'main' | 'side', string> };
+  quests?: {
+    file: string;
+    colours: Record<'main' | 'side', string>;
+    /** The story's cutscenes (quests/cutscenes.json, played by world/cutscene.ts). */
+    cutscenes?: string;
+  };
   /** The new player guide's art (each file has {type}: main or side, the quest's colour). */
   guide?: GuideManifest;
   /** Equipment items (items/equipment.json). */
