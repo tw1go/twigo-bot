@@ -6,6 +6,7 @@ import { BossBar } from '../ui/boss-bar';
 import { onMap } from './clicks';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Mobs } from './mobs';
+import { circleScale, coneScale } from './fx-fit';
 import { Telegraphs } from './telegraph';
 import { playSet } from '../audio/sound';
 
@@ -106,9 +107,10 @@ export class GreatScaleView {
     if (change === 'enrage' && m) {
       this.mobs.pose(m, 'enrage');
       this.sound('enrage');
-      // fx-scale-enrage: a red shockwave ring on the ground at its feet.
+      // fx-scale-enrage: a red shockwave ring on the ground at its feet, out to its body's edge (mobs.json radius: its
+      // footprint at its size).
       const art = this.art('fx-scale-enrage');
-      if (art) this.fx.play(art, this.mobs.feet(m), { layer: 'ground' });
+      if (art) this.fx.play(art, this.mobs.feet(m), { layer: 'ground', scale: circleScale(this.scene, art, m.radius || 1) });
     }
     if (change === 'reset' || change === 'death' || change === 'sleep' || change === 'sink') this.cancel(this.id);
     // The held player: lifted while held, down again once let go.
@@ -145,7 +147,7 @@ export class GreatScaleView {
     }
     // A Pan Slam's warning in each circle until it lands; Kulang sa Timbang's cone from its feet, hitting on its frame 3.
     const warn = e.move === 'panSlam' && e.shape?.kind === 'circles' ? this.art('fx-scale-pan-warning') : undefined;
-    if (warn && e.shape?.kind === 'circles') for (const c of e.shape.circles) this.later(0, () => this.fx.play(warn, this.mobs.ground(c.at[0] + 0.5, c.at[1] + 0.5), { layer: 'ground', life: e.ms }));
+    if (warn && e.shape?.kind === 'circles') for (const c of e.shape.circles) this.later(0, () => this.fx.play(warn, this.mobs.ground(c.at[0] + 0.5, c.at[1] + 0.5), { layer: 'ground', life: e.ms, scale: circleScale(this.scene, warn, c.radius) }));
     if (e.shape?.kind === 'cone') this.cone(e.shape, e.ms);
     if (e.move === 'panSlam') this.sound('pan-slam-windup');
     const anim = typeof e.data?.anim === 'string' ? e.data.anim : null;
@@ -224,7 +226,8 @@ export class GreatScaleView {
     const front = this.art('fx-scale-weigh-in-front');
     if (back && front && c) {
       const feet = () => ({ x: c.sprite.x, y: c.sprite.y });
-      const rings = [this.fx.play(back, feet(), { layer: 'ground', follow: feet, life: Infinity }), this.fx.play(front, feet(), { layer: 'front', follow: feet, life: Infinity })].filter((h): h is FxHandle => !!h);
+      const scale = this.size;
+      const rings = [this.fx.play(back, feet(), { layer: 'ground', follow: feet, life: Infinity, scale }), this.fx.play(front, feet(), { layer: 'front', follow: feet, life: Infinity, scale })].filter((h): h is FxHandle => !!h);
       if (rings.length) return void (this.held = { id, rings });
     }
     const ring = this.fx.drawFx('ground', (g, t) => {
@@ -278,7 +281,7 @@ export class GreatScaleView {
   private panImpact(at: [number, number], radius: number): void {
     const c = this.mobs.ground(at[0] + 0.5, at[1] + 0.5);
     const art = this.art('fx-scale-pan-impact');
-    if (art) this.fx.play(art, c, { layer: 'front' });
+    if (art) this.fx.play(art, c, { layer: 'front', scale: this.size });
     else this.fx.drawFx('front', (g, t) => {
       const p = Math.min(1, t / 260);
       g.clear().fillStyle(0xffffff, 0.55 * (1 - p)).fillEllipse(c.x, c.y, radius * 32 * (0.5 + p * 0.6), radius * 16 * (0.5 + p * 0.6));
@@ -292,7 +295,7 @@ export class GreatScaleView {
   private dust(t: [number, number]): void {
     const c = this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     const art = this.art('fx-scale-call');
-    if (art) return void this.fx.play(art, c, { layer: 'ground' });
+    if (art) return void this.fx.play(art, c, { layer: 'ground', scale: this.size });
     this.fx.drawFx('ground', (g, ms) => {
       const p = Math.min(1, ms / 500);
       g.clear();
@@ -355,7 +358,14 @@ export class GreatScaleView {
     if (!art) return;
     const lead = (3 / (art.fps ?? 10)) * 1000;
     const at = this.mobs.ground(shape.origin[0] + 0.5, shape.origin[1] + 0.5);
-    this.later(Math.max(0, ms - lead), () => this.fx.play(art, at, { layer: 'ground', flipX: sx < 0, alpha: CONE_ALPHA }));
+    // (Out to the cone's far edge: its whole length, past the Scale's body, so it stays on the ground layer.)
+    const scale = coneScale(this.scene, art, shape.length, shape.angle, shape.facing);
+    this.later(Math.max(0, ms - lead), () => this.fx.play(art, at, { layer: 'ground', flipX: sx < 0, alpha: CONE_ALPHA, scale }));
+  }
+
+  /** How big it's drawn (mobs.json scale): its own effects follow it, as the golem's do. */
+  private get size(): number {
+    return this.data?.scale ?? 1;
   }
 
   /** An effect's def, only once its sheet is loaded (else the caller draws its stand-in). */

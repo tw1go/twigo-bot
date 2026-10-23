@@ -964,8 +964,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   fx/mob-boss-pixellab; the bell the 21 Oct one): the pan's warning in each Pan Slam circle and its impact, the Weigh-in
   chain ring round the held player (`-back` behind them, `-front` over them), Kulang sa Timbang's cone (se / ne art,
   mirrored on its anchor, its narrow end on its feet, for sw / nw; at 70%: `CONE_ALPHA`) hitting on its frame 3, the
-  Sentinels' call, the enrage's red ring on the ground at its feet, the bell over its tile; drawn at the art's size, not
-  its 1.5x; code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
+  Sentinels' call, the enrage's red ring on the ground at its feet, the bell over its tile. Area pieces are scaled to their
+  red warning (`world/fx-fit.ts`: each sheet's reach from its anchor over every frame, nearest-neighbour, x and y alike,
+  worked out as the move plays): the pan's warning to each Pan Slam circle, the enrage ring to its body (mobs.json
+  radius), the cone out to the cone's full length (`coneScale`); the rest (the pan's impact, the Weigh-in ring, the
+  call) at its 1.5x (`size`, mobs.json scale); code stand-ins while a sheet isn't loaded) and its HUD head the art folder's ui-great-scale-head. Its sounds: GREAT_SCALE_SOUNDS (above) and its hurt and death sets. The CMS's Field boss tab shows both bosses and
   wakes either (`CmsDeps.greatScale`, POST /api/boss/spawn { id }). Dev: `?greatscale=now` (wakes it, you beside it; the
   dev server's `/__greatscale`, `&hp=500`). Its art touches its cells' edges in a few sheets (attack e/nw/sw/w at the top,
   cone-s and weigh-s/sw at the bottom, death n/nw/s): reported, not worked around. "Ang Huling Suki" (CONTEXT.md Quest item, Level gap; classes/palengke-leveling.json, shared `palengke.ts`
@@ -1048,7 +1051,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
   tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (Mac's
   PixelLab fx-silong-* since 23 Oct 2026, the art folder's fx/mob-boss-pixellab/silong: Brine Splash as `-back` / `-front`
-  halves at Atsarah's feet, the charge's frost mirrored when Sangkalancelot charges left on screen, the Ice Slick a 2 x 2
+  halves at Atsarah's feet, fitted to its circle (both halves one scale; the flop dust, hook shadow and ambush burst
+  grown to theirs only when short: `circleScale`'s `grow`), the charge's frost mirrored when Sangkalancelot charges left on screen, the Ice Slick a 2 x 2
   diamond per block of the floor's even grid its tiles touch; code stand-ins while a sheet isn't loaded) and the boss bar
   in a mini boss's room. Ang Makinang Yelo (part 3, 21 Oct 2026; the same `FloorBosses`
   on B3, `last`): placed on its body's (K) middle, still and silent, its reach as far as the body goes (5) so the tiles

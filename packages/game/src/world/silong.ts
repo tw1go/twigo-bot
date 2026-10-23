@@ -8,6 +8,7 @@ import { frontDepth } from './depth';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { WalkGrid } from './grid';
 import type { Mob, Mobs } from './mobs';
+import { circleScale } from './fx-fit';
 import { Telegraphs } from './telegraph';
 import { type SilongSfx, playSet, playSilong } from '../audio/sound';
 import { BuildingLabel } from '../ui/labels';
@@ -264,8 +265,10 @@ export class SilongView {
           if (!boss) return;
           const feet = this.mobs.feet(boss);
           if (!back || !front) return this.burst(feet, 0x7dd3c0, 2);
-          this.fx.play(back, feet, { layer: 'ground' });
-          this.fx.play(front, feet, { layer: 'front' });
+          // (Both halves the one size: the back half's reach out to the circle's edge.)
+          const scale = circleScale(this.scene, back, m.shape?.kind === 'circle' ? m.shape.radius : 2);
+          this.fx.play(back, feet, { layer: 'ground', scale });
+          this.fx.play(front, feet, { layer: 'front', scale });
         });
         return;
       }
@@ -290,7 +293,8 @@ export class SilongView {
       case 'bellyFlop': {
         const to = d.to as [number, number];
         const art = this.art('fx-silong-flop-dust');
-        this.later(m.id, m.ms, () => (art ? this.fx.play(art, at(to), { layer: 'ground' }) : this.burst(at(to), 0xd6c4a0, 1.5)));
+        const radius = m.shape?.kind === 'circle' ? m.shape.radius : 1.5;
+        this.later(m.id, m.ms, () => (art ? this.fx.play(art, at(to), { layer: 'ground', scale: circleScale(this.scene, art, radius, true) }) : this.burst(at(to), 0xd6c4a0, 1.5)));
         return;
       }
       case 'chairBarrage': {
@@ -332,13 +336,14 @@ export class SilongView {
         return;
       }
       case 'hookShadows':
-        for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) this.hook(m.id, at(c.at), m.ms);
+        for (const c of (m.shape as Extract<TelegraphShape, { kind: 'circles' }>).circles) this.hook(m.id, at(c.at), m.ms, c.radius);
         return;
       case 'ambush': {
         // Up through the ice under its circle: the burst's frame 2 on the hit.
         const to = d.to as [number, number] | undefined;
         const art = this.art('fx-silong-ambush-burst');
-        if (to && art) this.later(m.id, m.ms - (2 / (art.fps ?? 12)) * 1000, () => this.fx.play(art, at(to), { layer: 'front' }));
+        const radius = m.shape?.kind === 'circle' ? m.shape.radius : 1.5;
+        if (to && art) this.later(m.id, m.ms - (2 / (art.fps ?? 12)) * 1000, () => this.fx.play(art, at(to), { layer: 'front', scale: circleScale(this.scene, art, radius, true) }));
         return;
       }
       case 'iceBlockDrop': {
@@ -606,11 +611,11 @@ export class SilongView {
 
   /** A hook dropping from the rails into its shadow: fx-silong-hook-shadow from the start, fx-silong-hook-drop hitting on
    *  its frame 4 as it lands; else drawn over the last 300 ms. */
-  private hook(owner: string, at: Pt, ms: number): void {
+  private hook(owner: string, at: Pt, ms: number, radius: number): void {
     const hookArt = this.art('fx-silong-hook-drop');
     const shadow = this.art('fx-silong-hook-shadow');
     if (hookArt) {
-      if (shadow) this.keep(owner, this.fx.play(shadow, at, { layer: 'ground', ms: Math.max(60, ms / (shadow.frames ?? 6)) }));
+      if (shadow) this.keep(owner, this.fx.play(shadow, at, { layer: 'ground', ms: Math.max(60, ms / (shadow.frames ?? 6)), scale: circleScale(this.scene, shadow, radius, true) }));
       this.later(owner, ms - (4 / (hookArt.fps ?? 12)) * 1000, () => this.fx.play(hookArt, at, { layer: 'front' }));
       return;
     }
