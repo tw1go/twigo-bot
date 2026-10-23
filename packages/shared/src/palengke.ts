@@ -51,6 +51,10 @@ export interface PalengkeDish {
   unlockedBy: string;
   slot: 'main' | 'side';
   stats: Record<string, number>;
+  /** Its pictures (paths under assets/): 16 px, 32 px and 64 px. */
+  icon?: string;
+  showcase?: string;
+  large?: string;
 }
 
 /** The daily order after the chain (CONTEXT.md Daily order): one of `pool` a day, handed in to Aling Conching. */

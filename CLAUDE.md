@@ -167,7 +167,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `items/items.json` the ten quest items (kind `quest`, bound; their icons the art folder's items/quest, 21 Oct 2026); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
-  (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
+  (`dishesNote`), its `icon` / `showcase` / `large` (23 Oct 2026: the art folder's items/consumables item-dish-* files), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
 - The Palengke's NPCs (21 Oct 2026): `npcs/palengke-npc-dialogue.json` = the art folder's npcs/palengke one with its idle lines
   in English (no Tagalog in the game: Mac) and portraits pointing at `npcs/`; the manifest's npcs `palengkeIds`,
@@ -1015,8 +1015,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   mirror; Pancit). Bought only in the room 'palengke': `dish-buy` → `dishes.buy` (`buyDishFor`: unlocked by its quest,
   its Kusing) → `dish` {ok, message}; free ones (`freeDish`: Q1's Lugaw, a daily order's random one of yours) come back
   from POST /town/quest as `dish`, server.ts `Town.serveDish` → `dish` {free}. Game: Aling Conching's dialog box's
-  "🍲 Menu" (PalengkeNpcs `action`) opens `ui/dish-menu.ts` (every dish, locked ones greyed with "Unlocks with <quest>",
-  "On · 7:32", Buy with its Kusing; TownScene `openDishes` / `buyDish`); the buff tray shows them by name (`title`).
+  "🍲 Menu" (PalengkeNpcs `action`) opens `ui/dish-menu.ts` (every dish with its picture, locked ones greyed with "Unlocks with <quest>",
+  "On · 7:32", Buy with its Kusing; TownScene `openDishes` / `buyDish`); the buff tray shows them by name (`title`) and picture
+  (TownScene `buffIcon`: a dish's `showcase`, else the skill's icon; the target frame's buffs and the free dish's toast too).
   Daily orders (CONTEXT.md Daily order; `dailies`): a QuestDef per pool entry (`palengke-daily-<item>`, `daily`,
   `after: 'palengke-14'`), `startDaily` (startQuests, entering the Palengke: a random one once the chain is done and
   today's isn't handed in; one not handed in stays), `finishQuest` (a daily: `quests.dailyDone` = `dailyDay`, never
