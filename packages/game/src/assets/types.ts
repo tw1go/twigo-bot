@@ -220,6 +220,8 @@ export interface ClassLayer {
 export interface ClassDirLayers {
   body: string;
   face?: string;
+  /** idle-ready only: frame 0's face with the faint's dizzy eyes (characters/faint.ts). */
+  dizzyFace?: string;
   back: ClassLayer[];
   front: ClassLayer[];
 }
@@ -293,7 +295,8 @@ export interface CharacterDefs {
   drawOrder: string[];
   layers: {
     body: string;
-    face: { pattern: string; directions: Dir[] };
+    /** `dizzy`: the faint's dizzy eyes (idle frame 0's face with spirals, per direction: characters/faint.ts). */
+    face: { pattern: string; directions: Dir[]; dizzy?: string };
   };
   colourKeys: { skin: string[]; hair: string[]; clothMain: string[]; clothTrim: string[] };
   wardrobe: {

@@ -1385,6 +1385,7 @@
       "body": "characters/body/{anim}/char-body-{anim}-{dir}.png",
       "face": {
         "pattern": "characters/layers/face/char-face-default-{anim}-{dir}.png",
+        "dizzy": "characters/layers/face/char-face-dizzy-idle-{dir}.png",
         "directions": [
           "s",
           "se",
@@ -1392,7 +1393,8 @@
           "sw",
           "w"
         ],
-        "note": "no face layer for n, ne, nw (back views)"
+        "note": "no face layer for n, ne, nw (back views)",
+        "dizzyNote": "The faint's dizzy eyes (spirals; the art folder's characters/faint/faces, 23 Oct 2026): idle frame 0's face, 32x48, 1 frame, skin keys swapped like the face (deep skin's faceTweak too), from the kneel on (characters/faint.ts)."
       },
       "hair": {
         "pattern": "characters/layers/hair/char-hair-{style}-{anim}-{dir}.png",
@@ -2401,7 +2403,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/slingshot/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "e": {
                 "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-e.png",
@@ -2415,7 +2418,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/slingshot/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "s": {
                 "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-s.png",
@@ -2429,7 +2433,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/slingshot/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "ne": {
                 "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-ne.png",
@@ -2469,7 +2474,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/slingshot/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "w": {
                 "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-w.png",
@@ -2483,7 +2489,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/slingshot/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/slingshot/idle-ready/char-face-dizzy-idle-ready-w.png"
               },
               "nw": {
                 "body": "characters/classes/slingshot/idle-ready/char-body-idle-ready-nw.png",
@@ -4025,7 +4032,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/stick/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "s": {
                 "body": "characters/classes/stick/idle-ready/char-body-idle-ready-s.png",
@@ -4047,7 +4055,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/stick/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "ne": {
                 "body": "characters/classes/stick/idle-ready/char-body-idle-ready-ne.png",
@@ -4111,7 +4120,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/stick/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "sw": {
                 "body": "characters/classes/stick/idle-ready/char-body-idle-ready-sw.png",
@@ -4133,7 +4143,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/stick/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "w": {
                 "body": "characters/classes/stick/idle-ready/char-body-idle-ready-w.png",
@@ -4155,7 +4166,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/stick/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/stick/idle-ready/char-face-dizzy-idle-ready-w.png"
               },
               "nw": {
                 "body": "characters/classes/stick/idle-ready/char-body-idle-ready-nw.png",
@@ -5798,7 +5810,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/greatstick/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "s": {
                 "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-s.png",
@@ -5820,7 +5833,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/greatstick/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "ne": {
                 "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-ne.png",
@@ -5884,7 +5898,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/greatstick/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "sw": {
                 "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-sw.png",
@@ -5906,7 +5921,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/greatstick/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "w": {
                 "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-w.png",
@@ -5928,7 +5944,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/greatstick/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/greatstick/idle-ready/char-face-dizzy-idle-ready-w.png"
               },
               "nw": {
                 "body": "characters/classes/greatstick/idle-ready/char-body-idle-ready-nw.png",
@@ -7931,7 +7948,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/broom/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "s": {
                 "body": "characters/classes/broom/idle-ready/char-body-idle-ready-s.png",
@@ -7953,7 +7971,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/broom/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "sw": {
                 "body": "characters/classes/broom/idle-ready/char-body-idle-ready-sw.png",
@@ -7975,7 +7994,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/broom/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "ne": {
                 "body": "characters/classes/broom/idle-ready/char-body-idle-ready-ne.png",
@@ -8060,7 +8080,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/broom/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "w": {
                 "body": "characters/classes/broom/idle-ready/char-body-idle-ready-w.png",
@@ -8082,7 +8103,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/broom/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/broom/idle-ready/char-face-dizzy-idle-ready-w.png"
               }
             }
           },
@@ -10347,7 +10369,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/potlid/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "s": {
                 "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-s.png",
@@ -10383,7 +10406,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/potlid/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "sw": {
                 "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-sw.png",
@@ -10419,7 +10443,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/potlid/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "ne": {
                 "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-ne.png",
@@ -10560,7 +10585,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/potlid/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "w": {
                 "body": "characters/classes/potlid/idle-ready/char-body-idle-ready-w.png",
@@ -10596,7 +10622,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/potlid/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/potlid/idle-ready/char-face-dizzy-idle-ready-w.png"
               }
             }
           },
@@ -13139,7 +13166,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-se.png"
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-se.png",
+                "dizzyFace": "characters/classes/hilot/idle-ready/char-face-dizzy-idle-ready-se.png"
               },
               "s": {
                 "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-s.png",
@@ -13161,7 +13189,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-s.png"
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-s.png",
+                "dizzyFace": "characters/classes/hilot/idle-ready/char-face-dizzy-idle-ready-s.png"
               },
               "sw": {
                 "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-sw.png",
@@ -13183,7 +13212,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-sw.png"
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-sw.png",
+                "dizzyFace": "characters/classes/hilot/idle-ready/char-face-dizzy-idle-ready-sw.png"
               },
               "ne": {
                 "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-ne.png",
@@ -13268,7 +13298,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-e.png"
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-e.png",
+                "dizzyFace": "characters/classes/hilot/idle-ready/char-face-dizzy-idle-ready-e.png"
               },
               "w": {
                 "body": "characters/classes/hilot/idle-ready/char-body-idle-ready-w.png",
@@ -13290,7 +13321,8 @@
                     ]
                   }
                 ],
-                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-w.png"
+                "face": "characters/classes/hilot/idle-ready/char-face-default-idle-ready-w.png",
+                "dizzyFace": "characters/classes/hilot/idle-ready/char-face-dizzy-idle-ready-w.png"
               }
             }
           },
@@ -23737,6 +23769,21 @@
       ],
       "layer": "front",
       "note": "Keen Stance landing, front: near half of the ring + the rising pieces; same anchor and timing"
+    },
+    "fx-faint-stars": {
+      "file": "fx/fx-faint-stars.png",
+      "frame": [
+        24,
+        12
+      ],
+      "frames": 8,
+      "fps": 8,
+      "loop": true,
+      "anchor": [
+        12,
+        8
+      ],
+      "note": "script-built stand-in: dizzy stars over a knocked-out player's head"
     }
   },
   "ui": {

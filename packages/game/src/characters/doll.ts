@@ -129,13 +129,14 @@ export function bigTop(C: CharacterDefs, o: Outfit): BigPiece | null {
 }
 
 /** One frame of a look straight from its layers (no built sheet: only that anim and direction's layers need loading),
- *  for the store's worn preview: (x, y) is the doll's cell's top left; a big hat and a topover are drawn whole round it. */
-export function drawStill(ctx: CanvasRenderingContext2D, scene: ImageHost, C: CharacterDefs, o: Outfit, anim: string, dir: Dir, frame: number, x: number, y: number): void {
+ *  for the store's worn preview: (x, y) is the doll's cell's top left; a big hat and a topover are drawn whole round it.
+ *  `face`: another face sheet in the face's place (the faint's dizzy eyes: one frame, so `frame` 0). */
+export function drawStill(ctx: CanvasRenderingContext2D, scene: ImageHost, C: CharacterDefs, o: Outfit, anim: string, dir: Dir, frame: number, x: number, y: number, face?: string): void {
   const over = bigTop(C, o);
   for (const l of layerFiles(C, o, anim, dir)) {
     const [w, h] = l.canvas?.size ?? C.cell;
     const [ox, oy] = l.canvas?.offset ?? [0, 0];
-    const img = dressLayer(scene, C, o, l.file, l.layer, l.clip);
+    const img = dressLayer(scene, C, o, l.layer === 'face' && face ? face : l.file, l.layer, l.clip);
     if (img) ctx.drawImage(img, frame * w, 0, w, h, x - ox, y - oy, w, h);
     if (l.layer === 'top' && over) {
       const [tw, th] = over.size;

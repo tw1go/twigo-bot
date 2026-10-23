@@ -323,7 +323,9 @@ export function drawRested(
 }
 
 /** A combat pose's frame at (x, y), the 64x64 cell's top left: back layers, the body and face in the look's skin, front
- *  layers. `hide`: weapon layers left out (a thrown lid or plank in flight), by a part of their file name. */
+ *  layers. `hide`: weapon layers left out (a thrown lid or plank in flight), by a part of their file name. `opts.weapons`:
+ *  'none' leaves every weapon layer out, 'only' draws nothing else (the faint drops the weapon apart from the body);
+ *  `opts.face`: another face sheet in the face's place (the faint's dizzy eyes: one frame, so `frame` 0). */
 export function drawPose(
   ctx: CanvasRenderingContext2D,
   scene: ImageHost,
@@ -337,11 +339,16 @@ export function drawPose(
   x = 0,
   y = 0,
   hide: string[] = [],
+  opts: { weapons?: 'none' | 'only'; face?: string } = {},
 ): void {
   const d = art.anims[anim]?.dirs[dir];
   if (!d) return;
-  const shown = (l: ClassLayer) => !hide.some((h) => l.file.includes(h));
+  const shown = (l: ClassLayer) => opts.weapons !== 'none' && !hide.some((h) => l.file.includes(h));
   for (const l of d.back.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
+  if (opts.weapons === 'only') {
+    for (const l of d.front.filter(shown)) drawLayer(ctx, scene, K, l, frame, x, y);
+    return;
+  }
   // The look's clothes, hair, glasses and hat (the combat sheets have none): the town idle's first frame, each piece
   // moved to its part of the pose (clothes trimmed to the pose's body; a cosmetic top keeps what sticks out past the
   // body: wings, hems, tails), the head's to the pose's head. A cosmetic top with pose art (cosmeticPoseTops) draws its
@@ -359,7 +366,7 @@ export function drawPose(
   const clip = bodyClip ? imageData(scene, bodyClip) : null;
   const from = clip ? topRow(clip, C.cell[0], C.cell[1]) : -1;
   drawCell(ctx, from >= 0 ? clippedBody(poseBody, C.cell[0], C.cell[1], frame, from + ty) : poseBody, C.cell[0], C.cell[1], from >= 0 ? 0 : frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
-  if (d.face) drawCell(ctx, dressLayer(scene, C, o, d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  if (d.face) drawCell(ctx, dressLayer(scene, C, o, opts.face ?? d.face, 'face'), C.cell[0], C.cell[1], frame, x + K.bodyOffset[0], y + K.bodyOffset[1]);
   for (const l of clothes) {
     if (poseTop && l === top) continue; // (its pose sheet, below)
     const cosmetic = fixedTop && l === top;

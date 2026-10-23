@@ -1490,9 +1490,25 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/
   out` for arrivals. Golem XP credit by member (`attack`'s `member`, `Golem.hit`; kills' `to` are members). Game: HUD HP
   (green, red and pulsing under 25%; players' bars green everywhere: over heads, the party panel; mobs' red) and MP (blue) bars in `.th-bars` (`setHudVitals`), `Character.setHp` (a 20 px bar over the
-  name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (a 1.5 s fade out, `KO_FADE_MS`, 0.3 s back in; no lying-down pose yet), the unconscious pop-up (`ui/revive.ts`) only once your fade is done (TownScene `reviveLater`, its countdown still from the server's `reviveIn`);
+  name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (the faint, below; a 1.5 s fade out, `KO_FADE_MS`, while that look's faint isn't built yet, lying down once it is; 0.3 s back in at the way in), the unconscious pop-up (`ui/revive.ts`) only once you're down (its return: TownScene `reviveLater`, its countdown still from the server's `reviveIn`);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
+- Faint (CONTEXT.md Faint; `characters/faint.ts`, a port of the art folder's scripts/faint/build_faint_preview.py, its
+  sheets in characters/faint/sheets matched pixel for pixel but deep skin's faceTweak, which the script left out): a
+  knocked-out character buckles, kneels and falls forwards the way they face (sw, w, nw, n: head to screen-left), then lies
+  there with dizzy eyes and fx-faint-stars over the head. No art of its own: the look's own standing frame (the doll's
+  idle frame 0 with its big hat and topover, `drawStill`; on a battle map the class's idle-ready frame 0, `drawPose`, whole,
+  `weapons: 'none'` and `'only'`) moved and turned, every measurement on the bare body layer alone. 7 frames in a 128 × 72
+  cell (feet at 64, 68; FAINT_MS 90/110/380/90/80/90, frame 6 held): buckle, kneel (the dizzy face from here: manifest
+  `characters.layers.face.dizzy`, classes' idle-ready `dizzyFace`), slump, RotSprite 35° and 70° about the knee, then a
+  quarter turn lying (battle: the weapon dropped behind the body). Built once per look and class in idle time
+  (`wantFaint`: 4 ms a frame, about 300 ms of work a look, one look after another; a knock-out's urgent), on battle maps only
+  (`readyFaint`: TownScene `applyBattle`, others.ts `dressRest`, `setBattle`). Character: `setKnockedOut(true)` falls
+  (returns its ms, FAINT_DOWN_MS 840), the shadow widening (FAINT_SHADOW) and then under the lying body, the name at 60%
+  over it, the overlays the faint already has (big hat, topover, lit glass and glow, resting weapon, aura, jail bars)
+  hidden, no turning or attack poses; `setKnockedOut(true, true)` lies there at once (others.ts: someone already down as
+  you arrive); `false`: up, fading in. Lying sorts by the feet like standing. Dev: `?golemdemo=1&level=1` (the golem
+  knocks you out), `/__golem?demo=1&as=Name` (someone else).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
   `spendPoint` / `resetStatPoints` in progress.ts, tested; `Town.progress` after, so fights use them): one point into
   the class's main or second stat only; Reset free, all back (skills stay); none before a class (banked; choosing a class
