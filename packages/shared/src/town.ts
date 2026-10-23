@@ -10,9 +10,11 @@ import type { HoodHouse, HoodMap, OutfitData, TitleData } from './room-api.js';
 import type { PrivacySettings } from './friends.js';
 
 /** A Game Master's testing switches (Settings → Testing), kept for them by the server. `unkillable` (CONTEXT.md
- *  Unkillable): hits land as ever, but their HP never goes below 1, so they're never knocked out. */
+ *  Unkillable): hits land as ever, but their HP never goes below 1, so they're never knocked out. `freeMp`: their skills,
+ *  moves and buffs cost no MP. */
 export interface TestingSettings {
   unkillable: boolean;
+  freeMp: boolean;
 }
 import type { EventPotion } from './events.js';
 
@@ -312,7 +314,7 @@ export type TownClientMessage =
   | { t: 'privacy'; whispers?: PrivacySettings['whispers']; balance?: PrivacySettings['balance']; status?: PrivacySettings['status'] }
   /** A Game Master's testing switches (Settings → Testing; CONTEXT.md Unkillable): only what's given changes; anyone
    *  else's is ignored. */
-  | { t: 'testing'; unkillable?: boolean }
+  | { t: 'testing'; unkillable?: boolean; freeMp?: boolean }
   /** Trading (bot web/trade.ts; stats.json trading): ask a player within range (by town id), answer a request, put your
    *  side in (the whole side each time: items from your combat bag and Kusing; any change unlocks both), lock or unlock
    *  it, press Trade (both locked), or cancel (closing the window). */

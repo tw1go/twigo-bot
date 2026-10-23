@@ -466,14 +466,28 @@ test('unkillable: hits land, but HP stops at 1 and they are never knocked out; s
   assert.equal(v.hurt('gm', 5, 4000), 'out');
 });
 
+test("free MP: a skill's MP is never taken and every cost can be paid; switched off, MP counts again", () => {
+  const v = new Vitals(R);
+  v.arrive('gm', MAX, true, 0);
+  v.setFreeMp('gm', true);
+  assert.equal(v.isFreeMp('gm'), true);
+  assert.equal(v.hasMp('gm', MAX.mp * 10), true, 'more than she has: still yes');
+  assert.equal(v.spend('gm', MAX.mp * 10), true);
+  assert.equal(v.get('gm')!.mp, MAX.mp, 'nothing taken');
+  v.setFreeMp('gm', false);
+  assert.equal(v.hasMp('gm', MAX.mp * 10), false);
+  assert.equal(v.spend('gm', 5), true);
+  assert.equal(v.get('gm')!.mp, MAX.mp - 5);
+});
+
 test('only a Game Master can turn unkillable on (Settings → Testing); it is kept, and holds through a reconnect', async () => {
   const kept = new Map<string, TestingSettings>();
   const { room, open, close } = await townWithSlums({
     gm: (name) => name === 'Gemma',
     testing: {
-      get: (name) => kept.get(name) ?? { unkillable: false },
+      get: (name) => kept.get(name) ?? { unkillable: false, freeMp: false },
       set: (name, change) => {
-        const next = { ...(kept.get(name) ?? { unkillable: false }), ...change };
+        const next = { ...(kept.get(name) ?? { unkillable: false, freeMp: false }), ...change };
         kept.set(name, next);
         return next;
       },
@@ -482,13 +496,13 @@ test('only a Game Master can turn unkillable on (Settings → Testing); it is ke
   const g = await open('Gemma', 'slums');
   const b = await open('Bob', 'slums');
   await wait(150);
-  assert.deepEqual(g.got.find((m) => m.t === 'testing'), { t: 'testing', testing: { unkillable: false } }, 'a Game Master is told her switches');
+  assert.deepEqual(g.got.find((m) => m.t === 'testing'), { t: 'testing', testing: { unkillable: false, freeMp: false } }, 'a Game Master is told her switches');
   assert.ok(!b.got.some((m) => m.t === 'testing'), 'nobody else is');
   send(b.ws, { t: 'testing', unkillable: true });
   send(g.ws, { t: 'testing', unkillable: true });
   await wait(150);
   assert.ok(!b.got.some((m) => m.t === 'testing') && !kept.has('Bob'), "anyone else's is ignored");
-  assert.deepEqual(g.got.filter((m) => m.t === 'testing').at(-1), { t: 'testing', testing: { unkillable: true } });
+  assert.deepEqual(g.got.filter((m) => m.t === 'testing').at(-1), { t: 'testing', testing: { unkillable: true, freeMp: false } });
   room.queue.push({ player: g.id, by: 'tin-can-alley:0', damage: 99999 }, { player: b.id, by: 'tin-can-alley:0', damage: 99999 });
   await wait(250);
   assert.equal(lastVitals(g.got, g.id)?.hp, 1, 'her HP stops at 1');
@@ -499,7 +513,13 @@ test('only a Game Master can turn unkillable on (Settings → Testing); it is ke
   await wait(100);
   const g2 = await open('Gemma', 'slums');
   await wait(150);
-  assert.deepEqual(g2.got.find((m) => m.t === 'testing'), { t: 'testing', testing: { unkillable: true } });
+  assert.deepEqual(g2.got.find((m) => m.t === 'testing'), { t: 'testing', testing: { unkillable: true, freeMp: false } });
+  // Free MP: only what's given changes (unkillable stays on); Bob's is ignored.
+  send(g2.ws, { t: 'testing', freeMp: true });
+  send(b.ws, { t: 'testing', freeMp: true });
+  await wait(150);
+  assert.deepEqual(g2.got.filter((m) => m.t === 'testing').at(-1), { t: 'testing', testing: { unkillable: true, freeMp: true } });
+  assert.ok(!kept.has('Bob'));
   room.queue.push({ player: g2.id, by: 'tin-can-alley:0', damage: 99999 });
   await wait(250);
   assert.ok(!g2.got.some((m) => m.t === 'knocked-out' && m.id === g2.id), 'still unkillable after a reconnect');

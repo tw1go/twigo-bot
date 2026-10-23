@@ -51,7 +51,7 @@ import { announce } from '../ui/announce';
 import { OnlineList, showFriendRequest } from '../ui/online';
 import { answer as friendAnswer, askByName, blockByName, friends, refusal as friendRefusal, setFriends, setFriendsLink } from '../net/friends';
 import { setPrivacy, setPrivacyLink } from '../net/privacy';
-import { setTesting, setTestingLink } from '../net/testing';
+import { setTesting, setTestingLink, testing } from '../net/testing';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
@@ -1585,7 +1585,7 @@ export class TownScene extends Phaser.Scene {
   /** Whether you have the MP for a skill now (as last heard; the server decides). */
   private canPay(name: string): boolean {
     const need = this.mpOf(name);
-    return need <= 0 || !this.vitalsNow || this.vitalsNow.mp >= need;
+    return need <= 0 || !!testing()?.freeMp || !this.vitalsNow || this.vitalsNow.mp >= need; // (a Game Master's free MP: Settings → Testing)
   }
 
   /**

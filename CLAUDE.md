@@ -1508,7 +1508,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (the faint, below; a 1.5 s fade out, `KO_FADE_MS`, while that look's faint isn't built yet, lying down once it is; 0.3 s back in at the way in), the unconscious pop-up (`ui/revive.ts`) only once you're down (its return: TownScene `reviveLater`, its countdown still from the server's `reviveIn`);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
-- Unkillable (CONTEXT.md Unkillable; Game Masters only: `TownOptions.gm`): Settings → Testing's "Can’t be knocked out"
+- Unkillable and free MP (CONTEXT.md Unkillable; Game Masters only: `TownOptions.gm`): Settings → Testing's "Can’t be
+  knocked out" and "Skills cost no MP" (`freeMp`: `Vitals.setFreeMp`, so `spend` takes nothing and `hasMp` says yes for
+  attacks, moves and buffs (a buff's cast sees Infinity MP); the page's `canPay` with it never asks for MP or an auto MP
+  Potion); the first switch,
   (`ui/settings.ts` `testingSection`, shown only when the town has sent `testing`, which it sends only to Game Masters;
   `net/testing.ts`). `testing` {unkillable} → bot `web/town.ts` (anyone else's ignored) → `TownOptions.testing` (bot
   `web/testing.ts`, kv 'gm-testing:<userId>', kept until turned off; the dev town's in memory, its Game Masters the names

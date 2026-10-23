@@ -563,9 +563,9 @@ export function devTown(): Plugin {
         },
         // A Game Master's testing switches in memory (a restart forgets them).
         testing: {
-          get: (name) => testing.get(name) ?? { unkillable: false },
+          get: (name) => testing.get(name) ?? { unkillable: false, freeMp: false },
           set: (name, change) => {
-            const next = { ...(testing.get(name) ?? { unkillable: false }), ...change };
+            const next = { ...(testing.get(name) ?? { unkillable: false, freeMp: false }), ...change };
             testing.set(name, next);
             return next;
           },

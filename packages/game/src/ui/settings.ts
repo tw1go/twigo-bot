@@ -134,29 +134,33 @@ function audio(): HTMLElement {
   return section;
 }
 
-/** Testing (Game Masters only; CONTEXT.md Unkillable): can't be knocked out, kept by the town's server (net/testing.ts)
- *  until turned off. */
+/** Testing (Game Masters only; CONTEXT.md Unkillable): can't be knocked out, and skills that cost no MP, kept by the
+ *  town's server (net/testing.ts) until turned off. */
 function testingSection(): HTMLElement {
   const section = el('section', 'st-section');
-  const row = el('label', 'st-row st-check');
-  const box = el('input');
-  box.type = 'checkbox';
-  const draw = () => (box.checked = !!testing()?.unkillable);
-  draw();
-  // (Drawn as the town last said: the server answers a change with the switches now.)
-  box.addEventListener('change', () => {
-    playSound('click');
-    if (!changeTesting({ unkillable: box.checked })) {
-      toast('Can’t reach the town right now.', 2600, 'bad');
-      return draw();
-    }
-    toast(box.checked ? 'Unkillable: your HP stops at 1.' : 'You can be knocked out again.', 2400);
-  });
-  row.append(box, el('span', undefined, 'Can’t be knocked out'));
+  // One switch: drawn as the town last said (the server answers a change with the switches now).
+  const toggle = (label: string, key: 'unkillable' | 'freeMp', on: string, off: string) => {
+    const row = el('label', 'st-row st-check');
+    const box = el('input');
+    box.type = 'checkbox';
+    const draw = () => (box.checked = !!testing()?.[key]);
+    draw();
+    box.addEventListener('change', () => {
+      playSound('click');
+      if (!changeTesting({ [key]: box.checked })) {
+        toast('Can’t reach the town right now.', 2600, 'bad');
+        return draw();
+      }
+      toast(box.checked ? on : off, 2400);
+    });
+    row.append(box, el('span', undefined, label));
+    return row;
+  };
   section.append(
     el('h3', 'st-heading', 'Testing'),
-    row,
-    el('p', 'st-note', 'Game Masters only. Hits still land, but your HP stops at 1, so you can fight on through quests and levels. Stays on until you turn it off.'),
+    toggle('Can’t be knocked out', 'unkillable', 'Unkillable: your HP stops at 1.', 'You can be knocked out again.'),
+    toggle('Skills cost no MP', 'freeMp', 'Skills, moves and buffs cost no MP.', 'Skills cost MP again.'),
+    el('p', 'st-note', 'Game Masters only. Hits still land, but your HP stops at 1, so you can fight on through quests and levels; with free MP every skill, move and buff goes without spending any. Each stays on until you turn it off.'),
   );
   return section;
 }
