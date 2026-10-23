@@ -262,5 +262,5 @@ export async function hoodAction(client: Client, userId: string, action: 'steal'
   }
   await post(client, `${intro}🚨 **CAUGHT!** The Tanod caught <@${userId}> breaking into <@${owner}>'s house! <@${userId}> pays <@${owner}> a fine of **${result.fine}** ${kowen(result.fine)} and spends **${result.minutes} minutes** in jail. 🚔`, pings);
   feed('steal', result.key ? `${me} broke through ${them}'s Bakod with a Master Key, but the Tanod caught them` : `The Tanod caught ${me} breaking into ${them}'s house`, 'bust', { userId });
-  return done(true, `Huli ka! You pay ${them} a fine of ${result.fine} ${kowen(result.fine)} and spend ${result.minutes} minutes in jail.`, { busted: true });
+  return done(true, `Caught you! You pay ${them} a fine of ${result.fine} ${kowen(result.fine)} and spend ${result.minutes} minutes in jail.`, { busted: true });
 }

@@ -66,7 +66,7 @@ test('15 quests after the Tanod\'s (the 15th, Now\'s the Time, lets you into Ang
   assert.equal(q(1).startsIn, 'palengke');
   assert.deepEqual(q(1).objectives.map((o) => o.npc), ['aling-conching', 'mang-pido']);
   assert.equal(q(14).rewardTitle, 'huling-suki');
-  // Bigas, Bigas: the kills with the scoops in hand, then the scoops to Aling Conching.
+  // Rice, Rice: the kills with the scoops in hand, then the scoops to Aling Conching.
   assert.deepEqual(q(6).objectives.map((o) => [o.type, o.mob ?? o.item, o.collect?.item]), [['kill', 'sako-slammer', 'clean-rice-scoop'], ['deliver', 'clean-rice-scoop', undefined]]);
   assert.equal(q(6).objectives[0].text, 'Sako Slammers');
 });

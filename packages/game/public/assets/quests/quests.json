@@ -344,16 +344,16 @@
       ],
       "dialogue": {
         "talk": [
-          "Psst, anak! Come here. Level 16 ka na? Ang lakas mo na, ha!",
+          "Psst, dear! Come here. Level 16 already? You've gotten so strong!",
           "My good binoculars, the brass ones from my late husband, nawala! I left them on the bench while I was buying pandesal.",
           "The kids say the Barong-Barong took them. A shanty monster under the Slums, in the Scrap Warrens daw.",
-          "Here, a practice ticket. Use it at the Warren Gate by the golem pit, alone. Bring them back to me, ha?"
+          "Here, a practice ticket. Use it at the Warren Gate by the golem pit, alone. Bring them back to me, okay?"
         ],
         "remind": [
-          "Nasaan na ang binoculars ko? The Warren Gate is by the golem pit, near the old jeepney."
+          "Where are my binoculars? The Warren Gate is by the golem pit, near the old jeepney."
         ],
         "complete": [
-          "Ay, salamat, anak! Now I can see everything again. Everyone, too. Hehe.",
+          "Oh, thank you, dear! Now I can see everything again. Everyone, too. Hehe.",
           "Here, for your trouble. And don't tell the Tanod I'm watching him."
         ]
       },
