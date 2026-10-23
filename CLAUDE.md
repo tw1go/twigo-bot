@@ -18,7 +18,9 @@ If `CLAUDE.local.md` isn't in the repo root, you're on a contributor's machine: 
   http://localhost:5173/play/ with its own **dev town** (`packages/game/scripts/dev-town.ts` runs the bot's real
   `web/town.ts` with a fake login). Open `?as=Alice` and `?as=Bob` in two windows to play together; `?area=slums` for
   the Slums; `?switch` to pick any class; `?level=20`, `?give=<item>:<rarity>:<plus>`, `?kusing=`, `?whetstones=`;
-  more dev switches are listed with each feature below. The dev town keeps everything in memory (restart = fresh). A
+  the GM tools (`ui/gm-tools.ts`, the "GM" tab at the left edge; dev only: HP / MP switches and a full heal, level and XP,
+  Kusing, a quest's step or all of it done, a jump to a tile or another map, every mob near you down: the dev town's
+  /__gm, /__xp, /__give); more dev switches are listed with each feature below. The dev town keeps everything in memory (restart = fresh). A
   fresh browser starts at the character creator (your look is kept in that browser after). The terminal's
   `http proxy error … 127.0.0.1:8787` lines are normal: a few routes look for a bot there and the page fakes them.
 - **Checking UI work:** drive headless Chrome over the DevTools protocol against the dev server (screenshots plus

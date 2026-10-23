@@ -919,6 +919,23 @@ export function devTown(): Plugin {
         town.progress(name, r.progress, r.ups, r.gained);
         res.end(`${name}: Lv ${r.progress.level}, ${r.progress.xp}/${r.progress.next} XP (+${r.gained}, ${r.ups} level-up${r.ups === 1 ? '' : 's'})\n`);
       });
+      // The GM tools (ui/gm-tools.ts): /__gm?as=Name&heal=1 (full HP and MP), &to=col,row (a jump on their map),
+      // &slay=8 (every mob that near down: XP, loot, quest kills theirs), &unkillable=0|1, &freemp=0|1 (the testing switches,
+      // for anyone here).
+      server.middlewares.use('/__gm', (req, res) => {
+        const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+        const name = q.get('as') ?? '';
+        const to = q.get('to')?.split(',').map(Number);
+        const testing = { ...(q.has('unkillable') ? { unkillable: q.get('unkillable') === '1' } : {}), ...(q.has('freemp') ? { freeMp: q.get('freemp') === '1' } : {}) };
+        const said = town.gmDev(name, {
+          heal: q.has('heal'),
+          ...(to?.length === 2 && to.every(Number.isFinite) ? { to: [to[0], to[1]] as [number, number] } : {}),
+          ...(q.has('slay') ? { slay: Math.min(30, Math.max(1, Number(q.get('slay')) || 8)) } : {}),
+          ...(Object.keys(testing).length ? { testing } : {}),
+        });
+        server.config.logger.info(`[gm] ${name}: ${said}`, { timestamp: true });
+        res.end(`${said}\n`);
+      });
       server.middlewares.use('/__points', (req, res) => {
         const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
         const name = q.get('as') ?? '';
