@@ -158,7 +158,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade; their icons the art folder's
   items/palengke/art, 21 Oct 2026, each matched to its kind by `_icons.csv`'s recoloured_from); `items/items.json`
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
-  `maps/palengke.json` the three zones' `miniBosses` spots.
+  `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
+  footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
+  asked, 23 Oct 2026).
 - The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
   (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
@@ -167,7 +169,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `items/items.json` the ten quest items (kind `quest`, bound; their icons the art folder's items/quest, 21 Oct 2026); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
 - The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
-  (`dishesNote`), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
+  (`dishesNote`), its `icon` / `showcase` / `large` (23 Oct 2026: the art folder's items/consumables item-dish-* files), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
 - The Palengke's NPCs (21 Oct 2026): `npcs/palengke-npc-dialogue.json` = the art folder's npcs/palengke one with its idle lines
   in English (no Tagalog in the game: Mac) and portraits pointing at `npcs/`; the manifest's npcs `palengkeIds`,
@@ -190,8 +192,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `gates.palengke` (row 0, cols 121-123; moved from the west edge, col 0 rows 116-118, on 23 Oct 2026, the owner's call)
   and `arrive.palengke` [122, 3], the dead tree at (122,1) removed off that path (the six props cleared off the old west
   path on 20 Oct 2026 stay cleared; copying the art folder's map over again loses all of it);
-  `scripts/terrain/protect-slums.json` keeps the north path. `ui/map/map-layout.json`: `maps.palengke` (col −18, row −210:
-  north of the Slums, its middle over the gate) and `posts.palengke` (its four), `palengkeNote`.
+  `scripts/terrain/protect-slums.json` keeps the north path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13,
+  its `label` [150, 12]: west of the Slums, where the world picture draws it, though its gate is on the Slums' north edge)
+  and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321) and
+  ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
+  with the picture).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
@@ -896,9 +901,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   re-tiles a palengke.json). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
   the tile outside, front walls on their own: you go behind the south and east walls just inside them). String lights
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
-  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
-  plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
-  with its four posts; the quest map pins you at the Slums' gate to it. Its own music (music-palengke); title card "Lumang
+  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums, drawn
+  into ui-map-world.png (its size from the manifest's `ui.mapWorld.size`; the stage grows to every map, `worldBounds` /
+  `shifted`) with its four posts; the quest map pins you on your own tile there. Its minimap lays the manifest's
+  `ui.minimapPictures.palengke` over the tile colours (`Minimap` `paintPicture`, smoothed, redrawn on each layout). Its own music (music-palengke); title card "Lumang
   Palengke". Measured: 60 fps walking Tarp Row (as the Slums). `sections` are kept as data; `npcs`: the quest NPCs, below.
   Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
   mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
@@ -1014,8 +1020,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   mirror; Pancit). Bought only in the room 'palengke': `dish-buy` → `dishes.buy` (`buyDishFor`: unlocked by its quest,
   its Kusing) → `dish` {ok, message}; free ones (`freeDish`: Q1's Lugaw, a daily order's random one of yours) come back
   from POST /town/quest as `dish`, server.ts `Town.serveDish` → `dish` {free}. Game: Aling Conching's dialog box's
-  "🍲 Menu" (PalengkeNpcs `action`) opens `ui/dish-menu.ts` (every dish, locked ones greyed with "Unlocks with <quest>",
-  "On · 7:32", Buy with its Kusing; TownScene `openDishes` / `buyDish`); the buff tray shows them by name (`title`).
+  "🍲 Menu" (PalengkeNpcs `action`) opens `ui/dish-menu.ts` (every dish with its picture, locked ones greyed with "Unlocks with <quest>",
+  "On · 7:32", Buy with its Kusing; TownScene `openDishes` / `buyDish`); the buff tray shows them by name (`title`) and picture
+  (TownScene `buffIcon`: a dish's `showcase`, else the skill's icon; the target frame's buffs and the free dish's toast too).
   Daily orders (CONTEXT.md Daily order; `dailies`): a QuestDef per pool entry (`palengke-daily-<item>`, `daily`,
   `after: 'palengke-14'`), `startDaily` (startQuests, entering the Palengke: a random one once the chain is done and
   today's isn't handed in; one not handed in stays), `finishQuest` (a daily: `quests.dailyDone` = `dailyDay`, never
@@ -1112,9 +1119,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   hurt, stats.json regen.outOfCombatAfterSec; toast "Can't travel during a fight."). Map menu (`ui/map-menu.ts`, the
   Equipment panel's frame; M anywhere: keybind 'map', again closes; read-only away from a post: an icon says "Go to a
   Lantern Post to travel."): a tab per map (Town, Slums, Old Market; opening on the map you're in), each its map alone:
-  manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond (the Old
-  Market: a plain diamond, NOT_DRAWN), at a whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab
-  shares; a smaller one fills it, up to FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`), with the Slums'
+  manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond, at a
+  whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab shares; a smaller one fills it, up to
+  FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`; no scrollbars: bigger than its box (a phone), it's
+  dragged, `dragToScroll`: a press moving 4 px is a drag and its click is swallowed), with the Slums'
   zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
   maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
   diamond `.mm-gate` and its name: a stand-in until there's an icon) and a teleporter icon per post

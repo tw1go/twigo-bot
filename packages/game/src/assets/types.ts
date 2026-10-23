@@ -107,6 +107,8 @@ export interface Manifest {
     /** The Map menu (ui/map-menu.ts): the Slums and the Town drawn together (`layout`: ui/map/map-layout.json), a
      *  Lantern Post's icon (frames normal, hover, here) and the "You are here" pin. */
     mapWorld?: { file: string; size: Vec2; layout: string };
+    /** A map's minimap from a picture instead of its tiles' colours, by tileset (ui/minimap.ts). */
+    minimapPictures?: Record<string, string>;
     mapTeleporter?: { file: string; size: Vec2; frames: string[]; anchor: Vec2 };
     mapPin?: { file: string; size: Vec2 };
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).

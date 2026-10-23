@@ -807,6 +807,8 @@
       #reward .dm-list { display: grid; gap: 6px; max-height: min(52vh, 460px); overflow-y: auto; }
       #reward .dm-dish { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-left: 4px solid #C2410C; background: #FFF7ED; }
       #reward .dm-dish.dm-locked { border-color: #9CA3AF; background: #F3F4F6; color: #6B7280; }
+      #reward .dm-icon { flex: none; width: 32px; height: 32px; image-rendering: pixelated; }
+      #reward .dm-locked .dm-icon { filter: grayscale(1); opacity: 0.5; }
       #reward .dm-text { flex: 1; min-width: 0; }
       #reward .dm-name { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
       #reward .dm-name b { color: #9A3412; font-size: calc(16px * var(--text)); }
@@ -2148,11 +2150,13 @@
       #map-menu .mm-title { font-size: calc(22px * var(--text)); font-weight: 700; color: #fff; }
       #map-menu .mm-close { position: absolute; right: 0; top: 0; width: 32px; height: 32px; padding: 0; border: 0; background: none; color: #7A8099; font: calc(26px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       #map-menu .mm-close:hover { color: #fff; }
-      #map-menu .mm-inset { flex: none; overflow: auto; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; }
+      #map-menu .mm-inset { flex: none; overflow: auto; scrollbar-width: none; padding: calc(4px * var(--k)); border: 2px solid #3D4256; background: #0A0F1E; touch-action: none; }
+      #map-menu .mm-inset::-webkit-scrollbar { display: none; }
+      #map-menu .mm-inset.mm-can-drag { cursor: grab; }
+      #map-menu .mm-inset.mm-dragging { cursor: grabbing; }
       #map-menu .mm-stage { position: relative; width: calc(428px * var(--k)); height: calc(220px * var(--k)); }
-      #map-menu .mm-world { position: absolute; display: block; width: calc(428px * var(--k)); height: calc(220px * var(--k)); image-rendering: pixelated; user-select: none; }
+      #map-menu .mm-world { position: absolute; display: block; width: calc(var(--pw, 671) * 1px * var(--k)); height: calc(var(--ph, 321) * 1px * var(--k)); image-rendering: pixelated; user-select: none; }
       /* A map the picture doesn't have yet (the Lumang Palengke): a plain diamond where it lies (clip-path set in code). */
-      #map-menu .mm-blank { position: absolute; inset: 0; background: #2A2438; box-shadow: inset 0 0 0 999px rgba(124, 42, 232, 0.08); pointer-events: none; }
       #map-menu .mm-tabs { flex: none; display: flex; gap: 6px; }
       #map-menu .mm-tab { flex: 1; height: 34px; padding: 0 10px; border: 2px solid #3D4256; background: #1A1F33; color: #A9B1D6; font: 700 calc(15px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
       #map-menu .mm-tab:hover { color: #fff; border-color: #5A6178; }

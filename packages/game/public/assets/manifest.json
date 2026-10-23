@@ -24197,11 +24197,15 @@
     "mapWorld": {
       "file": "ui/map/ui-map-world.png",
       "size": [
-        428,
-        220
+        671,
+        321
       ],
       "layout": "ui/map/map-layout.json",
-      "note": "The Map menu (ui/map-menu.ts): the Slums and the Town drawn together; map-layout.json says where each map sits and where the Lantern Posts are"
+      "note": "The Map menu (ui/map-menu.ts) and the quest map: the Slums, the Town and the Old Market drawn together (the Old Market since 23 Oct 2026: the art folder's ui/map/palengke); map-layout.json says where each map sits and where the Lantern Posts are"
+    },
+    "minimapPictures": {
+      "palengke": "ui/map/ui-minimap-palengke.png",
+      "note": "A map's minimap drawn from a picture instead of its tiles' colours (ui/minimap.ts), by its tileset: exactly the map's diamond, its top corner (tile 0,0) at the top middle, 2:1 (the Old Market's at 3.2 px a tile, 23 Oct 2026)"
     },
     "mapTeleporter": {
       "file": "ui/map/ui-map-teleporter.png",
