@@ -129,6 +129,7 @@ export class MapMenu {
     }
     const inset = el('div', 'mm-inset');
     inset.append(this.stage);
+    this.dragToScroll(inset);
     const foot = el('div', 'mm-foot');
     const icon = el('img', 'mm-foot-icon');
     icon.src = art.lantern;
@@ -337,6 +338,46 @@ export class MapMenu {
       gate.addEventListener('click', () => this.pick(id, index));
     });
     this.footText();
+  }
+
+  /** The map scrolled by dragging it (no scrollbars: index.html hides them), when it's bigger than its box: a press
+   *  that moves more than DRAG_PX is a drag (the click after it, on a post or an entrance, is swallowed); less, a click. */
+  private dragToScroll(box: HTMLElement): void {
+    const DRAG_PX = 4;
+    let from: { x: number; y: number; left: number; top: number; id: number } | null = null;
+    let dragged = false;
+    const canScroll = () => box.scrollWidth > box.clientWidth || box.scrollHeight > box.clientHeight;
+    new ResizeObserver(() => box.classList.toggle('mm-can-drag', canScroll())).observe(this.stage);
+    box.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || !canScroll()) return;
+      from = { x: e.clientX, y: e.clientY, left: box.scrollLeft, top: box.scrollTop, id: e.pointerId };
+      dragged = false;
+    });
+    box.addEventListener('pointermove', (e) => {
+      if (!from || e.pointerId !== from.id) return;
+      const [dx, dy] = [e.clientX - from.x, e.clientY - from.y];
+      if (!dragged && Math.hypot(dx, dy) < DRAG_PX) return;
+      if (!dragged) {
+        dragged = true;
+        box.setPointerCapture(e.pointerId);
+        box.classList.add('mm-dragging');
+      }
+      box.scrollLeft = from.left - dx;
+      box.scrollTop = from.top - dy;
+    });
+    const end = () => {
+      from = null;
+      box.classList.remove('mm-dragging');
+    };
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
+    // (A drag's release isn't a click on whatever it ended over.)
+    box.addEventListener('click', (e) => {
+      if (!dragged) return;
+      dragged = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }, true);
   }
 
   /** An icon's hover: its frame lit and its name tag shown (keyboard focus too). */
