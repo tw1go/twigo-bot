@@ -1790,7 +1790,9 @@ export class TownScene extends Phaser.Scene {
     ch.fx?.kill(120);
     ch.bar.kill(0);
     this.chargedShot = { name, held: Math.min(ch.ms, this.time.now - ch.t0) };
-    if (this.fight(name) === undefined) this.player.endStrike();
+    // Fired at once (in reach, ready): its own pose took over. Not yet (no target, out of reach and walking there, the
+    // gap between casts): the held pose goes now, so you never walk about frozen in it; the shot plays its pose as it fires.
+    if (this.fight(name) === undefined || this.chargedShot?.name === name) this.player.endStrike();
   }
 
   /** When you last cast a buff (scene ms): its pose started then, so its burst and landing wait only for what's left. */
