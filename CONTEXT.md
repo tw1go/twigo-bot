@@ -33,7 +33,7 @@ The map west of the town, reached through its gate; where mobs live.
 _Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
 
 **Old Market**:
-The abandoned market west of the Slums, reached through the Slums' west gate: the Lv 21-40 map, its mobs, mini bosses,
+The abandoned market north of the Slums, reached through the Slums' north gate (between Wire Ridge and Bag Flats): the Lv 21-40 map, its mobs, mini bosses,
 the Great Scale and the "Ang Huling Suki" quest chain. Its parts (Tarp Row, Vegetable Row, Dry Goods, Eatery Row, Butcher
 Row, the Fish Market, the Market Hall…) are sections. (`palengke` in code: its first name was the Lumang Palengke.)
 _Avoid_: Lumang Palengke, Palengke (the old names), market (alone)

@@ -188,13 +188,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `classes/palengke-leveling.json`'s palengke-14 now has a bell step (built in shared `palengke.ts`).
 - The Lumang Palengke (20 Oct 2026): `maps/palengke.json`, `tiles/palengke/`, `props/palengke/` (the art folder's, as they are)
   and the manifest's `props` from its palengke-manifest-snippet.json; `tiles.palengke` is written here (the families counted
-  from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
-  `gates.palengke` (col 0, rows 116-118) and `arrive.palengke` [3, 117], and the six props cleared off that path (two scrap
-  piles, the jeep wreck at (3,116), the sapling, the fallen tree, the stump; copying the art folder's map over again loses
-  it); `scripts/terrain/protect-slums.json` keeps the path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13,
-  its `label` [150, 12]) and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321)
-  and ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved
-  +[243, 101] with the picture).
+  from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its north gate
+  `gates.palengke` (row 0, cols 121-123; moved from the west edge, col 0 rows 116-118, on 23 Oct 2026, the owner's call)
+  and `arrive.palengke` [122, 3], the dead tree at (122,1) removed off that path (the six props cleared off the old west
+  path on 20 Oct 2026 stay cleared; copying the art folder's map over again loses all of it);
+  `scripts/terrain/protect-slums.json` keeps the north path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13,
+  its `label` [150, 12]: west of the Slums, where the world picture draws it, though its gate is on the Slums' north edge)
+  and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321) and
+  ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
+  with the picture).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
@@ -883,8 +885,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
   bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the
-  Great Scale, below). The Slums' west gate (col 0, rows
-  116-118, "← Palengke") ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
+  Great Scale, below). The Slums' north gate (row 0, cols
+  121-123, between Wire Ridge and Bag Flats on the canal's west bank, "↑ Old Market"; the west edge's gate until 23 Oct
+  2026) ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
   renderer (`world/terrain.ts`) takes the map's `tileset` (tiles.palengke: no cliffs, rims or ramps), each family's plain
   variants 1-4 twice as likely (rng.ts `variantAt`'s weights), `baha` (shallow flood, walkable at 70%: Character
   `speedAt`, players and others alike; the server's step budget needs nothing) and `lalim` (deep pools, blocked, with the
