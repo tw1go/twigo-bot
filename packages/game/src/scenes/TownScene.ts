@@ -110,7 +110,7 @@ import { type Tile, WalkGrid } from '../world/grid';
 import { Ground } from '../world/ground';
 import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts';
 import { Terrain } from '../world/terrain';
-import { Mobs, TONE, showSlowed } from '../world/mobs';
+import { type Mob, Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
 import { GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
@@ -955,6 +955,7 @@ export class TownScene extends Phaser.Scene {
     this.lanternTick(time);
     this.ramonTick(time);
     this.fightTick();
+    this.chargeWalkTick();
     this.fxLayers.update();
     this.raceNews();
     if (this.npcs) {
@@ -1641,9 +1642,7 @@ export class TownScene extends Phaser.Scene {
     if (this.player.busy || this.player.isSitting || this.inside) return;
     if (this.time.now < this.castLock) return; // a channel or windup under way: no other skill, no walking
     const me = this.player.tile;
-    const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
-    // (To the golem: to its body's edge, as the server measures it.)
-    const dist = (t: Tile) => (m.radius ? Math.max(0, Math.hypot(t.col - at.col, t.row - at.row) - m.radius) : Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row)));
+    const dist = (t: Tile) => this.reachDist(m, t);
     // In reach of the chosen skill, or (while it cools down) of another that's ready.
     const c0 = classInfo(adventure()?.cls);
     const open = (n: string) => !skillView(n)?.locked; // (locked skills never cast: the server refuses them)
@@ -1699,21 +1698,30 @@ export class TownScene extends Phaser.Scene {
     }
     // Out of reach: to the nearest open tile in reach of it (again if it has moved off our goal's reach).
     if (e.goal && dist(e.goal) <= e.reach && !this.player.isIdle) return;
-    const spots: Tile[] = [];
-    const span = e.reach + Math.ceil(m.radius);
-    for (let dr = -span; dr <= span; dr++) for (let dc = -span; dc <= span; dc++) {
-      const t = { col: at.col + dc, row: at.row + dr };
-      if ((dc || dr) && dist(t) <= e.reach && this.grid.walkable(t.col, t.row) && this.objects.heights.at(t.col, t.row) === this.objects.heights.at(at.col, at.row)) spots.push(t);
-    }
-    spots.sort((a, b) => Math.hypot(a.col - me.col, a.row - me.row) - Math.hypot(b.col - me.col, b.row - me.row));
-    for (const t of spots.slice(0, 6)) {
-      if (this.walkTo(t)) {
-        e.goal = t;
-        return;
-      }
-    }
+    e.goal = this.walkIntoReach(m, e.reach);
+    if (e.goal) return;
     toast("Can't reach it from here.", 1800);
     this.stopFight();
+  }
+
+  /** How far a tile is from a mob, as the server measures a skill's reach (Chebyshev; to the golem: its body's edge). */
+  private reachDist(m: Mob, t: Tile): number {
+    const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
+    return m.radius ? Math.max(0, Math.hypot(t.col - at.col, t.row - at.row) - m.radius) : Math.max(Math.abs(t.col - at.col), Math.abs(t.row - at.row));
+  }
+
+  /** Walks you to the nearest open tile within `reach` of a mob, on its level: that tile, or null (none you can reach). */
+  private walkIntoReach(m: Mob, reach: number): Tile | null {
+    const me = this.player.tile;
+    const at = { col: Math.floor(m.col), row: Math.floor(m.row) };
+    const spots: Tile[] = [];
+    const span = reach + Math.ceil(m.radius);
+    for (let dr = -span; dr <= span; dr++) for (let dc = -span; dc <= span; dc++) {
+      const t = { col: at.col + dc, row: at.row + dr };
+      if ((dc || dr) && this.reachDist(m, t) <= reach && this.grid.walkable(t.col, t.row) && this.objects.heights.at(t.col, t.row) === this.objects.heights.at(at.col, at.row)) spots.push(t);
+    }
+    spots.sort((a, b) => Math.hypot(a.col - me.col, a.row - me.row) - Math.hypot(b.col - me.col, b.row - me.row));
+    return spots.slice(0, 6).find((t) => this.walkTo(t)) ?? null;
   }
 
   /** A channel or windup of yours under way until then (scene ms): which, and whether it's a windup (its cooldown comes
@@ -1740,20 +1748,70 @@ export class TownScene extends Phaser.Scene {
     this.locked = null;
   }
 
-  /** A charge-up's key pressed (CONTEXT.md Charge-up): it charges while held, the pose to its held frame, its charge
-   *  fx at the fork and a bar under you; let go (or full) it fires. False: not a charge-up, or not now (used as ever). */
+  /** A charge-up pressed out of reach of its target: walking into reach, where it starts charging if the key's still
+   *  held (chargeWalkTick); let go first, it's called off (releaseCharge). */
+  private chargeWalk: { name: string; mob: string; goal: Tile | null } | null = null;
+
+  /** A charge-up's key pressed (CONTEXT.md Charge-up): it needs a target (yours, else the nearest mob in range: no
+   *  target, it says so and does nothing); out of its reach, you walk into reach first (chargeWalk). In reach it charges
+   *  while held, the pose to its held frame, its charge fx at the fork and a bar under you; let go (or full) it fires.
+   *  False: not a charge-up, or not now (used as ever). */
   private holdCharge(name: string): boolean {
     const ch = this.chargeOf(name);
     const c = classInfo(adventure()?.cls);
-    if (!ch || !c || !this.battleMap || this.knockedOut || skillView(name)?.locked) return false;
+    if (!ch || !c || !this.battleMap || this.knockedOut || skillView(name)?.locked || !this.mobs) return false;
     if (this.time.now < (this.castReady.get(name) ?? 0)) return false; // (cooling down: the press says so as ever)
+    const m = this.mobs.current && !this.mobs.current.dead ? this.mobs.current : this.mobs.targetNext(this.player.tile);
+    if (!m) {
+      playSound('error');
+      toast('No target. Walk up to a mob (Z picks the nearest).', 2200);
+      return true; // (held: nothing more; its key-up does nothing)
+    }
     this.stopChannel();
+    this.stopFight();
+    const reach = this.reachOf(c.id, ch.idx);
+    if (this.reachDist(m, this.player.tile) > reach) {
+      this.chargeWalk = { name, mob: m.id, goal: null };
+      this.chargeWalkTick();
+      return true;
+    }
+    this.startCharge(name, m);
+    return true;
+  }
+
+  /** Each frame while walking into a charge-up's reach: there (the step under way done), it starts charging; the target
+   *  gone or no way to it, it's called off. */
+  private chargeWalkTick(): void {
+    const w = this.chargeWalk;
+    if (!w) return;
+    const c = classInfo(adventure()?.cls);
+    const ch = this.chargeOf(w.name);
+    const m = this.mobs?.list.find((x) => x.id === w.mob);
+    if (!c || !ch || !m || m.dead || this.knockedOut) return void (this.chargeWalk = null);
+    const reach = this.reachOf(c.id, ch.idx);
+    if (this.reachDist(m, this.player.tile) <= reach) {
+      if (!this.player.isIdle) return this.player.cancelPath(); // (stop on this tile)
+      this.chargeWalk = null;
+      return this.startCharge(w.name, m);
+    }
+    if (w.goal && this.reachDist(m, w.goal) <= reach && !this.player.isIdle) return;
+    w.goal = this.walkIntoReach(m, reach);
+    if (w.goal) return;
+    toast("Can't reach it from here.", 1800);
+    this.chargeWalk = null;
+  }
+
+  /** Charging a charge-up, in reach of its target `m` (turned to it). */
+  private startCharge(name: string, m: Mob | null): void {
+    const ch = this.chargeOf(name);
+    const c = classInfo(adventure()?.cls);
+    if (!ch || !c) return;
     // Standing still to charge: the step under way finished, then nothing more walked (keys, clicks, the auto-cast's
     // walking into reach, a mobility move) till it's let go (walkTo, keyStep, moveTo, mobility check `charging`).
     this.clickTo = null;
     this.pending = null;
     if (!this.player.isIdle) this.player.walk([this.player.heading]);
-    const dir = this.player.facing;
+    const dir = m ? dirToward(m.sprite.x - this.player.sprite.x, m.sprite.y - this.player.sprite.y) : this.player.facing; // (turned to it)
     // The stage's frames up to the held one (the longest), held until it's let go.
     const frames = this.posesOf(c.id, ch.idx, true);
     const hold = frames.reduce((b, f, i) => (f.ms > frames[b].ms ? i : b), 0);
@@ -1779,11 +1837,16 @@ export class TownScene extends Phaser.Scene {
       if (full) this.fxLayers.play(this.M.fx[full.name], fork(), { layer: 'front', scale: full.scale, ...(full.tint ? { tint: Number.parseInt(full.tint.slice(1), 16) } : {}) });
       this.releaseCharge(name);
     });
-    return true;
   }
 
-  /** The charge-up's key let go (or full): it fires with the time it was held, through the auto-cast. */
+  /** The charge-up's key let go (or full): it fires with the time it was held, through the auto-cast. Let go while still
+   *  walking into its reach: called off, you stop. */
   private releaseCharge(name: string): void {
+    if (this.chargeWalk?.name === name) {
+      this.chargeWalk = null;
+      if (!this.player.isIdle) this.player.walk([this.player.heading]); // (stops after the step under way)
+      return;
+    }
     const ch = this.charging;
     if (!ch || ch.name !== name) return;
     this.charging = null;
@@ -4231,6 +4294,7 @@ export class TownScene extends Phaser.Scene {
   /** Just walk there (a tile you can't get to: the nearest one you can), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
     if (this.charging) return; // (standing still while a charge-up is held)
+    this.chargeWalk = null; // (walking yourself calls off a walk into a charge-up's reach)
     this.stopFight(); // walking yourself stops an auto-cast
     this.stopChannel(); // (and a channel or windup)
     this.pending = null;
