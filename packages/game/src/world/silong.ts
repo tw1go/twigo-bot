@@ -27,7 +27,7 @@ import { LABEL_DEPTH } from './depth';
 // - The mini bosses' moves (`boss-move` / `boss-hit`, bot web/town-silong-bosses.ts): each one's red telegraph, its
 //   attack pose timed so its hit frame lands on the hit, and its effects, the art folder's silong/fx (21 Oct 2026; each
 //   drawn in code while its sheet isn't loaded; Mac's PixelLab ones since 23 Oct 2026, the art folder's
-//   fx/mob-boss-pixellab): Atsarah's brine splash round her (its back half behind her, its front half over her) and her
+//   fx/mob-boss-pixellab): Delemon's brine splash round her (its back half behind her, its front half over her) and her
 //   lid flying out and back along
 //   its line; Sakristan's rice pouring into each circle (the rice itself is the town's `mob-fx`) and his flop's frosty
 //   dust; Mono Lisa's chairs (the Monobloc's) flying to where you stood, her Split (a puff on each copy, all small, a glint
@@ -217,9 +217,18 @@ export class SilongView {
       const crack = this.M.fx['fx-silong-frost-crack'];
       for (const p of this.doors) {
         this.fx.play(crack, { x: p.img.x, y: p.img.y }, { layer: 'front' });
-        this.scene.time.delayedCall(500, () => p.img.setTexture((this.M.props['silong-door-open'] as PropDef | undefined)?.file ?? 'silong-door-open'));
+        this.scene.time.delayedCall(500, () => this.swingOpen(p));
       }
     }
+  }
+
+  /** A cold-room door swung open: the closed door mirrored (in this view a door turned a quarter on its hinges is its own
+   *  mirror image), its hinge edge (the art's leftmost column) kept where it was, so it lies back flat along the other
+   *  wall's way, into the Ice Tanks. (The art folder's silong-door-open is the closed door sheared: it looked bent.) */
+  private swingOpen(p: Piece): void {
+    const img = p.img;
+    const hinge = leftEdge(this.scene, img.texture.key);
+    img.setFlipX(true).setX(img.x + 2 * hinge - (img.width - 1));
   }
 
   /** Riding down: the cage you stand in slides up out of view over 1 s, leaving its plate; `then` once it's gone. */
@@ -361,7 +370,7 @@ export class SilongView {
       case 'freezerBreath': {
         this.hooks.radio('breath');
         const fan = this.block.bossTile;
-        if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms }));
+        if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms, scale: breathScale(m.shape) }));
         return;
       }
       case 'brineFlood':
@@ -402,7 +411,7 @@ export class SilongView {
     if (m.move === 'freezerBreath') {
       if (boss) this.mobs.pose(boss, 'breath');
       const fan = this.block.bossTile;
-      if (fan) this.fx.play(this.M.fx['fx-silong-breath-sw'], at(fan), { layer: 'ground' });
+      if (fan) this.fx.play(this.M.fx['fx-silong-breath-sw'], at(fan), { layer: 'ground', scale: breathScale(move?.shape) });
     }
     const flood = m.data?.flood as [number, number][] | undefined;
     if (flood?.length) {
@@ -560,7 +569,7 @@ export class SilongView {
     });
   }
 
-  /** Atsarah's lid: spinning out along its line over `out` ms, then back over `back` (fx-silong-lid-spin, else drawn). */
+  /** Delemon's lid: spinning out along its line over `out` ms, then back over `back` (fx-silong-lid-spin, else drawn). */
   private lid(from: Pt, to: Pt, out: number, back: number): void {
     const art = this.art('fx-silong-lid-spin');
     const start = { x: from.x, y: from.y - 14 };
@@ -673,4 +682,24 @@ export class SilongView {
     }
     for (const g of this.glows) g?.kill(0);
   }
+}
+
+/** Freezer Breath's art (a 7-tile cone) scaled to the cone the server sends (its `length`; dungeons.json's freezerBreath). */
+const breathScale = (shape: TelegraphShape | undefined) => (shape?.kind === 'cone' ? shape.length / 7 : 1);
+
+/** An image's leftmost column with a visible pixel (a door's hinge edge), measured once per texture. */
+const edges = new Map<string, number>();
+function leftEdge(scene: Phaser.Scene, key: string): number {
+  const known = edges.get(key);
+  if (known !== undefined) return known;
+  const src = scene.textures.get(key).getSourceImage() as HTMLImageElement;
+  const c = document.createElement('canvas');
+  [c.width, c.height] = [src.width, src.height];
+  const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.drawImage(src, 0, 0);
+  const data = ctx.getImageData(0, 0, c.width, c.height).data;
+  let x = 0;
+  outer: for (; x < c.width; x++) for (let y = 0; y < c.height; y++) if (data[(y * c.width + x) * 4 + 3] > 0) break outer;
+  edges.set(key, x);
+  return x;
 }

@@ -9,7 +9,7 @@ import { inShape } from './town-warrens.js';
 // each is a `boss-move` (its red telegraph and `ms` to its hit, `data` for its effects) whose hit is decided where
 // everyone stands as it lands (`boss-hit`); its HP thresholds (its calls, Mono Lisa's Split, Sangkalancelot's hooks)
 // come through `hurt`.
-// • Atsarah: Brine Splash (a circle round her, its hit slows), Lid Spin (a line at a random player, hitting on the way
+// • Delemon: Brine Splash (a circle round her, its hit slows), Lid Spin (a line at a random player, hitting on the way
 //   out and back), Jar Call.
 // • Sakristan: Rice Rain (circles, two under players; each leaves spilled rice), Belly Flop (a circle on the farthest
 //   player: he lands there), Sack Call.

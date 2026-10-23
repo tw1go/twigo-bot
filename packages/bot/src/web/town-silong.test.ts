@@ -163,7 +163,7 @@ function play(run: SilongRun, floor: 'b1' | 'b2' | 'b3', from: number, to: numbe
 const tileOf = (run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string) => run.floors[floor].mobs.mobInfo(`boss:${boss}`, 0)!.at;
 const near = (t: [number, number], dc = 2, dr = 0): [number, number] => [t[0] + dc, t[1] + dr];
 
-test("Atsarah: Brine Splash round her (its hit slows 30%), Lid Spin out and back, her jars at 66% and 33%", () => {
+test("Delemon: Brine Splash round her (its hit slows 30%), Lid Spin out and back, her jars at 66% and 33%", () => {
   const run = open(silong());
   const at = tileOf(run, 'b1', 'atsarah');
   const ev = play(run, 'b1', 0, 14_000, { A: near(at, 1), B: near(at, -3, 0) });
@@ -262,14 +262,14 @@ test('Frosty Tubbs: Ambush (under the ice, up under the circle), Ice Slick (a co
 // ── Ang Makinang Yelo (the last boss, B3's Ice Plant) ──
 
 /** Players round the Ice Plant: A and D in the Freezer Breath's cone (down-left of its fan), B and C away from it. */
-const PLANT: Record<string, [number, number]> = { A: [50, 33], D: [56, 33], B: [40, 40], C: [35, 25] };
+const PLANT: Record<string, [number, number]> = { A: [44, 34], D: [48, 34], B: [30, 30], C: [35, 25] };
 
 test('Ang Makinang Yelo: on its body, still, its two Frost Scales by the fan; Ice Block Drop leaves walls for 12 s', () => {
   const run = open(silong());
   run.skipTo('b3');
   const f = run.floors.b3;
   const info = f.mobs.mobInfo('boss:makinang-yelo', 0)!;
-  assert.deepEqual(info.at, [56, 22], "its body's middle");
+  assert.deepEqual(info.at, [44, 22], "its body's middle (the middle of the Ice Plant's north wall)");
   const guards = [0, 1].map((k) => f.mobs.mobInfo(`guard:makinang-yelo:${k}`, 0));
   assert.ok(guards.every((g) => g && g.kind === 'frost-scale'), 'two Frost Scales');
   const ev = play(run, 'b3', 0, 6000, PLANT);
@@ -288,8 +288,8 @@ test("Freezer Breath: a 120° cone down-left of its fan, 2 Chill; nothing for wh
   const run = open(silong());
   run.skipTo('b3');
   const f = run.floors.b3;
-  // (Blocks on the line from the fan [53,28] to A.)
-  for (const t of ['52,30', '52,31', '51,31', '51,32']) f.bosses.iceBlocks.set(t, 60_000);
+  // (Blocks on the line from the fan [44,28] to A.)
+  for (const t of ['44,30', '44,31', '44,32', '44,33']) f.bosses.iceBlocks.set(t, 60_000);
   const ev = play(run, 'b3', 0, 10_000, PLANT);
   const warn = of(ev, 'boss-move').find((m) => m.move === 'freezerBreath')!;
   assert.equal(warn.shape?.kind, 'cone');
@@ -324,7 +324,7 @@ test('Call the Frost at 75%, 50%, 25% (two Frost Scales from the tanks side); it
   play(run, 'b3', 0, 1000, PLANT);
   const info = f.mobs.mobInfo('boss:makinang-yelo', 1000)!;
   f.mobs.devWound(info.id, Math.round(info.maxHp * 0.2));
-  assert.ok(f.mobs.attack('t-z', [53, 28], { cls: 'stick', level: 40 }, info.id, 1000).ok, 'in reach from the fan');
+  assert.ok(f.mobs.attack('t-z', [44, 28], { cls: 'stick', level: 40 }, info.id, 1000).ok, 'in reach from the fan');
   const moves = of(f.mobs.flush(), 'boss-move');
   assert.equal(moves.filter((m) => m.move === 'callTheFrost').length, 3);
   const spots = moves.find((m) => m.move === 'callTheFrost')!.data!.spots as [number, number][];
