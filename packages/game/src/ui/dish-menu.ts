@@ -7,7 +7,7 @@ import { buffStatLines } from './buff-text';
 import { toast } from './toast';
 
 // 🍲 Aling Conching's menu (CONTEXT.md Dish; classes/palengke-leveling.json `dishes`), from her dialog box in the Lumang
-// Palengke: every dish in a row, its effect, how long, its Kusing and Buy. One locked yet is greyed with the quest that
+// Palengke: every dish in a row with its picture (its `showcase`, 32 px), its effect, how long, its Kusing and Buy. One locked yet is greyed with the quest that
 // unlocks it; one on you says so with its time left (buying it again starts it over). The town decides (`dish-buy`):
 // the buy answers, and the dish comes in your buffs (the tray).
 
@@ -23,8 +23,12 @@ export interface DishMenuOptions {
   on: () => MyBuff[];
   buy: (id: string) => Promise<{ ok: boolean; message?: string } | null>;
   /** Her Susi ng Silong (after the Great Scale's finale: `open`), at its Kusing; bought like a dish, into your bag. */
-  key?: { id: string; name: string; kusing: number; open: boolean };
+  key?: { id: string; name: string; kusing: number; open: boolean; showcase?: string };
 }
+
+/** A row's 32 px picture (a path under assets/), greyed with a locked row; an empty box of its size without one. */
+const picture = (file?: string) =>
+  file ? Object.assign(el('img', 'dm-icon'), { src: `${import.meta.env.BASE_URL}assets/${file}`, alt: '' }) : el('span', 'dm-icon');
 
 /** "7:32" (minutes and seconds). */
 const clock = (ms: number) => {
@@ -90,7 +94,7 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
             render();
           });
         });
-        row.append(text, buy);
+        row.append(picture(d.showcase), text, buy);
         return row;
       }),
       ...(o.key ? [keyRow(o.key)] : []),
@@ -124,7 +128,7 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
         render();
       });
     });
-    row.append(text, buy);
+    row.append(picture(k.showcase), text, buy);
     return row;
   };
   render();

@@ -833,9 +833,11 @@ export class TownScene extends Phaser.Scene {
     addEventListener('mk-mail-got', mailGot);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-mail-got', mailGot));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
-    this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
+    // In the HUD's corner, above its buttons; a map with its own picture (manifest ui.minimapPictures) drawn from it.
+    const minimapPicture = this.map.tileset ? this.M.ui.minimapPictures?.[this.map.tileset] : undefined;
+    this.minimap = new Minimap(this.map, minimapPicture ? `${import.meta.env.BASE_URL}assets/${minimapPicture}` : undefined);
     const tray = new BuffTray({
-      icon: (cls, name) => this.skillIcon(cls, name),
+      icon: (cls, name) => this.buffIcon(cls, name),
       effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
       // Right-click: off you (the server sends your buffs again).
       remove: (name) => {
@@ -1555,6 +1557,13 @@ export class TownScene extends Phaser.Scene {
     const slug = skill.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     if (I?.have[cls]?.includes(slug)) return url(I.file.replaceAll('{class}', cls).replace('{skill}', slug));
     return I?.shared?.skills.includes(slug) ? url(I.shared.file.replace('{skill}', slug)) : null; // one for every class (Dash)
+  }
+
+  /** A buff's icon: a dish's own picture (cls 'dish', its name its id: palengke-leveling.json `dishes` showcase), else
+   *  its skill's. */
+  private buffIcon(cls: string, name: string): string | null {
+    const dish = cls === 'dish' ? adventureData()?.palengke?.dishes?.[name]?.showcase : undefined;
+    return dish ? `${import.meta.env.BASE_URL}assets/${dish}` : this.skillIcon(cls, name);
   }
 
   /** Skills a level-up unlocked (from Lv `from` to `to`): a toast each with its icon, one after another, and a dot on
@@ -3057,7 +3066,7 @@ export class TownScene extends Phaser.Scene {
         this.target?.setRating(m.id, m.cp);
         return this.target?.setBuffs(m.id, m.buffs.map((b) => ({
           name: b.dish ? this.dishName(b.name) : b.name,
-          icon: this.skillIcon(b.cls, b.name),
+          icon: this.buffIcon(b.cls, b.name),
           lines: buffStatLines(b.stats).length ? buffStatLines(b.stats) : [classInfo(b.cls)?.buffs?.find((x) => x.name === b.name)?.effect ?? ''].filter(Boolean),
           endsAt: b.ms === null ? null : now + b.ms,
         })));
@@ -3087,7 +3096,9 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'dish') {
         if (m.free) {
           playSound('coin');
-          return void toast(`Aling Conching serves you ${this.dishName(m.dish)}: free, for ${adventureData()?.palengke?.dishes?.[m.dish]?.minutes ?? 10} minutes.`, 4000, 'good');
+          const file = this.buffIcon('dish', m.dish);
+          const pic = file ? Object.assign(document.createElement('img'), { src: file, alt: '' }) : null;
+          return void toast(`Aling Conching serves you ${this.dishName(m.dish)}: free, for ${adventureData()?.palengke?.dishes?.[m.dish]?.minutes ?? 10} minutes.`, 4000, 'good', pic);
         }
         if (this.dishWaiting?.dish === m.dish) {
           this.dishWaiting.done({ ok: m.ok, message: m.message });
@@ -4029,7 +4040,8 @@ export class TownScene extends Phaser.Scene {
       // (Her Susi ng Silong, after the finale: classes/dungeons.json silong.key.)
       key: (() => {
         const K = (this.cache.json.get('dungeons') as DungeonsData | undefined)?.silong?.key ?? { id: 'susi-ng-silong', name: 'Cellar Key', sources: { shop: { kusing: 200_000 } } };
-        return { id: K.id, name: K.name, kusing: K.sources.shop.kusing, open: !!adventure()?.quests.done.includes('palengke-14') };
+        const pic = anyDef(K.id)?.showcase;
+        return { id: K.id, name: K.name, kusing: K.sources.shop.kusing, open: !!adventure()?.quests.done.includes('palengke-14'), ...(pic ? { showcase: pic } : {}) };
       })(),
     });
   }
@@ -4526,7 +4538,7 @@ export class TownScene extends Phaser.Scene {
     const qm = new QuestMap(
       {
         world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
-        worldSize: U.mapWorld?.size ?? [428, 220],
+        worldSize: U.mapWorld?.size ?? [671, 321],
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),
@@ -4952,6 +4964,7 @@ export class TownScene extends Phaser.Scene {
       const def = itemData()?.defs.get(RETURN_LANTERN);
       this.mapView = new MapMenu({
         world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
+        ...(U.mapWorld?.size ? { size: U.mapWorld.size } : {}),
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         teleporter: asset(U.mapTeleporter?.file ?? 'ui/map/ui-map-teleporter.png'),
         pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),

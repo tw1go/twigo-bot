@@ -2,8 +2,8 @@
  "image": "ui-map-world.png",
  "tilePx": 1.6,
  "origin": [
-  159.60000000000002,
-  6
+  402.6,
+  107
  ],
  "formula": "x = origin.x + (c - r) * tilePx / 2, y = origin.y + (c + r) * tilePx / 4, with c = col + 0.5 + maps[id].col, r = row + 0.5 + maps[id].row",
  "maps": {
@@ -39,8 +39,8 @@
     210
    ],
    "label": [
-    140,
-    96
+    150,
+    12
    ]
   }
  },
@@ -51,8 +51,8 @@
     96
    ],
    "px": [
-    185.2,
-    96.0
+    428.2,
+    197.0
    ]
   },
   "town": {
@@ -61,8 +61,8 @@
     39
    ],
    "px": [
-    317.2,
-    163.6
+    560.2,
+    264.6
    ]
   },
   "palengke": [
@@ -73,8 +73,8 @@
     ],
     "name": "entrance",
     "px": [
-     47.6,
-     45.2
+     290.6,
+     146.2
     ]
    },
    {
@@ -84,8 +84,8 @@
     ],
     "name": "north (Vegetable Row)",
     "px": [
-     30.8,
-     5.6
+     273.8,
+     106.6
     ]
    },
    {
@@ -95,8 +95,8 @@
     ],
     "name": "west (Eatery Row)",
     "px": [
-     -110.8,
-     -27.6
+     132.2,
+     73.4
     ]
    },
    {
@@ -106,8 +106,8 @@
     ],
     "name": "south (Fish Market, by the hall)",
     "px": [
-     -122.0,
-     24.4
+     121.0,
+     125.4
     ]
    }
   ]
@@ -129,5 +129,5 @@
   ]
  },
  "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)",
- "palengkeNote": "Repo addition (20 Oct 2026): the Lumang Palengke sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118), off the left of ui-map-world.png: until the picture has it, the Map menu draws a plain diamond there. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
+ "palengkeNote": "Repo addition (20 Oct 2026): the Old Market (palengke) sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118). Since 23 Oct 2026 it's drawn into ui-map-world.png (the art folder's ui/map/palengke): the picture grew by 243 px left and 101 px up, so origin and every post's px moved by the same. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
 }
