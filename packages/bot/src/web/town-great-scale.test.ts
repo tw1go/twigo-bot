@@ -44,6 +44,7 @@ test('asleep between fights: there, still, not to be hit; it wakes at its time w
   const wakeAt = 10 * MIN;
   const { room, scale, saved } = setup(wakeAt);
   assert.ok(room.snapshot(0).some((m) => m.id === boss.id && m.dormant && m.field && m.untargetable), 'there from the start');
+  assert.equal(room.snapshot(0).find((m) => m.id === boss.id)?.dir, 's', 'facing south, down the hall');
   run(room, 0, 0, {});
   assert.equal(room.attack('A', beside(3), { cls: 'stick', level: 37 }, boss.id, 100).ok, false);
   assert.equal(scale.state(0).riseIn, wakeAt);
@@ -197,6 +198,7 @@ test('its fall: XP for everyone who did 5% (no party), its bell for 60 s, then a
   assert.equal(scale.bell(fellAt + 61_000), null);
   assert.ok(of(ev, 'great-scale').some((e) => e.change === 'sleep' && e.scale.state === 'asleep'));
   assert.ok(of(ev, 'mob-add').flatMap((a) => a.mobs).some((m) => m.id === boss.id && m.dormant), 'back, asleep');
+  assert.ok(of(ev, 'mob-face').some((e) => e.id === boss.id && e.dir === 's') || ev.some((e) => e.t === 'mob-add' && e.mobs.some((m) => m.id === boss.id && m.dir === 's')), 'facing south again');
   assert.equal(scale.state(fellAt + 61_000).riseIn, boss.everyMinutes * MIN - 61_000);
 });
 

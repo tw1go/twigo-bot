@@ -815,7 +815,7 @@ export class TownScene extends Phaser.Scene {
     this.mountHud();
     // Dev: the GM tools (ui/gm-tools.ts), on the dev server with a pretend login only.
     if (import.meta.env.DEV && fakeLogin()) {
-      const off = mountGmTools({ tile: () => this.player.tile, area: () => this.area });
+      const off = mountGmTools({ tile: () => this.player.tile, area: () => this.area, dungeon: (which, at) => this.devDungeon(which, at) });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
     }
     void this.setupQuests();
@@ -1367,7 +1367,7 @@ export class TownScene extends Phaser.Scene {
     // A charge-up fires once a press: let go (onRelease, its time held), or clicked or tapped (full).
     if (charge && this.chargedShot?.name !== name) this.chargedShot = { name };
     let m = this.mobs.current;
-    if (!m || m.dead) m = this.mobs.targetNext(this.player.tile);
+    if (!m || m.dead || m.untouchable) m = this.mobs.targetNext(this.player.tile); // (never one that can't be hit now)
     if (!m) {
       toast('No mob nearby. Walk up to one (Z picks the nearest).', 2200);
       return 'no';
@@ -1673,7 +1673,7 @@ export class TownScene extends Phaser.Scene {
     if (!e) return;
     if (this.knockedOut) return this.stopFight();
     const m = this.mobs?.current;
-    if (!m || m.dead) return this.stopFight(); // dead (or let go): done
+    if (!m || m.dead || m.untouchable) return this.stopFight(); // dead, let go, or can't be hit now (a boss asleep): done
     if (this.player.busy || this.player.isSitting || this.inside) return;
     if (this.time.now < this.castLock) return; // a channel or windup under way: no other skill, no walking
     const me = this.player.tile;
@@ -1796,7 +1796,7 @@ export class TownScene extends Phaser.Scene {
     const c = classInfo(adventure()?.cls);
     if (!ch || !c || !this.battleMap || this.knockedOut || skillView(name)?.locked || !this.mobs) return false;
     if (this.time.now < (this.castReady.get(name) ?? 0)) return false; // (cooling down: the press says so as ever)
-    const m = this.mobs.current && !this.mobs.current.dead ? this.mobs.current : this.mobs.targetNext(this.player.tile);
+    const m = this.mobs.current && !this.mobs.current.dead && !this.mobs.current.untouchable ? this.mobs.current : this.mobs.targetNext(this.player.tile);
     if (!m) {
       playSound('error');
       toast('No target. Walk up to a mob (Z picks the nearest).', 2200);
@@ -1822,7 +1822,7 @@ export class TownScene extends Phaser.Scene {
     const c = classInfo(adventure()?.cls);
     const ch = this.chargeOf(w.name);
     const m = this.mobs?.list.find((x) => x.id === w.mob);
-    if (!c || !ch || !m || m.dead || this.knockedOut) return void (this.chargeWalk = null);
+    if (!c || !ch || !m || m.dead || m.untouchable || this.knockedOut) return void (this.chargeWalk = null);
     const reach = this.reachOf(c.id, ch.idx);
     if (this.reachDist(m, this.player.tile) <= reach) {
       if (!this.player.isIdle) return this.player.cancelPath(); // (stop on this tile)
@@ -1978,7 +1978,7 @@ export class TownScene extends Phaser.Scene {
     // A debuff (CONTEXT.md Debuff) goes on your mob target (else the server takes the nearest in range); a buff on whoever
     // you've clicked, in your party or not.
     const debuff = !!adventureData()?.stats.skills.buffs?.list[name]?.debuff;
-    const target = debuff ? (this.mobs?.current && !this.mobs.current.dead ? this.mobs.current.id : undefined) : (picked ?? undefined);
+    const target = debuff ? (this.mobs?.current && !this.mobs.current.dead && !this.mobs.current.untouchable ? this.mobs.current.id : undefined) : (picked ?? undefined);
     if (!this.battleMap) {
       this.link?.send({ t: 'buff', buff: name });
       return 'no';
@@ -3269,10 +3269,7 @@ export class TownScene extends Phaser.Scene {
           url.searchParams.delete('warrens');
           url.searchParams.delete('warrensboss');
           history.replaceState(null, '', url.pathname + url.search);
-          void fetch(`/__warrens?${new URLSearchParams({ as: fakeName(), ...(boss ? { boss } : {}) })}`)
-            .then((r) => r.json() as Promise<{ ok: boolean; message?: string }>)
-            .then((r) => (r.ok ? this.travel('warrens') : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
-            .catch(() => null);
+          this.devDungeon('warrens', boss ?? undefined);
         }
         // Dev: ?silong=solo opens an Ang Silong run for you (free) and goes down (the dev server's /__silong); ?silong=b3
         // too, with every floor above down and reached, arriving there. Read once, then tidied away.
@@ -3281,10 +3278,7 @@ export class TownScene extends Phaser.Scene {
           const url = new URL(location.href);
           url.searchParams.delete('silong');
           history.replaceState(null, '', url.pathname + url.search);
-          void fetch(`/__silong?${new URLSearchParams({ as: fakeName(), ...(floor && floor !== 'solo' ? { floor } : {}) })}`)
-            .then((r) => r.json() as Promise<{ ok: boolean; floor?: SilongFloor; message?: string }>)
-            .then((r) => (r.ok ? this.travel(silongArea(r.floor ?? 'b1')) : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
-            .catch(() => null);
+          this.devDungeon('silong', floor && floor !== 'solo' ? floor : undefined);
         }
         // Dev, in the Palengke: ?palengkemobs=demo cycles the nearest mob of each kind through its anims in place.
         if (import.meta.env.DEV && !arrived && q.get('palengkemobs') === 'demo' && this.mobs) {
@@ -4296,6 +4290,18 @@ export class TownScene extends Phaser.Scene {
     p.hold(anim);
     await later(1400);
     if (!this.battleMap) p.setBattle(null);
+  }
+
+  /** Dev (?warrens=, ?silong=, the GM tools' Dungeons): a free run opened for you (no ticket, key, quest or level: the
+   *  dev server's /__warrens and /__silong) and in you go, from any map. `at`: the Warrens' boss to start at, or the
+   *  Cellar's floor ('b2', 'b3', 'plant': its door open). */
+  devDungeon(which: 'warrens' | 'silong', at?: string): void {
+    if (!import.meta.env.DEV || !fakeLogin()) return;
+    const q = new URLSearchParams({ as: fakeName(), ...(at ? { [which === 'warrens' ? 'boss' : 'floor']: at } : {}) });
+    void fetch(`/__${which}?${q}`)
+      .then((r) => r.json() as Promise<{ ok: boolean; floor?: SilongFloor; message?: string }>)
+      .then((r) => (r.ok ? this.travel(which === 'warrens' ? 'warrens' : silongArea(r.floor ?? 'b1')) : toast(r.message ?? "Couldn't open a run.", 2600, 'bad')))
+      .catch(() => null);
   }
 
   /** Dev and the debug API: a cutscene played where you are, changing nothing (on its own map only). */

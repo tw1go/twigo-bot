@@ -248,7 +248,9 @@ export class GreatScale implements MobDirector {
   /** Its mob as it starts: asleep (`dormant`) or not, on its tile, whole. */
   private place(now: number, dormant: boolean): MobEvent[] {
     const room = this.room!;
-    return room.addMobs([{ id: this.id, kind: this.id, zone: GREAT_SCALE_ZONE, tile: this.boss.tile, stats: { ...this.stats }, name: this.boss.name, radius: this.art.radius, silent: true, field: true, dormant }], now);
+    const events = room.addMobs([{ id: this.id, kind: this.id, zone: GREAT_SCALE_ZONE, tile: this.boss.tile, stats: { ...this.stats }, name: this.boss.name, radius: this.art.radius, silent: true, field: true, dormant }], now);
+    // (Asleep, it faces south: down the hall, toward whoever comes in.)
+    return dormant ? [...events, ...room.face(this.id, 's')] : events;
   }
 
   /** Asleep: the warning `warnMinutes` before its time, then it wakes. */
