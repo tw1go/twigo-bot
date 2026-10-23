@@ -40,7 +40,18 @@ export class Minimap {
   private hw = 0; // minimap px per half tile width
   private ratio = 1;
 
-  constructor(private readonly map: TownMap) {
+  /** The map's own picture (manifest ui.minimapPictures: its diamond exactly, top corner at the top middle), once loaded. */
+  private picture: HTMLImageElement | null = null;
+
+  constructor(private readonly map: TownMap, pictureUrl?: string) {
+    if (pictureUrl) {
+      const img = new Image();
+      img.onload = () => {
+        this.picture = img;
+        this.paintPicture();
+      };
+      img.src = pictureUrl;
+    }
     this.el.id = 'minimap';
     this.el.setAttribute('role', 'img');
     this.el.setAttribute('aria-label', 'Town map: you in gold, your party in pink, everyone else in green');
@@ -90,6 +101,18 @@ export class Minimap {
       if (o.kind !== 'building') continue;
       for (let dc = 0; dc < o.footprint[0]; dc++) for (let dr = 0; dr < o.footprint[1]; dr++) tile(o.col + dc, o.row + dr, BUILDING);
     }
+    this.paintPicture();
+  }
+
+  /** The map's picture over the tile colours (they show while it loads, or if it can't): its diamond is at()'s, so the
+   *  dots and the camera box sit where they always do. Smoothed: it's drawn smaller than it is. */
+  private paintPicture(): void {
+    if (!this.picture) return;
+    const g = this.ground.getContext('2d')!;
+    g.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(this.picture, 0, 0, this.width, this.height);
   }
 
   /** Minimap px for a tile position (col, row may be fractional: + 0.5 is a tile's middle). */

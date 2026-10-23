@@ -5,19 +5,21 @@ import { toast } from './toast';
 import { type MapLayout, type SlumsPlaces, loadPlaces, loadWorldMap, middleOf, postsOf, shifted, worldPoint, worldPx } from './world-map';
 
 // 🗺️ The Map menu (M anywhere; a Lantern Post's click): a tab per map (Town, Slums, Old Market), each its map alone, cut
-// from the world picture (manifest ui.mapWorld, placed by ui/map/map-layout.json) to its own diamond and drawn at the
-// largest whole-number scale that fits (3× at most), opening on the map you're in. Over it, its names and places from the
-// map itself (the Slums' zones, the Golem Pit, the Camp; the Old Market's sections; the way to the neighbourhood), every
-// Lantern Post as a teleporter icon (the Old Market has four) and its dungeon entrance (the Warren Gate, the Cellar
-// Hatch: shared travel.ts DUNGEON_ENTRANCES) as a gate marker. A map the picture doesn't have yet (the Old Market) is a
-// plain diamond. Opened from a post, another post's icon or an entrance asks to teleport there (the Teleport box: one
-// Return Lantern; another post of the same map too); opened anywhere else it's only to look at. Built like the Equipment
+// from the world picture (manifest ui.mapWorld, placed by ui/map/map-layout.json; the Old Market drawn in since 23 Oct
+// 2026) to its own diamond and drawn at the largest whole-number scale that fits (3× at most), opening on the map you're
+// in. Over it, its names and places from the map itself (the Slums' zones, the Golem Pit, the Camp; the Old Market's
+// sections; the way to the neighbourhood), every Lantern Post as a teleporter icon (the Old Market has four) and its
+// dungeon entrance (the Warren Gate, the Cellar Hatch: shared travel.ts DUNGEON_ENTRANCES) as a gate marker. Opened from
+// a post, another post's icon or an entrance asks to teleport there (the Teleport box: one Return Lantern; another post
+// of the same map too); opened anywhere else it's only to look at. Built like the Equipment
 // panel: its frame, a title bar with ×, the UI font. Under the posts and labels, every active quest's hunting area in
 // the quest's colour (ui/quest-marks.ts, the quest map's marks).
 
 export interface MapMenuArt {
   /** URLs: the picture, the teleporter icon (3 frames: normal, hover, here), the pin, the Return Lantern's 16 px icon. */
   world: string;
+  /** The picture's size (manifest ui.mapWorld.size). */
+  size?: [number, number];
   layout: string;
   teleporter: string;
   pin: string;
@@ -62,10 +64,8 @@ const ENTRANCE: Record<string, string> = {
 };
 /** What the picture writes for a map's name. */
 const MAP_NAME: Record<string, string> = { slums: 'Slums', town: 'Town', palengke: 'Old Market' };
-/** The picture's own size (ui-map-world.png). */
-const PICTURE: [number, number] = [428, 220];
-/** Maps the picture doesn't have yet (a plain diamond stands in). */
-const NOT_DRAWN = new Set(['palengke']);
+/** The picture's own size (ui-map-world.png) when the manifest doesn't say. */
+const PICTURE: [number, number] = [671, 321];
 const FRAME = { normal: 0, hover: 1, here: 2 } as const;
 const ICON_W = 15;
 /** Room round a map's diamond in its tab (the picture's px). */
@@ -98,6 +98,9 @@ export class MapMenu {
   constructor(private readonly art: MapMenuArt) {
     this.root.id = 'map-menu';
     this.root.hidden = true;
+    const [pw, ph] = art.size ?? PICTURE;
+    this.root.style.setProperty('--pw', String(pw));
+    this.root.style.setProperty('--ph', String(ph));
     this.root.setAttribute('role', 'dialog');
     this.root.setAttribute('aria-label', 'Map');
     if (art.frame) {
@@ -244,16 +247,13 @@ export class MapMenu {
     const clip = el('div', 'mm-clip');
     clip.style.clipPath = `polygon(${diamond.map(([x, y]) => `${x * k}px ${y * k}px`).join(', ')})`;
     view.append(clip);
-    if (NOT_DRAWN.has(this.tab)) clip.append(el('div', 'mm-blank'));
-    else {
-      const img = el('img', 'mm-world');
-      img.src = this.art.world;
-      img.alt = `The ${MAP_NAME[this.tab] ?? this.tab}`;
-      img.draggable = false;
-      img.style.left = `${-v.x0 * k}px`;
-      img.style.top = `${-v.y0 * k}px`;
-      clip.append(img);
-    }
+    const img = el('img', 'mm-world');
+    img.src = this.art.world;
+    img.alt = `The ${MAP_NAME[this.tab] ?? this.tab}`;
+    img.draggable = false;
+    img.style.left = `${-v.x0 * k}px`;
+    img.style.top = `${-v.y0 * k}px`;
+    clip.append(img);
     if (this.art.marks && this.places) drawQuestMarks(clip, { layout: L, slums: this.places.slums, town: {} }, k, this.art.marks);
     const px = (col: number, row: number) => worldPx(L, this.tab, col, row);
     // Writing on the picture: centred on its pixel (`left`: starting there instead), `dx`, `dy` more (icon px).
@@ -285,8 +285,7 @@ export class MapMenu {
         label(s.name!, at, 'mm-zone', false, 0, near ? 14 : 0);
       }
     }
-    // (The map's name where the picture has room for it; a plain diamond has the tab's name only.)
-    if (m.label && !NOT_DRAWN.has(this.tab)) label(MAP_NAME[this.tab] ?? this.tab, worldPx(L, this.tab, m.label[0], m.label[1]), 'mm-map');
+    if (m.label) label(MAP_NAME[this.tab] ?? this.tab, worldPx(L, this.tab, m.label[0], m.label[1]), 'mm-map');
 
     // The Lantern Posts: yours "You are here" with the pin; the others teleport (from a post). Then the dungeon entrance.
     const [aw, ah] = L.icon.anchor;

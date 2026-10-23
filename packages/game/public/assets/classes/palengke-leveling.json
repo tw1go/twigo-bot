@@ -60,7 +60,10 @@
    "slot": "main",
    "stats": {
     "mpRegenPct": 0.5
-   }
+   },
+   "icon": "items/consumables/item-dish-lugaw-16.png",
+   "showcase": "items/consumables/item-dish-lugaw.png",
+   "large": "items/consumables/item-dish-lugaw-64.png"
   },
   "sinigang": {
    "name": "Sinigang",
@@ -71,7 +74,10 @@
    "slot": "main",
    "stats": {
     "hpRegenPctPerSec": 0.005
-   }
+   },
+   "icon": "items/consumables/item-dish-sinigang-16.png",
+   "showcase": "items/consumables/item-dish-sinigang.png",
+   "large": "items/consumables/item-dish-sinigang-64.png"
   },
   "atchara": {
    "name": "Atchara (side dish)",
@@ -82,7 +88,10 @@
    "slot": "side",
    "stats": {
     "critRate": 0.03
-   }
+   },
+   "icon": "items/consumables/item-dish-atchara-16.png",
+   "showcase": "items/consumables/item-dish-atchara.png",
+   "large": "items/consumables/item-dish-atchara-64.png"
   },
   "adobo": {
    "name": "Adobo",
@@ -93,7 +102,10 @@
    "slot": "main",
    "stats": {
     "atkPct": 0.05
-   }
+   },
+   "icon": "items/consumables/item-dish-adobo-16.png",
+   "showcase": "items/consumables/item-dish-adobo.png",
+   "large": "items/consumables/item-dish-adobo-64.png"
   },
   "pancit": {
    "name": "Pancit",
@@ -104,7 +116,10 @@
    "slot": "main",
    "stats": {
     "moveSpeedPct": 0.1
-   }
+   },
+   "icon": "items/consumables/item-dish-pancit-16.png",
+   "showcase": "items/consumables/item-dish-pancit.png",
+   "large": "items/consumables/item-dish-pancit-64.png"
   },
   "bulalo": {
    "name": "Bulalo",
@@ -115,7 +130,10 @@
    "slot": "main",
    "stats": {
     "maxHpPct": 0.08
-   }
+   },
+   "icon": "items/consumables/item-dish-bulalo-16.png",
+   "showcase": "items/consumables/item-dish-bulalo.png",
+   "large": "items/consumables/item-dish-bulalo-64.png"
   },
   "kare-kare": {
    "name": "Kare-kare",
@@ -126,7 +144,10 @@
    "slot": "main",
    "stats": {
     "amp": 0.05
-   }
+   },
+   "icon": "items/consumables/item-dish-kare-kare-16.png",
+   "showcase": "items/consumables/item-dish-kare-kare.png",
+   "large": "items/consumables/item-dish-kare-kare-64.png"
   }
  },
  "dishRules": "One main dish + one side dish (Atchara) at a time, 10 min each, bought from Aling Conching for Kusing; a new dish replaces the old. Sold only once unlocked for that player.",
@@ -659,5 +680,5 @@
   }
  ],
  "gapLine": "Balik ka pag Lv {level} ka na, anak. Mangaso ka muna.",
- "dishesNote": "Repo additions (20 Oct 2026): each dish's `slot` (main, or side: Atchara) and `stats` (its effect as the buff system's stats: mpRegenPct and moveSpeedPct are new; sinigang's HP regen counts out of combat too, as every regen buff does), read by the game and the bot; `effect` stays the words."
+ "dishesNote": "Repo additions (20 Oct 2026): each dish's `slot` (main, or side: Atchara) and `stats` (its effect as the buff system's stats: mpRegenPct and moveSpeedPct are new; sinigang's HP regen counts out of combat too, as every regen buff does), read by the game and the bot; `effect` stays the words. Their pictures (23 Oct 2026): `icon` (16 px), `showcase` (32 px) and `large` (64 px), the art folder's items/consumables item-dish-<id> files."
 }
