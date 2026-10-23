@@ -359,7 +359,9 @@ export function markQuestsSeen(): void {
 // ── Actions ──
 
 type Path = '/town/quest' | '/town/equip' | '/town/points' | '/town/skills';
-type Body = TownQuestAction | TownEquipAction | TownPointsAction | TownSkillsAction;
+/** Dev (the GM tools, ui/gm-tools.ts): a quest's current step done, or all of it, as if it were (the pretend store only). */
+type DevQuestAction = { quest: string; action: 'dev-step' | 'dev-done' };
+type Body = TownQuestAction | TownEquipAction | TownPointsAction | TownSkillsAction | DevQuestAction;
 
 async function post(path: Path, body: Body): Promise<TownAdventureResponse | null> {
   const res = await api(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
@@ -372,7 +374,7 @@ async function act(path: Path, body: Body): Promise<TownAdventureResponse | null
     ? await post(path, body)
     : path === '/town/points' || path === '/town/skills'
       ? await fakePoints(path, body as TownPointsAction | TownSkillsAction)
-      : fakeAct(body as TownQuestAction | TownEquipAction);
+      : fakeAct(body as TownQuestAction | TownEquipAction | DevQuestAction);
   if (!res) return null;
   if (res.ok) {
     let advanced: AdventureChange['advanced'];
@@ -437,6 +439,8 @@ export const questReport = (quest: string) => act('/town/quest', { quest, action
 
 /** Talked to `npc` for `quest`'s talk objective. */
 export const questTalk = (quest: string, npc: string) => act('/town/quest', { quest, action: 'talk', npc });
+/** Dev (the GM tools): a quest's current step done (`whole`: all of it), its rewards as if it were. */
+export const devFinishQuest = (quest: string, whole: boolean) => (fakeLogin() ? act('/town/quest', { quest, action: whole ? 'dev-done' : 'dev-step' }) : Promise.resolve(null));
 /** Chose a class for `quest`'s chooseClass objective (the training weapon and armor come with it). */
 export const chooseClass = (quest: string, cls: string) => act('/town/quest', { quest, action: 'chooseClass', cls });
 /** A cutscene watched (`seen`), or one whose moment came on another map (`due`): kept with your quests (CONTEXT.md
@@ -709,7 +713,7 @@ function jumpToQuest(s: AdventureState, id: string): void {
   if (id === 'palengke-done') s.quests = { active: [], done: chain, rewarded: [...chain] };
 }
 
-function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse {
+function fakeAct(body: TownQuestAction | TownEquipAction | DevQuestAction): TownAdventureResponse {
   const s: AdventureState = structuredClone(state ?? fresh());
   const no = (message: string): TownAdventureResponse => ({ ok: false, message, adventure: state ?? fresh() });
   // A cutscene watched or waiting for its map (the bot's townQuest).
@@ -743,7 +747,10 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       if (p.givenAt !== undefined && Date.now() - p.givenAt < P.retryMs) return { ok: true, adventure: s, message: `Aling Nena has no ticket for you yet. Come back in ${Math.ceil((p.givenAt + P.retryMs - Date.now()) / 3_600_000)} hours.` };
       return hand() ? { ok: true, adventure: s, handed } : no('Make room in your bag: Aling Nena has a ticket for you.');
     }
-    if (body.action === 'report') {
+    if (body.action === 'dev-step' || body.action === 'dev-done') {
+      // (The GM tools: on to the next step, or to the end; its rewards as ever.)
+      if (body.action === 'dev-done') p.step = q.objectives.length - 1;
+    } else if (body.action === 'report') {
       if (!readyToReport(q, p)) return no('Not done yet.');
     } else if (body.action === 'talk' && o.type === 'deliver' && o.npc === body.npc) {
       if (!o.item || !takeFromBag(s.bag, o.item, Math.max(1, o.count ?? 1))) return no("You don't have it yet.");
@@ -759,7 +766,7 @@ function fakeAct(body: TownQuestAction | TownEquipAction): TownAdventureResponse
       }
       if (P) hand();
     } else {
-      if (o.type !== 'chooseClass' || s.cls || !classInfo(body.cls) || !data) return no('Not yet.');
+      if (body.action !== 'chooseClass' || o.type !== 'chooseClass' || s.cls || !classInfo(body.cls) || !data) return no('Not yet.');
       s.cls = body.cls;
       const weapon = trainingGear(data.stats, data.equipment.values(), body.cls).weapon;
       if (weapon) {

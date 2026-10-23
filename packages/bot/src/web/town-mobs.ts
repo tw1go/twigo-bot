@@ -1548,6 +1548,27 @@ export class MobRoom {
     return on.map((x) => (x === 'golem' ? this.golem!.id : x.id));
   }
 
+  /** Dev (the dev server's GM tools): every live mob within `radius` of `from` down at once (never the golem or a field
+   *  boss), as a hit that takes all its HP: its XP, loot and quest credit for `member` (town.ts `killed`). The hits for
+   *  the room, and the kills. */
+  devSlay(player: string, member: string, from: [number, number], radius: number, now: number): { hits: MobHit[]; kills: MobKill[] } {
+    const hits: MobHit[] = [];
+    const kills: MobKill[] = [];
+    for (const m of this.mobs) {
+      if (m.respawnAt || m.hp <= 0 || m.field || cheb(this.at(m, now), from) > radius) continue;
+      const damage = m.hp;
+      if (m.dealt) m.dealt.set(member, (m.dealt.get(member) ?? 0) + damage);
+      [m.col, m.row] = this.at(m, now);
+      m.hp = 0;
+      m.respawnAt = m.add || m.zone.dungeon ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
+      m.foe = null;
+      m.path = [];
+      hits.push({ id: m.id, damage, crit: false, hp: 0, dead: true });
+      kills.push(this.killOf(m, member));
+    }
+    return { hits, kills };
+  }
+
   /** A mob that just died, as a kill: its XP for its killer (a mini boss: everyone who did their share). */
   private killOf(x: Mob, member: string): MobKill {
     if (x.field) {

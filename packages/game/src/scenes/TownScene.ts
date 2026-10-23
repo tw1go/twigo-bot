@@ -87,6 +87,7 @@ import { OtherPlayers } from '../world/others';
 import { type PetOwner, type PetSheetData, Pets, petSheetDir } from '../world/pets';
 import { setPetCubeArt } from '../ui/pet-cube';
 import { fakeLogin, fakeName, loadMe } from '../session';
+import { mountGmTools } from '../ui/gm-tools';
 import { screenToTile, tileToScreen } from '../iso';
 import { toast } from '../ui/toast';
 import { HalloweenWorld } from '../world/halloween';
@@ -812,6 +813,11 @@ export class TownScene extends Phaser.Scene {
     this.player.setNameTag(member?.nickname ?? 'Guest', member?.title ?? TOWNFOLK);
     this.player.setJailed(member?.status === 'jailed');
     this.mountHud();
+    // Dev: the GM tools (ui/gm-tools.ts), on the dev server with a pretend login only.
+    if (import.meta.env.DEV && fakeLogin()) {
+      const off = mountGmTools({ tile: () => this.player.tile, area: () => this.area });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    }
     void this.setupQuests();
     // A Rename Card (the bag): your new name on your tag and in the HUD (everyone else hears it from the server).
     const renamed = (e: Event) => {

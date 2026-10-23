@@ -386,6 +386,9 @@ export interface Town {
    *  Biikko out and a Manananggal round started now; `wound`: Biikko down to that HP; `carry`: the dazed upper half theirs
    *  (a round started for it). What was done. */
   halloweenDev(userId: string, o: { mikko?: boolean; biikko?: boolean; wound?: number; round?: boolean; carry?: boolean }): string;
+  /** Dev (the dev server's GM tools, never the bot's): full HP and MP; a jump to a walkable tile of their map; every mob
+   *  within `slay` tiles down (its XP, loot and quest credit theirs); the testing switches, for anyone. What was done. */
+  gmDev(userId: string, o: { heal?: boolean; to?: [number, number]; slay?: number; testing?: Partial<TestingSettings> }): string;
 }
 
 /** The game's map (packages/game/public/assets/maps/town.json), from the monorepo next to the bot. */
@@ -2253,6 +2256,48 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (boss && !r.skipTo(boss, now, hp)) return { ok: false, message: `No boss ${boss}.` };
       saveRuns();
       return { ok: true, run: r.id };
+    },
+    gmDev(userId, o) {
+      const c = conns.get(userId);
+      if (!c) return 'not in town';
+      const p = c.player;
+      const said: string[] = [];
+      const now = Date.now();
+      if (o.testing && opts.testing) {
+        const t = opts.testing.set(userId, o.testing);
+        vitals?.setUnkillable(userId, t.unkillable);
+        vitals?.setFreeMp(userId, t.freeMp);
+        send(c, { t: 'testing', testing: t });
+        said.push(`unkillable ${t.unkillable ? 'on' : 'off'}, free MP ${t.freeMp ? 'on' : 'off'}`);
+      }
+      if (o.heal && vitals?.get(userId)) {
+        vitals.revive(userId, now);
+        vitals.heal(userId, 'hp', 1e9);
+        vitals.heal(userId, 'mp', 1e9);
+        tellVitals(c);
+        said.push('healed');
+      }
+      if (o.to) {
+        const [col, row] = o.to;
+        if (!inside(mapOf(c.room), col, row) || !walkable(mapOf(c.room), col, row)) said.push(`can't stand on ${col},${row}`);
+        else {
+          Object.assign(p, { col, row, sit: false });
+          send(c, { t: 'snap', col, row });
+          others(c, { t: 'join', player: p });
+          said.push(`at ${col},${row}`);
+        }
+      }
+      const mobs = o.slay ? mobsOf(c.room) : undefined;
+      if (o.slay && mobs) {
+        const r = mobs.devSlay(p.id, userId, [p.col, p.row], o.slay, now);
+        for (const e of [{ t: 'mob-hit', by: p.id, skill: 0, hits: r.hits } satisfies TownServerMessage, ...mobs.flush()]) {
+          others(c, e);
+          send(c, e);
+        }
+        killed(c.room, r.kills);
+        said.push(`${r.kills.length} mob${r.kills.length === 1 ? '' : 's'} down`);
+      }
+      return said.join('; ') || 'nothing to do';
     },
     silongDev(userId, floor, hp) {
       if (!SL) return { ok: false, message: 'No Cellar here.' };
