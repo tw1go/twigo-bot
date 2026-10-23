@@ -833,7 +833,9 @@ export class TownScene extends Phaser.Scene {
     addEventListener('mk-mail-got', mailGot);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-mail-got', mailGot));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
-    this.minimap = new Minimap(this.map); // in the HUD's corner, above its buttons
+    // In the HUD's corner, above its buttons; a map with its own picture (manifest ui.minimapPictures) drawn from it.
+    const minimapPicture = this.map.tileset ? this.M.ui.minimapPictures?.[this.map.tileset] : undefined;
+    this.minimap = new Minimap(this.map, minimapPicture ? `${import.meta.env.BASE_URL}assets/${minimapPicture}` : undefined);
     const tray = new BuffTray({
       icon: (cls, name) => this.skillIcon(cls, name),
       effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
@@ -4526,7 +4528,7 @@ export class TownScene extends Phaser.Scene {
     const qm = new QuestMap(
       {
         world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
-        worldSize: U.mapWorld?.size ?? [428, 220],
+        worldSize: U.mapWorld?.size ?? [671, 321],
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),
@@ -4952,6 +4954,7 @@ export class TownScene extends Phaser.Scene {
       const def = itemData()?.defs.get(RETURN_LANTERN);
       this.mapView = new MapMenu({
         world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
+        ...(U.mapWorld?.size ? { size: U.mapWorld.size } : {}),
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         teleporter: asset(U.mapTeleporter?.file ?? 'ui/map/ui-map-teleporter.png'),
         pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),

@@ -126,20 +126,15 @@ export class QuestMap {
     this.foot.hidden = !!marks.length;
   }
 
-  /** Your pixel on the picture: your tile in the Town or the Slums; in the neighbourhood the Town's way there, in a
-   *  Warrens run the Slums' Warren Gate (where you'd come out), in the Palengke the Slums' gate to it (the picture
-   *  doesn't have the Palengke yet). */
+  /** Your pixel on the picture: your tile in the Town, the Slums or the Old Market (drawn in since 23 Oct 2026); in the
+   *  neighbourhood the Town's way there, in a run (the Warrens, the Cellar) the Slums' Warren Gate (where you'd come out). */
   private spot(W: WorldMap): [number, number] | null {
     const at = this.here();
     if (!at) return null;
-    if (at.area === 'town' || at.area === 'slums') return worldPx(W.layout, at.area, at.col, at.row);
+    if (at.area === 'town' || at.area === 'slums' || at.area === 'palengke') return worldPx(W.layout, at.area, at.col, at.row);
     if (at.area === 'hood') {
       const gate = middleOf(W.town.gates?.hood);
       return gate && worldPx(W.layout, 'town', gate[0], gate[1]);
-    }
-    if (at.area === 'palengke') {
-      const gate = middleOf(W.slums.gates?.palengke);
-      return gate && worldPx(W.layout, 'slums', gate[0], gate[1]);
     }
     const out = W.slums.arrive?.warrens;
     return out ? worldPx(W.layout, 'slums', out[0], out[1]) : null;

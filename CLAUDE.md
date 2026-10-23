@@ -189,8 +189,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   from the files; `plainVariants` / `plainWeight`, `animated` baha / lalim, `banks`, `slow`). `maps/slums.json`: its west gate
   `gates.palengke` (col 0, rows 116-118) and `arrive.palengke` [3, 117], and the six props cleared off that path (two scrap
   piles, the jeep wreck at (3,116), the sapling, the fallen tree, the stump; copying the art folder's map over again loses
-  it); `scripts/terrain/protect-slums.json` keeps the path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13)
-  and `posts.palengke` (its four), `palengkeNote`.
+  it); `scripts/terrain/protect-slums.json` keeps the path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13,
+  its `label` [150, 12]) and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321)
+  and ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved
+  +[243, 101] with the picture).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
   the `lantern-post` object, its blocked tile and `arrive.lanternPost` in `maps/town.json` (39,39 → 40,40) and
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
@@ -894,9 +896,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   re-tiles a palengke.json). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
   the tile outside, front walls on their own: you go behind the south and east walls just inside them). String lights
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
-  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums as a
-  plain diamond (`NOT_DRAWN`: the picture has no Palengke yet; the stage grows to every map, `worldBounds` / `shifted`)
-  with its four posts; the quest map pins you at the Slums' gate to it. Its own music (music-palengke); title card "Lumang
+  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums, drawn
+  into ui-map-world.png (its size from the manifest's `ui.mapWorld.size`; the stage grows to every map, `worldBounds` /
+  `shifted`) with its four posts; the quest map pins you on your own tile there. Its minimap lays the manifest's
+  `ui.minimapPictures.palengke` over the tile colours (`Minimap` `paintPicture`, smoothed, redrawn on each layout). Its own music (music-palengke); title card "Lumang
   Palengke". Measured: 60 fps walking Tarp Row (as the Slums). `sections` are kept as data; `npcs`: the quest NPCs, below.
   Its numbers (Lv 21-40): the cap is 40 (stats.json `levelCap`; XP to next stays 25 × L^1.75; a skill's cap stays 20); its
   mobs' XP in `mobs.list` follows `xp.mobXpAbove20` (a level's XP / 50 × xpMult; tested). Drops by map: a LootRoom knows its
@@ -1110,8 +1113,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   hurt, stats.json regen.outOfCombatAfterSec; toast "Can't travel during a fight."). Map menu (`ui/map-menu.ts`, the
   Equipment panel's frame; M anywhere: keybind 'map', again closes; read-only away from a post: an icon says "Go to a
   Lantern Post to travel."): a tab per map (Town, Slums, Old Market; opening on the map you're in), each its map alone:
-  manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond (the Old
-  Market: a plain diamond, NOT_DRAWN), at a whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab
+  manifest ui.mapWorld placed by `ui/map/map-layout.json` (formula, maps, posts, icon) and cut to its own diamond, at a whole-number scale (the biggest tab at up to MAX_K 3 sets the frame every tab
   shares; a smaller one fills it, up to FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`), with the Slums'
   zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
   maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
