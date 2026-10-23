@@ -8,13 +8,16 @@ import { toast } from './toast';
 // 🛠 The GM tools (the dev server only: `npm run dev:game`, a pretend login): a small panel at the left edge, folded to a
 // "GM" tab. HP and MP (can't be knocked out, skills cost no MP: the testing switches, for anyone here; a full heal), your
 // level and XP, Kusing, the quests under way (a step done, or all of it, rewards and all), a jump to a tile or another
-// map, and every mob near you down (its XP, loot and quest kills yours). The dev town does each (scripts/dev-town.ts:
+// map, a free run of a dungeon from anywhere, and every mob near you down (its XP, loot and quest kills yours). The dev town does each (scripts/dev-town.ts:
 // /__gm, /__xp, /__give), the same code the bot runs; the quests are the page's pretend store's.
 
 export interface GmHooks {
   /** Where you are. */
   tile(): { col: number; row: number };
   area(): Area;
+  /** A free run of a dungeon, and in you go (no ticket, key, quest or level): the Warrens (at a boss), the Cellar (at a
+   *  floor). */
+  dungeon(which: 'warrens' | 'silong', at?: string): void;
 }
 
 const MAPS: [Area, string][] = [['town', 'Town'], ['slums', 'Slums'], ['palengke', 'Old Market'], ['hood', 'Neighbourhood']];
@@ -104,11 +107,23 @@ export function mountGmTools(h: GmHooks): () => void {
       row(...MAPS.filter(([a]) => a !== h.area()).map(([a, name]) => button(name, () => void (location.href = areaUrl(a))))),
     );
 
+    // Dungeons: straight in, from anywhere.
+    const dg = section('Dungeons · straight in, free');
+    dg.append(
+      row(button('Scrap Warrens', () => h.dungeon('warrens'))),
+      row(
+        button('Cellar B1', () => h.dungeon('silong')),
+        button('B2', () => h.dungeon('silong', 'b2')),
+        button('B3', () => h.dungeon('silong', 'b3')),
+        button('Ice Plant', () => h.dungeon('silong', 'plant')),
+      ),
+    );
+
     // Mobs.
     const m = section('Mobs');
     m.append(row(button('Down within 8 tiles', () => call('/__gm', { slay: '8' })), button('Within 20', () => call('/__gm', { slay: '20' }))));
 
-    body.replaceChildren(el('div', 'gm-title', 'GM tools · dev'), hp, lv, k, q, tr, m);
+    body.replaceChildren(el('div', 'gm-title', 'GM tools · dev'), hp, lv, k, q, tr, dg, m);
   };
 
   const offs = [onAdventure(() => open && render()), onTesting(() => open && render())];

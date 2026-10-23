@@ -425,11 +425,12 @@ export class Mobs {
     this.dress(mob);
     this.onSpawn(sprite);
     if (shadow) this.onSpawn(shadow);
-    // A click: its name and level over its head for a moment.
+    // A click: its name and level over its head for a moment, and it's your target, unless it can't be hit now (a field
+    // boss asleep, a boss vanished): nothing to cast at.
     sprite.setInteractive({ cursor: 'pointer', pixelPerfect: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
       if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.showLabel(mob);
-      this.setTarget(mob);
+      if (!mob.untouchable) this.setTarget(mob);
     });
     // Its one-shot poses: each frame (hooks on the frames that matter) and their end.
     sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, (_a: Phaser.Animations.Animation, f: Phaser.Animations.AnimationFrame) => {
