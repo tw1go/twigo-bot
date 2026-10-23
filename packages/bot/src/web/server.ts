@@ -9,6 +9,7 @@ import { ITEM_BY_ID } from '../dig/items.js';
 import { getNickname, memberByNickname, parseNickname, setNickname } from './nickname.js';
 import { friendSaves, loadFriends } from './friends-db.js';
 import { maySee, privacyOf, seeFriendsBy, setPrivacy } from './privacy.js';
+import { setTesting, testingOf } from './testing.js';
 import { RICHEST, TITLES, giveTitle, newTitle, titleOf, titleSeen } from './titles.js';
 import { welcome, welcomeEveryone, welcomeGift, welcomeSeen } from './welcome.js';
 import { mailAction, mailboxOf, onMail, purgeMail, sendMail, unreadMail } from './mail.js';
@@ -1275,6 +1276,7 @@ export function startWebServer(client: Client): void {
       friends: { store: { load: loadFriends, ...friendSaves }, byName: memberByNickname },
       // Privacy settings (Settings → Privacy): friends-only whispers, saved per member.
       privacy: { get: privacyOf, set: setPrivacy },
+      testing: { get: testingOf, set: setTesting }, // (Game Masters' testing switches: Settings → Testing)
       // Mobility moves from their unlock level (Dash Lv 5, the class's own move Lv 8).
       moveLevel,
       authenticate: async (req) => {

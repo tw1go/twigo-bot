@@ -1,6 +1,6 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
+import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TestingSettings, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
 import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
@@ -104,6 +104,7 @@ export function devTown(): Plugin {
       const json = JSON.parse(readFileSync(join(server.config.publicDir, 'assets/maps/town.json'), 'utf8'));
       const looks = new Map<string, OutfitData>();
       const privacy = new Map<string, PrivacySettings>(); // Settings → Privacy, by name
+      const testing = new Map<string, TestingSettings>(); // Settings → Testing (Game Masters: names starting "GM"), by name
       const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests and equipment)
       /** Each player's pretend quests (the page sends them: on connect with &kit=, then /__quests), for the Warren Gate. */
       const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[] }>();
@@ -559,6 +560,15 @@ export function devTown(): Plugin {
         friends: {
           store: { load: () => ({ friends: [], requests: [], seen: [], blocks: [] }), friend: () => {}, request: () => {}, seen: () => {}, block: () => {} },
           byName: (name) => [...kits.keys()].find((n) => n.toLowerCase() === name.trim().toLowerCase()) ?? null,
+        },
+        // A Game Master's testing switches in memory (a restart forgets them).
+        testing: {
+          get: (name) => testing.get(name) ?? { unkillable: false },
+          set: (name, change) => {
+            const next = { ...(testing.get(name) ?? { unkillable: false }), ...change };
+            testing.set(name, next);
+            return next;
+          },
         },
         // Privacy settings in memory (a restart forgets them).
         privacy: {

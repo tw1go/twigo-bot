@@ -1493,6 +1493,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   name: over your own head on battle maps only (`Character.mine`; in town it's hidden), over your party's members while hurt: `mobBehaviour.hpBar.playersSee`), `hitNumber` (red on you, pale on others, "Miss"), `setKnockedOut` (the faint, below; a 1.5 s fade out, `KO_FADE_MS`, while that look's faint isn't built yet, lying down once it is; 0.3 s back in at the way in), the unconscious pop-up (`ui/revive.ts`) only once you're down (its return: TownScene `reviveLater`, its countdown still from the server's `reviveIn`);
   TownScene `knockedOut` blocks walking, keys, skills, moves, E; "You were knocked out." toast; `slowMe` (half
   `SPEED`, the step-budget mirror halved). Dev: the dev server runs it all (`?golemdemo=1` hits whoever is nearest).
+- Unkillable (CONTEXT.md Unkillable; Game Masters only: `TownOptions.gm`): Settings → Testing's "Can’t be knocked out"
+  (`ui/settings.ts` `testingSection`, shown only when the town has sent `testing`, which it sends only to Game Masters;
+  `net/testing.ts`). `testing` {unkillable} → bot `web/town.ts` (anyone else's ignored) → `TownOptions.testing` (bot
+  `web/testing.ts`, kv 'gm-testing:<userId>', kept until turned off; the dev town's in memory, its Game Masters the names
+  starting "GM") → `Vitals.setUnkillable`: `hurt` keeps their HP at 1 at least, so every hit, slow, stun and hold still
+  lands but they're never knocked out; XP, kills and quests as ever. Applied on every arrival (a Game Master no longer:
+  off). `[testing]` log line. Tested in town-vitals.test.ts. Dev: `?as=GMTester&area=slums`, Settings (O) → Testing.
 - Faint (CONTEXT.md Faint; `characters/faint.ts`, a port of the art folder's scripts/faint/build_faint_preview.py, its
   sheets in characters/faint/sheets matched pixel for pixel but deep skin's faceTweak, which the script left out): a
   knocked-out character buckles, kneels and falls forwards the way they face (sw, w, nw, n: head to screen-left), then lies

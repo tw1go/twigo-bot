@@ -50,6 +50,8 @@ export const shown = (v: Vital) => ({ hp: Math.ceil(v.hp), maxHp: v.max.hp, mp: 
 
 export class Vitals {
   private readonly all = new Map<string, Vital>();
+  /** Members who can't be knocked out (a Game Master testing: CONTEXT.md Unkillable): their HP stops at 1. */
+  private readonly unkillable = new Set<string>();
 
   constructor(private readonly regen: StatsData['regen']) {}
 
@@ -89,12 +91,19 @@ export class Vitals {
     v.mp = Math.min(v.mp, max.mp);
   }
 
-  /** A hit for `damage`: 'out' if it knocked them out, 'hurt' if not, null if they can't be hit (unknown, or out). */
+  /** Can't be knocked out (`on`), or can again: hits still land, HP stops at 1. */
+  setUnkillable(user: string, on: boolean): void {
+    if (on) this.unkillable.add(user);
+    else this.unkillable.delete(user);
+  }
+
+  /** A hit for `damage`: 'out' if it knocked them out, 'hurt' if not, null if they can't be hit (unknown, or out). An
+   *  unkillable member's HP stops at 1. */
   hurt(user: string, damage: number, now: number): 'hurt' | 'out' | null {
     const v = this.all.get(user);
     if (!v || v.outUntil) return null;
     v.combatAt = now;
-    v.hp = Math.max(0, v.hp - damage);
+    v.hp = Math.max(this.unkillable.has(user) ? Math.min(1, v.hp) : 0, v.hp - damage);
     if (v.hp > 0) return 'hurt';
     v.outUntil = now + RESPAWN_MS;
     return 'out';

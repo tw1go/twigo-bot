@@ -299,6 +299,11 @@ _Avoid_: dead, killed (mobs die; players are knocked out)
 **Respawn**:
 Coming back after being knocked out, at the gate of the map you came in through.
 
+**Unkillable**:
+A Game Master's testing switch (Settings → Testing): hits still land, but their HP never goes below 1, so they're never
+knocked out and can play on through quests and levels. Kept until they turn it off; nobody else can have it.
+_Avoid_: god mode, invincible (they still take every hit)
+
 **Faint**:
 How a knocked-out character goes down: they buckle, kneel and fall forwards the way they face, then lie on the ground
 with dizzy eyes and stars over their head until they respawn.
