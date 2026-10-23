@@ -557,7 +557,8 @@ knocked out or casting another skill stops the rest.
 
 **Charge-up**:
 Holding a skill's key to make it stronger (Long Pull): released at once it deals part of its damage, held to the end all
-of it (it fires itself then). Not the Charge mobility move.
+of it (it fires itself then). It needs a target: with none, nothing happens; out of reach, you walk into reach first and
+it charges there (let go on the way, it's called off). You stand still while charging. Not the Charge mobility move.
 _Avoid_: charge (that's the mobility move)
 
 **Windup**:

@@ -1723,7 +1723,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   stage loads every FX its class's scripts name (`skillFx`, a dry run); the kit's fx `scale` / `tint`, `leap`, `echo`
   (Phantom Sticks' afterimages, the stage only), `preview`; TownScene: the charge-up (`holdCharge` / `releaseCharge` from
   the hotbar's key down / up: the pose to its held frame, the charge at the fork, a bar under you; full fires it; the
-  filler never casts a charge-up; you stand still while it's held: the step under way finished, then no walking by keys,
+  filler never casts a charge-up; it needs a target, yours or the nearest (`holdCharge`: none, "No target." and nothing),
+  out of its reach you walk into reach first (`chargeWalk`, `chargeWalkTick`, `walkIntoReach` shared with the auto-cast)
+  and it starts charging there if the key's still held (let go on the way: called off, you stop; walking yourself too),
+  turned to its target (`startCharge`); you stand still while it's held: the step under way finished, then no walking by keys,
   clicks or the auto-cast and no mobility move till it fires: `charging` in walkTo, moveTo, keyStep, mobility; let go, its
   held pose ends unless it fires at once (no target, out of reach and walking there, the gap between casts: the shot
   plays its own pose as it fires, so nobody walks about frozen in the charge), `castLock` (a channel or windup: no other skill or walking; `stopChannel` on your own
