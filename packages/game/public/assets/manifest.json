@@ -20278,6 +20278,118 @@
       "layer": "front",
       "note": "Homing Pebbles pebble: round, needs no turning; move it along its curve; anchor = the pebble"
     },
+    "fx-slingshot-headshot-aim": {
+      "file": "fx/slingshot/fx-slingshot-headshot-aim.png",
+      "frame": [
+        40,
+        40
+      ],
+      "frames": 8,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        20,
+        20
+      ],
+      "layer": "front",
+      "note": "Headshot's aim: a red reticle closing on the target (frames 0-4), then locked and blinking; on the target's body as the pose starts; anchor = the centre (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-headshot": {
+      "file": "fx/slingshot/fx-slingshot-headshot.png",
+      "frame": [
+        56,
+        9
+      ],
+      "frames": 4,
+      "fps": 24,
+      "loop": true,
+      "anchor": [
+        49,
+        4
+      ],
+      "layer": "front",
+      "note": "Headshot's pebble in flight: a gold tracer; points EAST, turn it to the flight; anchor = the pebble (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-seed": {
+      "file": "fx/slingshot/fx-slingshot-seed.png",
+      "frame": [
+        22,
+        9
+      ],
+      "frames": 4,
+      "fps": 16,
+      "loop": true,
+      "anchor": [
+        16,
+        4
+      ],
+      "layer": "front",
+      "note": "Seed Barrage's seed in flight: green, turning, a faint trail; points EAST, turn it to the flight; anchor = the seed (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-seed-hit": {
+      "file": "fx/slingshot/fx-slingshot-seed-hit.png",
+      "frame": [
+        34,
+        34
+      ],
+      "frames": 7,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        17,
+        17
+      ],
+      "layer": "front",
+      "note": "Seed Barrage's hit: a green pop, husk bits and leaves flying out; on the target's body; anchor = the centre (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-longpull-shot": {
+      "file": "fx/slingshot/fx-slingshot-longpull-shot.png",
+      "frame": [
+        80,
+        23
+      ],
+      "frames": 6,
+      "fps": 20,
+      "loop": true,
+      "anchor": [
+        69,
+        11
+      ],
+      "layer": "front",
+      "note": "Long Pull's charged shot: a big glowing pebble with a pulsing ring and a long trail; points EAST, turn it to the flight; anchor = the pebble (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-longpull-hit": {
+      "file": "fx/slingshot/fx-slingshot-longpull-hit.png",
+      "frame": [
+        84,
+        68
+      ],
+      "frames": 9,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        42,
+        40
+      ],
+      "layer": "front",
+      "note": "Long Pull's impact on each mob it passes through: a white flash, a starburst, a shockwave ring opening out, debris; on the target's body; anchor = the centre (script-built, 23 Oct 2026)"
+    },
+    "fx-slingshot-homing-hit": {
+      "file": "fx/slingshot/fx-slingshot-homing-hit.png",
+      "frame": [
+        38,
+        38
+      ],
+      "frames": 7,
+      "fps": 16,
+      "loop": false,
+      "anchor": [
+        19,
+        19
+      ],
+      "layer": "front",
+      "note": "Homing Pebbles' hit: its gold ring closing in with sparkles, then a white pop; on the target's body; anchor = the centre (script-built, 23 Oct 2026)"
+    },
     "fx-pebble-volley": {
       "file": "fx/open-world/fx-pebble-volley.png",
       "frame": [

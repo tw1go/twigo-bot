@@ -1741,7 +1741,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Skills panel's buff previews the burst and landing too (`buffPreview(name, cls)`);
   tooltips (ui/skill-tip.ts: hits, effects in words, the area's radius; ui/buff-text.ts: a debuff's mob part); the default
   bar only up to Lv 20, a new Lv 21-40 skill into the first empty slot (`Hotbar.placeNew`). Silent (SKILL_SOUNDS 7); the 48
-  icons (36 skills, 12 utilities) are the art folder's ui/skills/<class> (22 Oct 2026), in manifest ui.skillIcons.have. Hailstorm's area is 2 tiles
+  icons (36 skills, 12 utilities) are the art folder's ui/skills/<class> (22 Oct 2026), in manifest ui.skillIcons.have. The Slingshot's Headshot (its aim on the target, a gold tracer), Seed Barrage (a seed, a seed pop), Long Pull (its
+  charged shot, a heavy impact on each mob it passes) and Homing Pebbles' hit have script-built FX (23 Oct 2026, the owner
+  asked: the art folder's docs/skills-21-40/build_slingshot_extra_fx.py, its fx/slingshot/_sheets_scripted.csv; a PixelLab
+  piece of the same name and cell can replace any). Hailstorm's area is 2 tiles
   (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
