@@ -533,11 +533,14 @@ export class SilongView {
     return Phaser.Geom.Rectangle.Overlaps(this.scene.cameras.main.worldView, new Phaser.Geom.Rectangle(f.x - ax * k, f.y - ay * k, w * k, h * k));
   }
 
-  /** The boss's anim so its attack frame (mobs.json) lands `ms` from now. */
+  /** The boss's anim so its contact frame lands `ms` from now: the manifest's `hitFrames` for it (the Ice Machine's
+   *  slam, sweep, floor punch, raised fist), else on a boss that has them its last frame (the breath charge plays out,
+   *  its head right back, as the breath comes), else its attack frame (mobs.json: the mini bosses). */
   private poseFor(m: Mob | null, anim: string, ms: number): void {
     const A = m?.def.animations[anim];
     if (!m || !A) return;
-    const f = m.data?.attackFrame ?? 0;
+    const H = m.def.hitFrames;
+    const f = H?.[anim] ?? (H && !A.loop ? A.frames - 1 : (m.data?.attackFrame ?? 0));
     this.later(m.id, Math.max(0, ms - (f / A.fps) * 1000), () => !m.dead && this.mobs.pose(m, anim));
   }
 
