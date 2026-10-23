@@ -16,7 +16,9 @@ import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubbl
 
 export const SPEED = 4; // tiles per second (players; NPCs walk slower: `speed`)
 const HP_BAR_W = 20; // the HP bar over a hurt player (a mob's is as wide)
-const KO_FADE_MS = 600; // a knocked-out player fades out this long (back in half as long)
+/** A knocked-out player fades out this long (until a lying-down pose comes); back in at KO_BACK_MS. */
+export const KO_FADE_MS = 1500;
+const KO_BACK_MS = 300;
 
 /** A character drawn from flat sheets instead of a paper doll: the animation key per animation and direction (made
  *  by the caller), how many empty rows sit above the head in the cell, and the directions drawn. */
@@ -828,7 +830,7 @@ export class Character {
     this.seenTween = this.scene.tweens.addCounter({
       from: this.seen,
       to: on ? 0 : 1,
-      duration: on ? KO_FADE_MS : KO_FADE_MS / 2,
+      duration: on ? KO_FADE_MS : KO_BACK_MS,
       onUpdate: (tw) => this.setSeen(tw.getValue() ?? (on ? 0 : 1)),
     });
   }
