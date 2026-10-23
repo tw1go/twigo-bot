@@ -4740,7 +4740,7 @@ export class TownScene extends Phaser.Scene {
       const at = { x: t.x, y: t.y - this.objects.heights.at(c, r) * LEVEL_PX };
       const text =
         to === 'hood' ? 'Neighbourhood →'
-        : to === 'palengke' ? (this.map.silong ? 'Stairs up to the Market Hall' : '← Old Market')
+        : to === 'palengke' ? (this.map.silong ? 'Stairs up to the Market Hall' : '↑ Old Market')
         : to === 'slums' ? (this.area === 'warrens' ? 'Exit to the Slums' : this.area === 'palengke' ? 'Back to the Slums →' : '← Slums')
         : this.area === 'slums' ? 'Back to town →'
         : '← Back to town';

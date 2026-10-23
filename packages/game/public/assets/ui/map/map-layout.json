@@ -32,8 +32,8 @@
    ]
   },
   "palengke": {
-   "col": -280,
-   "row": 13,
+   "col": -18,
+   "row": -210,
    "size": [
     280,
     210
@@ -73,8 +73,8 @@
     ],
     "name": "entrance",
     "px": [
-     47.6,
-     45.2
+     435.6,
+     60.8
     ]
    },
    {
@@ -84,8 +84,8 @@
     ],
     "name": "north (Vegetable Row)",
     "px": [
-     30.8,
-     5.6
+     418.8,
+     21.2
     ]
    },
    {
@@ -95,8 +95,8 @@
     ],
     "name": "west (Eatery Row)",
     "px": [
-     -110.8,
-     -27.6
+     277.2,
+     -12.0
     ]
    },
    {
@@ -106,8 +106,8 @@
     ],
     "name": "south (Fish Market, by the hall)",
     "px": [
-     -122.0,
-     24.4
+     266.0,
+     40.0
     ]
    }
   ]
@@ -129,5 +129,5 @@
   ]
  },
  "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)",
- "palengkeNote": "Repo addition (20 Oct 2026): the Lumang Palengke sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118), off the left of ui-map-world.png: until the picture has it, the Map menu draws a plain diamond there. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
+ "palengkeNote": "Repo addition (20 Oct 2026): the Old Market (palengke) sits north of the Slums since 23 Oct 2026 (the owner moved its way in to the Slums' north edge, cols 121-123 row 0, between Wire Ridge and Bag Flats; it was west of the Slums, its east gate meeting the Slums' west gate), its middle over that gate; the picture doesn't have it: the Map menu draws a plain diamond there. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
 }
