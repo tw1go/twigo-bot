@@ -278,8 +278,8 @@ test('an aggressive zone\'s mob comes for a player within its aggroRange, attack
   const tire = room.snapshot(0).find((m) => m.id.startsWith('tire-yard:'))!;
   const zone = zoneOf(tire.id);
   assert.equal(zone.aggro, 'aggressive');
-  // Out of its range: left alone.
-  const far = near(room, tire, (zone.aggroRange ?? 4) + 2);
+  // Out of its range (and past where its wandering takes it): left alone.
+  const far = near(room, tire, (zone.aggroRange ?? 4) + stats.mobBehaviour.wanderTiles + 2);
   for (let t = 0; t < 3000; t += 250) assert.ok(!room.tick(t, new Map([['p1', far]])).some((e) => e.t === 'mob-attack' && e.id === tire.id));
   // Within it: after them, then an attack.
   let p = near(room, room.snapshot(3000).find((m) => m.id === tire.id)!, 3);
@@ -470,7 +470,7 @@ test('mob attacks: the Wire Tangle zaps from its reach, the Bag slows (for show)
   const z = zaps[0];
   assert.ok(z.t === 'mob-attack' && z.dir === facingTo(p[0] - wire.col, p[1] - wire.row));
   // (The Bag is passive: hit first, it fights back.)
-  const bag = snap.find((m) => m.id.startsWith('bag-flats:'))!;
+  const bag = room.snapshot(3000).find((m) => m.id.startsWith('bag-flats:'))!; // (where it has drifted to by now)
   const q = near(room, bag, 1);
   assert.ok(room.attack('p2', q, { cls: 'stick', level: 8 }, bag.id, 3000).ok);
   let slow: number | undefined;
