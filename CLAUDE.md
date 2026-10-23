@@ -158,7 +158,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Linen / Bamboo / Amber, Lv 40 Polished / Iron / Denim / Rattan / Jade; their icons the art folder's
   items/palengke/art, 21 Oct 2026, each matched to its kind by `_icons.csv`'s recoloured_from); `items/items.json`
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
-  `maps/palengke.json` the three zones' `miniBosses` spots.
+  `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
+  footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
+  asked, 23 Oct 2026).
 - The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
   (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
