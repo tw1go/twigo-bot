@@ -36,11 +36,13 @@ test('each map has one Lantern Post: blocked, with a walkable landing beside it,
   for (const z of slums.mobZones as { rect: [number, number, number, number] }[]) assert.ok(c < z.rect[0] || c > z.rect[2] || r < z.rect[1] || r > z.rect[3]);
 });
 
-test('the Lumang Palengke has four Lantern Posts: each blocked, a walkable landing in front, its own; the Map menu has them all', () => {
+test('the Old Market has four Lantern Posts: each blocked, a walkable landing in front, its own; the Map menu has them all', () => {
   const layout = asset('ui/map/map-layout.json') as { posts: Record<string, { tile: [number, number] }[] | { tile: [number, number] }> };
   const blocked = blockedWithPosts(palengke.blocked, palengke.teleporters);
-  const posts = lanternPostsOf({ ...palengke, blocked });
+  const all = lanternPostsOf({ ...palengke, blocked });
+  const posts = all.filter((p) => !p.entrance);
   assert.equal(posts.length, 4);
+  assert.deepEqual(all.slice(4).map((p) => p.entrance), ['silong'], 'then its dungeon entrance, the Cellar Hatch');
   assert.deepEqual(posts.map((p) => p.name), palengke.teleporters.map((t: { name: string }) => t.name));
   for (const p of posts) {
     for (let r = p.tile[1]; r < p.tile[1] + 2; r++) for (let c = p.tile[0]; c < p.tile[0] + 2; c++) assert.equal(blocked[r][c], 1, `${p.name}: its 2 × 2 is blocked`);
@@ -48,15 +50,35 @@ test('the Lumang Palengke has four Lantern Posts: each blocked, a walkable landi
     assert.ok(nearPost(p, p.arrive[0], p.arrive[1], LANTERN_WALK_TILES), `${p.name}: its landing is near enough to use it`);
     assert.equal(postAt(posts, p.arrive[0], p.arrive[1]), posts.indexOf(p), `${p.name}: its landing is at it, not another`);
   }
-  // The server's map blocks them too, and the Map menu shows the four where they stand.
-  assert.deepEqual(loadTownMap('palengke').lanterns?.map((p) => p.tile), posts.map((p) => p.tile));
+  // The server's map blocks them too (its list the same, the hatch last), and the Map menu shows the four where they stand.
+  assert.deepEqual(loadTownMap('palengke').lanterns?.map((p) => p.tile), all.map((p) => p.tile));
   assert.deepEqual((layout.posts.palengke as { tile: [number, number] }[]).map((p) => p.tile), posts.map((p) => p.tile));
   // Post to post inside the Palengke: fine; to the post you're at: you're already there.
-  const ok = { from: 'palengke', to: 'palengke', toPost: 2, toPosts: 4, posts, at: posts[0].arrive, inCombat: false, out: false, lanterns: 1 };
+  const ok = { from: 'palengke', to: 'palengke', toPost: 2, toPosts: all.length, posts: all, at: posts[0].arrive, inCombat: false, out: false, lanterns: 1 };
   assert.equal(lanternRefusal(ok), null);
   assert.match(lanternRefusal({ ...ok, toPost: 0 })!, /already there/);
-  assert.match(lanternRefusal({ ...ok, toPost: 4 })!, /no Lantern Post/);
+  assert.equal(lanternRefusal({ ...ok, toPost: 4 }), null, 'to the Cellar Hatch');
+  assert.match(lanternRefusal({ ...ok, toPost: 5 })!, /no Lantern Post/);
   assert.match(lanternRefusal({ ...ok, toPost: 1.5 })!, /no Lantern Post/);
+});
+
+test("the dungeon entrances: the Warren Gate and the Cellar Hatch listed after their map's posts, landing where their runs let you out; never left from", () => {
+  for (const [name, map, id, gate, arrive] of [['slums', slums, 'warrens', 'slums-warren-gate', 'warrens'], ['palengke', palengke, 'silong', 'palengke-silong-hatch', 'silong']] as const) {
+    const blocked = blockedWithPosts(map.blocked, map.teleporters);
+    const all = lanternPostsOf({ ...map, blocked });
+    const e = all.at(-1)!;
+    assert.equal(e.entrance, id, name);
+    const o = map.objects.find((x: { id: string }) => x.id === gate);
+    assert.deepEqual(e.tile, [o.col, o.row], `${name}: at its object`);
+    assert.deepEqual(e.arrive, map.arrive[arrive], `${name}: landing where its runs let you out`);
+    assert.equal(blocked[e.arrive[1]][e.arrive[0]], 0, `${name}: a walkable landing`);
+    assert.equal(postAt(all, e.arrive[0], e.arrive[1]), -1, `${name}: standing there isn't standing at a post`);
+    const from = { from: name, to: 'town', posts: all, at: e.arrive, inCombat: false, out: false, lanterns: 1 };
+    assert.match(lanternRefusal(from)!, /Walk up/, `${name}: no teleport from it`);
+    const post = all.find((p) => !p.entrance)!;
+    assert.equal(lanternRefusal({ ...from, to: name, toPost: all.indexOf(e), toPosts: all.length, at: post.arrive }), null, `${name}: a teleport to it from a post`);
+  }
+  assert.equal(lanternPostsOf(town).filter((p) => p.entrance).length, 0, 'the Town has none');
 });
 
 test('the Return Lantern: a consumable stacking to 99, sold in the Travel tab for its own price in Kusing', () => {
@@ -98,7 +120,7 @@ test('in combat: hit, or hitting, in the last outOfCombatAfterSec', () => {
 });
 
 test('a teleport over the town: a lantern used, the light seen as they leave and where they arrive; refused when far or out of lanterns', async () => {
-  const lanterns = new Map([['alice', 2], ['bob', 0]]);
+  const lanterns = new Map([['alice', 3], ['bob', 0]]);
   const server = createServer();
   attachTown(server, {
     map: loadTownMap(),
@@ -139,7 +161,7 @@ test('a teleport over the town: a lantern used, the light seen as they leave and
     send(alice.ws, { t: 'lantern', to: 'slums' });
     await wait();
     assert.match((last(alice, 'lantern-refused') as { message: string }).message, /Walk up/);
-    assert.equal(lanterns.get('alice'), 2);
+    assert.equal(lanterns.get('alice'), 3);
 
     // Bob at the post with no lantern: refused.
     send(bob.ws, { t: 'here', col: townPost.arrive[0], row: townPost.arrive[1], dir: 's' });
@@ -157,7 +179,7 @@ test('a teleport over the town: a lantern used, the light seen as they leave and
     send(alice2.ws, { t: 'lantern', to: 'slums' });
     await wait();
     assert.deepEqual(last(alice2, 'lantern-go'), { t: 'lantern-go', to: 'slums' });
-    assert.equal(lanterns.get('alice'), 1);
+    assert.equal(lanterns.get('alice'), 2);
     assert.deepEqual(last(bob, 'lantern-fx'), { t: 'lantern-fx', id: alice2.id, col: townPost.arrive[0], row: townPost.arrive[1], phase: 'out' });
 
     // Her page loads the Slums: the server itself puts her arrival on the post's landing (her trip is under way), so even
@@ -171,16 +193,35 @@ test('a teleport over the town: a lantern used, the light seen as they leave and
     await wait();
     assert.deepEqual(last(carol, 'lantern-fx'), { t: 'lantern-fx', id: alice3.id, col: slumsPost.arrive[0], row: slumsPost.arrive[1], phase: 'in' });
 
-    // On to the Palengke's third post (it has four): her last lantern; she lands on that post's landing.
+    // On to the Old Market's third post (it has four): a lantern; she lands on that post's landing.
     await wait(1100);
     send(alice3.ws, { t: 'lantern', to: 'palengke', post: 2 });
     await wait();
     assert.deepEqual(last(alice3, 'lantern-go'), { t: 'lantern-go', to: 'palengke', post: 2 });
-    assert.equal(lanterns.get('alice'), 0);
+    assert.equal(lanterns.get('alice'), 1);
     alice3.ws.close();
+    const market = loadTownMap('palengke').lanterns!;
     const alice4 = await open('alice', 'palengke');
-    assert.deepEqual((last(alice4, 'welcome') as { spawn: [number, number] }).spawn, loadTownMap('palengke').lanterns![2].arrive);
-    for (const c of [alice4, bob, carol]) c.ws.close();
+    assert.deepEqual((last(alice4, 'welcome') as { spawn: [number, number] }).spawn, market[2].arrive);
+    // And from there to the Cellar Hatch (a dungeon entrance: after the posts): her last lantern; she lands beside it.
+    send(alice4.ws, { t: 'here', col: market[2].arrive[0], row: market[2].arrive[1], dir: 'se' });
+    await wait(1100);
+    const hatch = market.findIndex((p) => p.entrance === 'silong');
+    send(alice4.ws, { t: 'lantern', to: 'palengke', post: hatch });
+    await wait();
+    assert.deepEqual(last(alice4, 'lantern-go'), { t: 'lantern-go', to: 'palengke', post: hatch });
+    assert.equal(lanterns.get('alice'), 0);
+    alice4.ws.close();
+    const alice5 = await open('alice', 'palengke');
+    assert.deepEqual((last(alice5, 'welcome') as { spawn: [number, number] }).spawn, palengke.arrive.silong);
+    // Standing there isn't standing at a post: no teleport from it (even with a lantern).
+    lanterns.set('alice', 1);
+    send(alice5.ws, { t: 'here', col: palengke.arrive.silong[0], row: palengke.arrive.silong[1], dir: 'se' });
+    await wait(1100);
+    send(alice5.ws, { t: 'lantern', to: 'town' });
+    await wait();
+    assert.match((last(alice5, 'lantern-refused') as { message: string }).message, /Walk up/);
+    for (const c of [alice5, bob, carol]) c.ws.close();
   } finally {
     await new Promise((ok) => server.close(ok));
   }

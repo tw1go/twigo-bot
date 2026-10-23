@@ -407,7 +407,7 @@
    "kind": "deliver",
    "unlockLevel": 28,
    "nextUnlock": 29,
-   "goal": "Find Tisay in Tuyo't Tindahan and bring her note to Aling Conching",
+   "goal": "Find Tisay in Dry Goods and bring her note to Aling Conching",
    "count": 0,
    "rewardXP": 2560,
    "xpFromQuestKills": 0,
@@ -481,7 +481,7 @@
   },
   {
    "id": "palengke-10",
-   "title": "Bantay Karnehan",
+   "title": "Butcher Row Watch",
    "giver": "mang-pido",
    "kind": "kill+miniBoss",
    "unlockLevel": 32,
@@ -545,7 +545,7 @@
    "kind": "talk",
    "unlockLevel": 34,
    "nextUnlock": 35,
-   "goal": "Talk to Kuya Jun at the Karnehan",
+   "goal": "Talk to Kuya Jun at Butcher Row",
    "count": 0,
    "rewardXP": 3590,
    "xpFromQuestKills": 0,
@@ -633,7 +633,7 @@
    "kind": "talk",
    "unlockLevel": 37,
    "nextUnlock": null,
-   "goal": "Talk to Mang Pido: it's time for the Silong",
+   "goal": "Talk to Mang Pido: it's time for the Cellar",
    "count": 0,
    "rewardXP": 2000,
    "xpFromQuestKills": 0,
@@ -651,7 +651,7 @@
      "It wasn't time before. Now it is. Watch yourself down there: it's cold."
     ],
     "report": [
-     "This is a key to the Silong. It works once: a first look inside. Come back in one piece.",
+     "This is a key to the Cellar. It works once: a first look inside. Come back in one piece.",
      "When you're truly ready, buy your keys from Aling Conching."
     ]
    },

@@ -20,8 +20,8 @@ _Avoid_: installed app (the home screen app is installed too), client
 ## Places
 
 **Map**:
-A place in the world you can stand in and travel to: the Town, the Slums or the Lumang Palengke (the Map menu shows them
-side by side).
+A place in the world you can stand in and travel to: the Town, the Slums or the Old Market (the Map menu has a tab for
+each).
 _Avoid_: area (that's a part of the Scrap Warrens), zone (a part of the Slums where one kind of mob lives)
 
 **Town**:
@@ -32,10 +32,11 @@ _Avoid_: hub, lobby
 The map west of the town, reached through its gate; where mobs live.
 _Avoid_: battle map, dungeon, junkyard (only flavour in its lines)
 
-**Lumang Palengke**:
+**Old Market**:
 The abandoned market west of the Slums, reached through the Slums' west gate: the Lv 21-40 map, its mobs, mini bosses,
-the Great Scale and the "Ang Huling Suki" quest chain. Its parts (Tarp Row, the Gulayan, the Market Hall…) are sections.
-_Avoid_: market (alone), Palengke area
+the Great Scale and the "Ang Huling Suki" quest chain. Its parts (Tarp Row, Vegetable Row, Dry Goods, Eatery Row, Butcher
+Row, the Fish Market, the Market Hall…) are sections. (`palengke` in code: its first name was the Lumang Palengke.)
+_Avoid_: Lumang Palengke, Palengke (the old names), market (alone)
 
 **Lantern Post**:
 A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
@@ -46,12 +47,17 @@ _Avoid_: teleporter, waypoint (the map shows a teleporter icon on it, but the th
 The item a teleport costs: one is used up each time, at a Lantern Post.
 
 **Map menu**:
-The window showing the Town and the Slums together with every Lantern Post on them; opened from a post it travels, opened
-anywhere else (M) it's only to look at.
+The window with a tab per map (Town, Slums, Old Market), each with its Lantern Posts and its dungeon entrance; opened from
+a post it travels, opened anywhere else (M) it's only to look at.
+
+**Dungeon entrance**:
+A dungeon's way in (the Warren Gate in the Slums, the Cellar Hatch in the Old Market) as a teleport's destination: from
+any Lantern Post you can land beside one, for a Return Lantern; you can't teleport from one.
+_Avoid_: post (it isn't one), portal
 
 **Teleport**:
-Going from one Lantern Post to another map's, for one Return Lantern; never during a fight, and each player alone (a
-party isn't pulled along).
+Going from one Lantern Post to another (on another map, or the same one) or to a dungeon entrance, for one Return
+Lantern; never during a fight, and each player alone (a party isn't pulled along).
 _Avoid_: warp (the Warren Gate's portal), gate (a gate is walked through)
 
 **Arena**:
@@ -187,11 +193,11 @@ A mob that comes after a player who walks within its aggro range; a **passive** 
 How far a mob follows a player from home before it gives up and walks back; for the field boss, the pit floor itself.
 
 **Field boss**:
-A single big mob that rises on a schedule rather than on a spawn point: the Scrapheap Golem in the Slums, the Great Scale in the Lumang Palengke.
+A single big mob that rises on a schedule rather than on a spawn point: the Scrapheap Golem in the Slums, the Great Scale in the Old Market.
 _Avoid_: raid boss, world boss
 
 **Great Scale**:
-Ang Dakilang Timbangan, the Lumang Palengke's field boss in the Market Hall. Between fights it stays there asleep (it can't be hit); every two hours it wakes. It has no plain attack: only its Pan Slam, Weigh-in and Kulang sa Timbang hurt.
+Ang Dakilang Timbangan, the Old Market's field boss in the Market Hall. Between fights it stays there asleep (it can't be hit); every two hours it wakes. It has no plain attack: only its Pan Slam, Weigh-in and Kulang sa Timbang hurt.
 _Avoid_: timbangan boss, scale boss
 
 **Weigh-in**:
@@ -655,7 +661,7 @@ next quest shows a grey "!" with "Come back at Lv X", and it opens the moment yo
 _Avoid_: level lock, grind wall
 
 **Dish**:
-A meal Aling Conching sells in the Lumang Palengke for Kusing, once a quest has unlocked it for you: a 10-minute effect,
+A meal Aling Conching sells in the Old Market for Kusing, once a quest has unlocked it for you: a 10-minute effect,
 one main dish and one side dish at a time (a new one replaces the old). It counts on battle maps only, keeps running
 through town and map changes, and a knock-out ends it.
 _Avoid_: food buff, buff (a buff is a class skill), consumable
@@ -743,19 +749,20 @@ _Avoid_: gate, door
 **Checkpoint**:
 Where you come back after dying in a run: the start of the furthest area the run has opened.
 
-## Ang Silong (dungeon)
+## The Cellar (dungeon)
 
-**Ang Silong**:
-The frozen cold storage under the Lumang Palengke's Market Hall for Lv 37–40, played as runs like the Scrap Warrens;
+**The Cellar**:
+The frozen cold storage under the Old Market's Market Hall for Lv 37–40, played as runs like the Scrap Warrens;
 three floors, two cold rooms with a mini boss on each of the first two, the Ice Tanks and the Ice Plant on the third.
-_Avoid_: the cellar, the basement (fine in talk; the place is Ang Silong)
+(`silong` in code: its first name was Ang Silong.)
+_Avoid_: Ang Silong, the Silong (the old names), the basement
 
 **Floor**:
 One of the Silong's three levels (B1, B2, B3), each its own page; a run holds all three.
 _Avoid_: level (that's a character's), area (that's the Warrens')
 
-**Silong Hatch**:
-The iron trapdoor in the Market Hall floor where Silong runs are opened and joined.
+**Cellar Hatch**:
+The iron trapdoor in the Market Hall floor where Cellar runs are opened and joined (once the Silong Hatch).
 
 **Freight elevator**:
 How a Silong run moves between floors: the one down wakes once both of a floor's mini bosses are down and goes when
@@ -763,9 +770,9 @@ everyone on that floor is in it (or soon after the first steps in); from the one
 alone to a floor the run has reached.
 _Avoid_: lift, portal
 
-**Susi ng Silong**:
-The key that opens a Silong run (for you, or your whole party); spent only once a mini boss falls. The **Practice Susi
-ng Silong** from "Now's the Time" opens one practice run, alone.
+**Cellar Key**:
+The key that opens a Cellar run (for you, or your whole party); spent only once a mini boss falls. The **Practice Cellar
+Key** from "Now's the Time" opens one practice run, alone. (Once the Susi ng Silong.)
 _Avoid_: ticket (that's the Warrens')
 
 **Chill**:

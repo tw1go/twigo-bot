@@ -103,7 +103,7 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
     const text = el('div', 'dm-text');
     const name = el('div', 'dm-name');
     name.append(el('b', '', k.name), el('span', 'dm-slot dm-side', 'Key'));
-    text.append(name, el('div', 'dm-effect', 'Opens Ang Silong for you or your party, at the hatch in the Market Hall.'));
+    text.append(name, el('div', 'dm-effect', 'Opens the Cellar for you or your party, at the hatch in the Market Hall.'));
     if (!k.open) text.append(el('div', 'dm-unlock', 'After the Great Scale rests'));
     const buy = el('button', 'dm-buy');
     buy.type = 'button';
@@ -133,7 +133,7 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
     for (const b of o.on()) if (b.endsAt) times.get(b.name)?.replaceChildren(`On · ${clock(b.endsAt - Date.now())}`);
   };
   const ticking = setInterval(() => (wrap.isConnected ? tick() : clearInterval(ticking)), 1000);
-  const closed = showPopup({ title: "Aling Conching's Karinderya", body: [wrap], button: 'Close', celebrate: false, closeX: true, sound: 'door' });
+  const closed = showPopup({ title: "Aling Conching's Eatery", body: [wrap], button: 'Close', celebrate: false, closeX: true, sound: 'door' });
   // (Kusing changing, a dish served: drawn again.)
   const off = onAdventure(() => !busy && render());
   void closed.then(off);

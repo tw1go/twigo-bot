@@ -100,6 +100,21 @@ export function worldPoint(L: MapLayout, map: string, col: number, row: number):
   return [L.origin[0] + ((c - r) * L.tilePx) / 2, L.origin[1] + ((c + r) * L.tilePx) / 4];
 }
 
+const places = new Map<string, Promise<unknown>>();
+/** A map file's places (zones, sections, objects: the Map menu's labels and dungeon entrances), fetched once (null if it
+ *  can't be had: tried again next time). */
+export function loadPlaces<T>(url: string): Promise<T | null> {
+  let p = places.get(url) as Promise<T | null> | undefined;
+  if (!p) {
+    p = fetch(url)
+      .then((r) => (r.ok ? (r.json() as Promise<T>) : null))
+      .catch(() => null);
+    places.set(url, p);
+    void p.then((v) => v === null && places.delete(url));
+  }
+  return p;
+}
+
 /** A map's tile (its middle) as a pixel of the picture. */
 export const worldPx = (L: MapLayout, map: string, col: number, row: number) => worldPoint(L, map, col + 0.5, row + 0.5);
 

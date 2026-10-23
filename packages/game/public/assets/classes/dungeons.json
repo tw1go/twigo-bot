@@ -548,7 +548,7 @@
  "silong": {
   "placeholder": true,
   "version": 1,
-  "name": "Ang Silong",
+  "name": "The Cellar",
   "maps": [
    "maps/silong-b1.json",
    "maps/silong-b2.json",
@@ -643,7 +643,7 @@
    {
     "index": 1,
     "id": "b1",
-    "name": "B1 Bodega (dry storage)",
+    "name": "B1 Dry Storage",
     "level": 37,
     "rooms": [
      {
@@ -754,7 +754,7 @@
      },
      {
       "id": "bigasan",
-      "name": "Bigasan Vault",
+      "name": "Rice Vault",
       "rect": [
        26,
        31,
@@ -951,7 +951,7 @@
    {
     "index": 2,
     "id": "b2",
-    "name": "B2 Kantina at Karnehan",
+    "name": "B2 Canteen and Butcher Row",
     "level": 38,
     "rooms": [
      {
@@ -1218,7 +1218,7 @@
    {
     "index": 3,
     "id": "b3",
-    "name": "B3 Planta ng Yelo",
+    "name": "B3 Ice Plant",
     "level": 39,
     "rooms": [
      {
@@ -1636,12 +1636,12 @@
   },
   "key": {
    "id": "susi-ng-silong",
-   "name": "Susi ng Silong",
+   "name": "Cellar Key",
    "kind": "consumable",
    "rarity": "white",
    "stack": 99,
    "tradeable": true,
-   "about": "Opens a run of Ang Silong for you, or for your whole party. Use it at the Silong Hatch in the Market Hall.",
+   "about": "Opens a run of the Cellar for you, or for your whole party. Use it at the Cellar Hatch in the Market Hall.",
    "icon": "items/consumables/item-silong-key-16.png",
    "showcase": "items/consumables/item-silong-key.png",
    "large": "items/consumables/item-silong-key-64.png",

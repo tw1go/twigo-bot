@@ -1359,7 +1359,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // it's on (the one in its slot replaced).
         if (typeof m.dish !== 'string') return;
         const no = (message: string) => send(c, { t: 'dish', ok: false, dish: m.dish, message });
-        if (c.room !== PALENGKE) return no('Aling Conching serves them in the Lumang Palengke.');
+        if (c.room !== PALENGKE) return no('Aling Conching serves them in the Old Market.');
         // (Her menu's Susi ng Silong row: a key into the bag, not a dish.)
         if (opts.silong?.buyKey && m.dish === opts.silong.data.key.id) {
           const why = opts.silong.buyKey(c.userId);
@@ -2227,7 +2227,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       return { ok: true, run: r.id };
     },
     silongDev(userId, floor, hp) {
-      if (!SL) return { ok: false, message: 'No Silong here.' };
+      if (!SL) return { ok: false, message: 'No Cellar here.' };
       const now = Date.now();
       const r = SL.runOf(userId) ?? (() => {
         const o = SL.open(userId, nameOf(userId), 99, () => true, now);
@@ -2455,7 +2455,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (o) {
       tellItems(o);
       if (!run.floorOf(o.room)) {
-        const key = run.practice ? 'Practice Susi ng Silong' : 'Susi ng Silong';
+        const key = run.practice ? 'Practice Cellar Key' : 'Cellar Key';
         send(o, { t: 'system', line: { kind: 'warrens', text: back ? `Your ${key} is back: the run ended before a mini boss fell.` : `The run ended before a mini boss fell, but your bag had no room for your ${key}.`, tone: back ? 'stir' : 'down' } });
       }
     }
@@ -2482,7 +2482,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'silong-gate':
         return send(c, { t: 'silong-gate', gate: SL.gate(c.userId, levelOf(c), opts.silong.keys.count(c.userId), access(c.userId)) });
       case 'silong-practice': {
-        if (!atGate) return refuse('gone', 'Walk up to the Silong Hatch first.');
+        if (!atGate) return refuse('gone', 'Walk up to the Cellar Hatch first.');
         if (now - (c.silongAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
         c.silongAt = now;
         if (!opts.silong.practice) return refuse('key', 'There are no practice runs.');
@@ -2494,7 +2494,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1', key: true });
       }
       case 'silong-open': {
-        if (!atGate) return refuse('gone', 'Walk up to the Silong Hatch first.');
+        if (!atGate) return refuse('gone', 'Walk up to the Cellar Hatch first.');
         if (now - (c.silongAt ?? 0) < 1000) return refuse('slow', 'Slow down a little.');
         c.silongAt = now;
         const r = SL.open(c.userId, c.player.nickname, levelOf(c), () => opts.silong!.keys.use(c.userId), now, access(c.userId));
@@ -2507,12 +2507,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
           const o = conns.get(member);
           if (!o || o === c) continue;
           if (o.room === 'palengke') send(o, { t: 'silong-invite', run: r.run.id, from: c.player.nickname, ms: SL.S.entry.partyInviteSeconds * 1000 });
-          else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened Ang Silong for your party. Join at the Silong Hatch in the Market Hall while it lasts.`, tone: 'stir' } });
+          else send(o, { t: 'system', line: { kind: 'warrens', text: `${c.player.nickname} opened the Cellar for your party. Join at the Cellar Hatch in the Market Hall while it lasts.`, tone: 'stir' } });
         }
         return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1', key: true });
       }
       case 'silong-join': {
-        if (!atGate && typeof m.run !== 'string') return refuse('gone', 'Walk up to the Silong Hatch first.');
+        if (!atGate && typeof m.run !== 'string') return refuse('gone', 'Walk up to the Cellar Hatch first.');
         const r = SL.join(c.userId, levelOf(c), typeof m.run === 'string' ? m.run : undefined, access(c.userId));
         if (!r.ok) return refuse(r.reason, r.message);
         return send(c, { t: 'silong-go', run: r.run.id, floor: 'b1' });

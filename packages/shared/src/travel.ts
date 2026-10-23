@@ -1,8 +1,10 @@
 // 🏮 Lantern Posts: teleporting between maps (the Town, the Slums, the Lumang Palengke) and between the posts of one map
 // (the Palengke has four) for one Return Lantern. A map with one post has a `lantern-post` object and its
 // `arrive.lanternPost` (where a teleport lands); a map with several lists them as `teleporters` (each a 2 × 2 post, its
-// landing worked out here: the nearest walkable tile in front of it). The Map menu's picture of the maps is the game's
-// ui/map/map-layout.json. The rules both sides check: how near a post you must be, and why not.
+// landing worked out here: the nearest walkable tile in front of it). A teleport can also land at a dungeon's way in (the
+// Warren Gate, the Cellar Hatch: DUNGEON_ENTRANCES), listed after a map's posts, but never leave from one. The Map menu's
+// picture of the maps is the game's ui/map/map-layout.json. The rules both sides check: how near a post you must be, and
+// why not.
 
 /** The maps with Lantern Posts. */
 export const LANTERN_MAPS = ['town', 'slums', 'palengke'] as const;
@@ -17,13 +19,22 @@ export const LANTERN_WALK_TILES = 2;
 export const LANTERN_USE_TILES = 3;
 
 /** A Lantern Post: its top tile and size (its footprint, `size` × `size` tiles), where a teleport to it lands, and its
- *  name on a map with several. */
+ *  name on a map with several. `entrance`: not a post but a dungeon's way in (CONTEXT.md Dungeon entrance), listed after a
+ *  map's posts: a teleport can land there (beside it, where its runs let you out), never leave from it. */
 export interface LanternPost {
   tile: [number, number];
   arrive: [number, number];
   size?: number;
   name?: string;
+  entrance?: DungeonEntrance;
 }
+
+/** The dungeons' ways in a teleport can land at: the map object, the `arrive` it lands on, its name. */
+export const DUNGEON_ENTRANCES = [
+  { id: 'warrens', object: 'slums-warren-gate', arrive: 'warrens', name: 'Warren Gate' },
+  { id: 'silong', object: 'palengke-silong-hatch', arrive: 'silong', name: 'Cellar Hatch' },
+] as const;
+export type DungeonEntrance = (typeof DUNGEON_ENTRANCES)[number]['id'];
 
 /** What the post rules read of a map. */
 export interface LanternMapData {
@@ -57,12 +68,21 @@ export function postLanding(blocked: number[][] | undefined, tile: [number, numb
 }
 
 /** A map's Lantern Posts: its `teleporters` (each with its landing), else its one `lantern-post` object and
- *  `arrive.lanternPost`; none: []. */
+ *  `arrive.lanternPost`; none: []. Then its dungeon entrances (DUNGEON_ENTRANCES: the object and its `arrive`), which a
+ *  teleport can land at but not leave from. */
 export function lanternPostsOf(map: LanternMapData): LanternPost[] {
-  if (map.teleporters?.length) return map.teleporters.map((t) => ({ tile: t.tile, arrive: postLanding(map.blocked, t.tile), size: POST_SIZE, name: t.name }));
   const o = map.objects?.find((x) => x.id === 'lantern-post');
   const arrive = map.arrive?.lanternPost;
-  return o && arrive ? [{ tile: [o.col, o.row], arrive }] : [];
+  const posts: LanternPost[] = map.teleporters?.length
+    ? map.teleporters.map((t) => ({ tile: t.tile, arrive: postLanding(map.blocked, t.tile), size: POST_SIZE, name: t.name }))
+    : o && arrive ? [{ tile: [o.col, o.row], arrive }] : [];
+  if (!posts.length) return posts; // (a map without a post is no teleport's way in)
+  for (const e of DUNGEON_ENTRANCES) {
+    const at = map.objects?.find((x) => x.id === e.object);
+    const land = map.arrive?.[e.arrive];
+    if (at && land) posts.push({ tile: [at.col, at.row], arrive: land, name: e.name, entrance: e.id });
+  }
+  return posts;
 }
 
 /** `blocked` with every teleporter's footprint blocked too (a post is in the way; the art folder's map leaves one open). */
@@ -86,12 +106,13 @@ export function nearPost(post: LanternPost, col: number, row: number, tiles = LA
   return Math.max(dc, dr) <= tiles;
 }
 
-/** The post of `posts` you're at (within `tiles`), nearest first; -1: none. */
+/** The post of `posts` you're at (within `tiles`), nearest first; -1: none. A dungeon entrance is never one (you can't
+ *  teleport from it). */
 export function postAt(posts: LanternPost[], col: number, row: number, tiles = LANTERN_USE_TILES): number {
   let best = -1;
   let bestD = Infinity;
   posts.forEach((p, i) => {
-    if (!nearPost(p, col, row, tiles)) return;
+    if (p.entrance || !nearPost(p, col, row, tiles)) return;
     const d = Math.hypot(col - p.tile[0], row - p.tile[1]);
     if (d < bestD) [best, bestD] = [i, d];
   });

@@ -11,7 +11,7 @@ import { WebSocket } from 'ws';
 // real data files and a throwaway database: each dish unlocked by its quest, bought for Kusing, one main and one side at
 // a time (a new one replaces its slot), running everywhere, ended by a knock-out, kept through a restart; Lugaw's MP
 // regen and Pancit's move speed; Q1's free Lugaw; one daily order a day after the chain, from 4 am Manila, a random
-// free dish with it; bought only in the Lumang Palengke (over the town's socket).
+// free dish with it; bought only in the Old Market (over the town's socket).
 const dir = mkdtempSync(join(tmpdir(), 'palengke-dishes-test-'));
 process.env.DATA_DIR = dir;
 process.env.ENV_FILE = join(dir, 'none.env');
@@ -141,7 +141,7 @@ test('daily orders: one a day once the chain is done, never into done, a random 
   assert.equal(freeDishOf(at(0), QUESTS, PALENGKE, 'random'), 'lugaw');
 });
 
-test("over the town's socket: dishes are bought only in the Lumang Palengke, and show in the buff tray", async () => {
+test("over the town's socket: dishes are bought only in the Old Market, and show in the buff tray", async () => {
   const map = loadMobMap('slums');
   const lcg = (seed: number) => () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
   const room = new MobRoom(map, lcg(1), {}, { shapes: {} }, loadMobKinds());
@@ -177,7 +177,7 @@ test("over the town's socket: dishes are bought only in the Lumang Palengke, and
   await wait(100);
   pal.ws.send(JSON.stringify({ t: 'dish-buy', dish: 'adobo' }));
   await wait(150);
-  assert.deepEqual(dish(town1.got).map((m) => [m.ok, m.message]), [[false, 'Aling Conching serves them in the Lumang Palengke.']]);
+  assert.deepEqual(dish(town1.got).map((m) => [m.ok, m.message]), [[false, 'Aling Conching serves them in the Old Market.']]);
   assert.deepEqual(dish(pal.got).map((m) => [m.dish, m.ok, m.message]), [['sinigang', false, 'Unlocks with Bigas, Bigas.'], ['adobo', true, undefined]]);
   assert.deepEqual(bought, ['Here:adobo']);
   const tray = pal.got.filter((m): m is Extract<TownServerMessage, { t: 'buffs' }> => m.t === 'buffs').at(-1)!;

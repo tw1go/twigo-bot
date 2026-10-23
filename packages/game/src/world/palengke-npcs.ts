@@ -26,7 +26,7 @@ export interface PalengkeNpc {
 }
 
 /** What the dialog box says under each one's name (the map's `role` is a note for us). */
-const TITLES: Record<string, string> = { 'aling-conching': 'Karinderya cook', 'mang-pido': 'Palengke guard', tisay: "Tuyo't Tindahan", 'kuya-jun': 'Karnehan butcher' };
+const TITLES: Record<string, string> = { 'aling-conching': 'Eatery cook', 'mang-pido': 'Market guard', tisay: "Dry Goods", 'kuya-jun': 'Butcher' };
 /** Each stand-in's colour (their clothes); grey for one not listed. */
 const COLOURS: Record<string, string> = { 'aling-conching': '#C2410C', 'mang-pido': '#6B7F3A', tisay: '#DB2777', 'kuya-jun': '#2563EB' };
 const SKIN = '#E8B98A';
