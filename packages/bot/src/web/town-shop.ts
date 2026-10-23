@@ -12,10 +12,10 @@ import { kowen } from '../kowens.js';
 import { debtOf } from '../loans/loans.js';
 import { potionCount, potionHow, type PotionId } from '../potions/potions.js';
 import { freeSlots } from '../dig/bag.js';
-import { type HalloweenData, type ShopEvents, cosmeticShopItem, cosmeticWares, countOf, isEventOn, isGearDef, itemStats } from '@mikazuki/shared';
+import { type HalloweenData, type ShopEvents, combatWareAbout, cosmeticShopItem, cosmeticWares, countOf, isEventOn, isGearDef } from '@mikazuki/shared';
 import { adventureOf, buyCombatFor, buyCosmeticFor } from './adventure.js';
 import { loadHalloween } from './halloween.js';
-import { combatWares, mostAtOnce, potionOf, roomFor } from './combat-bag.js';
+import { combatWares, mostAtOnce, roomFor } from './combat-bag.js';
 import { loadItemData } from './stats-data.js';
 
 // 🎁 The town's rewards shop (GET/POST /town/shop): what /redeem sells, bought with the same checks
@@ -73,20 +73,12 @@ export function townShop(userId: string): TownShopResponse {
     cost: w.cost,
     kind: w.tab,
     ...(w.currency === 'kusing' ? { currency: 'kusing' as const } : {}),
-    about: combatAbout(w.def.id, w.def.about),
+    about: combatWareAbout(D, w.def),
     max: Math.min(mostAtOnce(D, w.def.id), roomFor(D, s, w.def.id)),
     have: countOf(s.bag, w.def.id),
   }));
   const cosmetics = cosmeticWares(D, s, shopEvents(), Date.now()).map(cosmeticShopItem);
   return { kowens: balance(userId), kusing: s.kusing, items: [...items, ...combat, ...cosmetics], fenceUntil: fencedUntil(userId), inDebt: !!debtOf(userId) };
-}
-
-/** What a combat item does, for the shop. */
-function combatAbout(id: string, about: string | undefined): string {
-  const D = loadItemData();
-  const p = potionOf(D, id);
-  if (p) return `Heals ${p.amount} ${p.heals.toUpperCase()} at once. Put it on your hotbar; HP and MP Potions share a ${itemStats(D.stats).potions.sharedCooldownSec} s cooldown. For the Slums.`;
-  return about ?? '';
 }
 
 /** Buys a combat item (Healing or Smithing): into the combat bag, paid in Kusing or Kowens. */

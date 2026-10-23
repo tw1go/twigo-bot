@@ -244,6 +244,9 @@ function pushItems(s: AdventureState): Promise<unknown> {
 /** Loads the data files (once); `stats` is loaded already (the scene's json cache). */
 /** Dev: Aling Nena's quest and its practice ticket (dungeons.json), for the pretend store. */
 let practice: { quest: string; ticket: string; retryMs: number } | null = null;
+/** Dev: the dungeon tickets' store prices in Kusing (dungeons.json), for the pretend store. */
+let ticketPrices = new Map<string, number>();
+export const devTicketPrice = (id: string): number | null => ticketPrices.get(id) ?? null;
 
 export async function loadAdventureData(url: (path: string) => string, files: { quests: string; classes: string; equipment: string; items?: string; dungeons?: string; palengke?: string }, stats: StatsData | undefined, leveling?: LevelingData): Promise<AdventureData | null> {
   if (data) return data;
@@ -257,6 +260,7 @@ export async function loadAdventureData(url: (path: string) => string, files: { 
   if (fakeLogin() && files.dungeons) {
     const W = (await get<{ warrens: WarrensData }>(files.dungeons))?.warrens;
     if (W?.entry.requiresQuest && W.practice) practice = { quest: W.entry.requiresQuest, ticket: W.practice.ticket, retryMs: (W.practice.retryHours ?? 0) * 3_600_000 };
+    if (W?.ticket) ticketPrices = new Map([[W.ticket.id, W.ticket.sources.shop.kusing]]);
   }
   return data;
 }

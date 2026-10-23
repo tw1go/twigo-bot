@@ -1,5 +1,7 @@
-import { type AdventureState, type CombatItemDef, type GearRarity, type Item, type ItemData, addToBag, bagRoom, isGearDef, itemStats, newItem, rollGear, stackLimit, takeKind, dropRefusal, boxPrice, petRules, type EventPotion } from '@mikazuki/shared';
+import { type CombatWare, combatWares as storeWares, type AdventureState, type CombatItemDef, type GearRarity, type Item, type ItemData, addToBag, bagRoom, isGearDef, itemStats, newItem, rollGear, stackLimit, takeKind, dropRefusal, boxPrice, petRules, type EventPotion } from '@mikazuki/shared';
 import { loadDungeons } from './stats-data.js';
+
+export type { CombatWare };
 
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
 // dev server in memory): loot picked up (Kusing always fits; an item only if the bag has room), HP and MP Potions used,
@@ -51,57 +53,14 @@ export function usePotion(data: ItemData, c: CombatItems, defId: string): { heal
 
 /** A combat item on sale: its kind, price and money (Kusing for HP/MP Potions, the Warren Ticket and the Return Lantern,
  *  Kowens for whetstones and Repair Kits). */
-export interface CombatWare {
-  def: CombatItemDef;
-  tab: 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets';
-  cost: number;
-  currency: 'kusing' | 'kowens';
-}
-
 /** A dungeon ticket's price in Kusing (classes/dungeons.json), or null. */
 function ticketPrice(id: string): number | null {
   for (const d of Object.values(loadDungeons())) if (d.ticket?.id === id) return d.ticket.sources.shop.kusing;
   return null;
 }
 
-/** A tier's first level: a potion's minLevel, a gear tier's first item level (stats.json). Low is always open. */
-function tierFrom(data: ItemData, def: CombatItemDef): number {
-  const S = itemStats(data.stats);
-  if (!def.tier) return 1;
-  if (def.kind === 'potion') return S.potions.tiers[def.tier]?.minLevel ?? Infinity;
-  const levels = (S.gearTiers[def.tier] as { levels?: number[] } | undefined)?.levels;
-  return levels?.[0] ?? Infinity;
-}
-
-/** What the store sells a character at `level`: every kind with a `shop` price whose tier they've reached (the Low tier
- *  always; higher ones stay hidden until then). */
-export function combatWares(data: ItemData, level: number): CombatWare[] {
-  const S = itemStats(data.stats);
-  const out: CombatWare[] = [];
-  for (const def of data.defs.values()) {
-    if (isGearDef(def) || !def.shop) continue;
-    if (def.tier !== 'low' && tierFrom(data, def) > level) continue;
-    if (def.shop === 'potion') {
-      const tier = def.tier ? S.potions.tiers[def.tier] : undefined;
-      if (tier) out.push({ def, tab: 'healing', cost: tier.kusing, currency: 'kusing' });
-    } else if (def.shop === 'pets') {
-      // A pet box (stats.json pets.boxPrice by its pet's rarity, in Kowens), in the Pets tab.
-      const price = boxPrice(data, def.id);
-      if (price) out.push({ def, tab: 'pets', cost: price, currency: 'kowens' });
-    } else if (def.shop === 'ticket') {
-      // A dungeon's ticket (classes/dungeons.json: its shop price in Kusing), in the Dungeons tab.
-      const price = ticketPrice(def.id);
-      if (price) out.push({ def, tab: 'dungeons', cost: price, currency: 'kusing' });
-    } else if (def.price) {
-      // Its own price (items.json): Kusing (the Travel tab's Return Lantern) or Kowens (Smithing's Agimat Pliers and
-      // Temper Stones).
-      const tab = def.shop === 'travel' ? 'travel' : 'smithing';
-      if (def.price.kusing) out.push({ def, tab, cost: def.price.kusing, currency: 'kusing' });
-      else if (def.price.kowens) out.push({ def, tab, cost: def.price.kowens, currency: 'kowens' });
-    } else if (def.shop === 'whetstone' || def.shop === 'repairKit') out.push({ def, tab: 'smithing', cost: S.currencies.kowensShop[def.shop], currency: 'kowens' });
-  }
-  return out;
-}
+/** What the store sells a character at `level` (shared combat-wares.ts), the tickets at dungeons.json's price. */
+export const combatWares = (data: ItemData, level: number): CombatWare[] => storeWares(data, level, ticketPrice);
 
 /** How many of a kind the bag can still take. */
 export const roomFor = (data: ItemData, c: CombatItems, defId: string) => {
