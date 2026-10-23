@@ -533,3 +533,35 @@ test('only a Game Master can turn unkillable on (Settings → Testing); it is ke
   b.ws.close();
   await close();
 });
+
+test('watching a cutscene: no hits land and no attacks, others see "...", back in the fights at its end or on its own after its time', async () => {
+  const { room, open, close } = await townWithSlums({ cutsceneMs: 400 });
+  const a = await open('Mara', 'slums');
+  const b = await open('Bob', 'slums');
+  await wait(150);
+  send(a.ws, { t: 'cutscene', on: true });
+  await wait(100);
+  assert.ok(b.got.some((m) => m.t === 'cutscene' && m.id === a.id && m.on), 'the room sees the "..."');
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10, slow: 2000 });
+  send(a.ws, { t: 'attack', mob: 'tin-can-alley:0', skill: 0 });
+  await wait(250);
+  assert.equal(lastVitals(a.got, a.id)?.hp ?? MAX.hp, MAX.hp, 'nothing lands');
+  assert.ok(a.got.some((m) => m.t === 'attack-refused' && m.reason === 'cutscene'), 'no attacks');
+  // Its time (400 ms here, 60 s for real) runs out with no word from the page: back in the fights.
+  await wait(400);
+  assert.ok(b.got.some((m) => m.t === 'cutscene' && m.id === a.id && !m.on), 'the "..." goes');
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10 });
+  await wait(250);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp - 10, 'hits land again');
+  // Its end (or Skip) says so at once.
+  send(a.ws, { t: 'cutscene', on: true });
+  await wait(50);
+  send(a.ws, { t: 'cutscene', on: false });
+  await wait(50);
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 10 });
+  await wait(250);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp - 20, 'back at its end');
+  a.ws.close();
+  b.ws.close();
+  await close();
+});

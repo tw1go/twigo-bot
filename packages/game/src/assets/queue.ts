@@ -99,6 +99,9 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (on?.file) img(on.file);
   if (off?.file) img(off.file);
   if (on?.glow?.file) img(on.glow.file);
+  // The lit hat's glow: a lit string light's too (world/objects.ts lightString).
+  const litGlow = M.characters.wardrobe?.litGlow?.file;
+  if (litGlow) img(litGlow);
   const F = M.props.fence;
   if (F) [F.nw, F.ne, F.post, F.nwRust, F.neRust, F.postRust].forEach((f) => f && img(f));
   // The neighbourhood's rogue signs by a house's door (world/rogue-signs.ts).

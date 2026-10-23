@@ -71,6 +71,7 @@ import { type LootGot,
   advanceCollects,
   heldCount,
   offeredBy,
+  markCutscene,
   offeredQuests,
   takeFromBag,
 } from '@mikazuki/shared';
@@ -442,6 +443,12 @@ export const questTalk = (quest: string, npc: string) => act('/town/quest', { qu
 export const devFinishQuest = (quest: string, whole: boolean) => (fakeLogin() ? act('/town/quest', { quest, action: whole ? 'dev-done' : 'dev-step' }) : Promise.resolve(null));
 /** Chose a class for `quest`'s chooseClass objective (the training weapon and armor come with it). */
 export const chooseClass = (quest: string, cls: string) => act('/town/quest', { quest, action: 'chooseClass', cls });
+/** A cutscene watched (`seen`), or one whose moment came on another map (`due`): kept with your quests (CONTEXT.md
+ *  Cutscene: once each, on every device). */
+export const markCutsceneOf = (cutscene: string, mark: 'seen' | 'due') => act('/town/quest', { action: 'cutscene', cutscene, mark });
+/** The cutscenes you've watched, and the ones waiting for their map. */
+export const cutscenesSeen = (): string[] => state?.quests.cutscenesSeen ?? [];
+export const cutscenesDue = (): string[] => state?.quests.cutscenesDue ?? [];
 /** Wear an item from the combat bag (by uid; in `place`, or the first free place for its kind). */
 export const equipItem = (uid: string, place?: EquipPlace) => act('/town/equip', { action: 'equip', item: uid, ...(place ? { place } : {}) });
 export const unequipPlace = (place: EquipPlace) => act('/town/equip', { action: 'unequip', place });
@@ -709,6 +716,11 @@ function jumpToQuest(s: AdventureState, id: string): void {
 function fakeAct(body: TownQuestAction | TownEquipAction | DevQuestAction): TownAdventureResponse {
   const s: AdventureState = structuredClone(state ?? fresh());
   const no = (message: string): TownAdventureResponse => ({ ok: false, message, adventure: state ?? fresh() });
+  // A cutscene watched or waiting for its map (the bot's townQuest).
+  if (body.action === 'cutscene') {
+    markCutscene(s.quests, body.cutscene, body.mark);
+    return { ok: true, adventure: s };
+  }
   if ('quest' in body) {
     const q = questDef(body.quest);
     // An offered quest: talking to its giver starts it (the bot's questStep).

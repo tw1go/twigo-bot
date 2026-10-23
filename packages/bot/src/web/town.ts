@@ -282,6 +282,8 @@ export interface TownOptions {
   /** Game Masters' testing switches (web/testing.ts in the bot; in memory on the game's dev server): only `gm` members'
    *  are read or changed. Without it, no testing switches. */
   testing?: { get(userId: string): TestingSettings; set(userId: string, change: Partial<TestingSettings>): TestingSettings };
+  /** How long a cutscene keeps someone away from fights at most (ms; tests): CUTSCENE_MS. */
+  cutsceneMs?: number;
   /** The Halloween event (web/halloween.ts: its window, Mikko Kalabasa, Biikko Kalabasa, the Manananggal; its director
    *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
    *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
@@ -462,7 +464,12 @@ interface Conn {
   bellAt?: number;
   /** Dodging every hit that lands before this (ms): a Step Back (stats.json skills.moveDodge). */
   dodgeUntil?: number;
+  /** Watching a cutscene until (ms; CONTEXT.md Cutscene): away from fights meanwhile. */
+  cutsceneUntil?: number;
 }
+
+/** The longest a cutscene keeps someone away from fights (its end, or Skip, ends it sooner). */
+export const CUTSCENE_MS = 60_000;
 
 export function attachTown(server: Server, opts: TownOptions): Town {
   const { map } = opts;
@@ -484,6 +491,14 @@ export function attachTown(server: Server, opts: TownOptions): Town {
 
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
   /** To everyone in `c`'s room but `c` (the message is turned into text once). */
+  /** Watching a cutscene: nobody's target, nothing lands on them, no attacks (CONTEXT.md Cutscene). */
+  const watching = (o: Conn, now = Date.now()) => (o.cutsceneUntil ?? 0) > now;
+  /** The room (and anyone arriving: TownPlayer.cutscene) sees their "..." or not. */
+  const cutsceneShown = (c: Conn, on: boolean) => {
+    if (on) c.player.cutscene = true;
+    else delete c.player.cutscene;
+    others(c, { t: 'cutscene', id: c.player.id, on });
+  };
   const others = (c: Conn, m: TownServerMessage) => {
     const text = JSON.stringify(m);
     for (const o of conns.values()) if (o !== c && o.room === c.room && o.ws.readyState === WebSocket.OPEN) o.ws.send(text);
@@ -1228,6 +1243,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (m.t === 'attack') return send(c, { t: 'attack-refused', reason: 'out' });
       if (m.t === 'face' || m.t === 'move' || m.t === 'stand') return;
     }
+    if (m.t === 'attack' && watching(c)) return send(c, { t: 'attack-refused', reason: 'cutscene' });
     switch (m.t) {
       case 'here':
         if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
@@ -1468,6 +1484,13 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // "Revive now" from the unconscious pop-up: only while knocked out, else nothing happens.
         if (vitals?.revive(c.userId, Date.now())) respawn(c);
         return;
+      case 'cutscene': {
+        // A cutscene on (away from fights for CUTSCENE_MS at most) or over; the room sees "..." meanwhile.
+        if (typeof m.on !== 'boolean' || m.on === watching(c)) return;
+        c.cutsceneUntil = m.on ? Date.now() + (opts.cutsceneMs ?? CUTSCENE_MS) : 0;
+        if (m.on) mobsOf(c.room)?.forget(p.id); // (what's on its way to them lands on nobody)
+        return cutsceneShown(c, m.on);
+      }
       case 'potion': {
         // An HP or MP Potion from their bag: battle maps only, its kind's cooldown (or one shared: potionCooldownGroup),
         // never when it'd do nothing.
@@ -2342,7 +2365,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const saveRuns = () => opts.warrens?.saved?.(W?.openRuns() ?? []);
   /** Who's inside a run now. */
   const insideOf = (run: Run): Inside[] =>
-    [...conns.values()].filter((o) => o.room === run.room).map((o) => ({ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row], out: !!o.player.out }));
+    [...conns.values()].filter((o) => o.room === run.room).map((o) => ({ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row], out: !!o.player.out || watching(o) }));
   /** What a run's clock or a kill set off: to its room, to members, and out with those who must go. */
   const runNews = (run: Run, news: RunNews, ticketBack?: string) => {
     for (const msg of news.room) for (const o of conns.values()) if (o.room === run.room) send(o, msg);
@@ -2477,7 +2500,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const silongInside = (run: SilongRun): SilongInside[] =>
     [...conns.values()].flatMap((o) => {
       const f = run.floorOf(o.room);
-      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out, floor: f.floor, immune: chillProof(o.userId) }] : [];
+      return f ? [{ member: o.userId, id: o.player.id, at: [o.player.col, o.player.row] as [number, number], out: !!o.player.out || watching(o), floor: f.floor, immune: chillProof(o.userId) }] : [];
     });
   /** What a run's clock or a kill set off: to its floors' rooms, to members, out with those who must go, and down (or up)
    *  with the riders. */
@@ -2620,8 +2643,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const now = Date.now();
       for (const [room, mobs] of battleRooms()) {
         const here = [...conns.values()].filter((o) => o.room === room);
-        // The knocked out are nobody's target.
-        const up = here.filter((o) => !o.player.out);
+        // The knocked out (and anyone watching a cutscene) are nobody's target.
+        const up = here.filter((o) => !o.player.out && !watching(o, now));
         const where = new Map(up.map((o) => [o.player.id, [o.player.col, o.player.row] as [number, number]]));
         // (Their share of their HP left too: the Timbangan Sentinel's Weigh.)
         const guards = new Map(up.flatMap((o) => {
@@ -2673,7 +2696,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const byId = new Map([...conns.values()].filter((o) => o.room === room).map((o) => [o.player.id, o]));
         for (const l of landed) {
           const o = byId.get(l.player);
-          if (!o || o.player.out) continue;
+          if (!o || o.player.out || watching(o, now)) continue;
           // Dodged (a Step Back just before it landed): nothing, not even a slow, stun or blindness.
           if (l.at < (o.dodgeUntil ?? 0)) {
             vitals.fought(o.userId, now);
@@ -2730,6 +2753,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       for (const o of touched) tellVitals(o);
     }, VITALS_MS).unref?.();
   }
+
+  // A cutscene that never said it ended (a page closed mid-scene, a lost link): back in the fights after CUTSCENE_MS.
+  setInterval(() => {
+    const now = Date.now();
+    for (const o of conns.values()) {
+      if (!o.cutsceneUntil || o.cutsceneUntil > now) continue;
+      o.cutsceneUntil = 0;
+      cutsceneShown(o, false);
+    }
+  }, 250).unref();
 
   // Loot rolls whose time is up: decided (the silent passed).
   setInterval(() => {

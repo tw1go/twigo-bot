@@ -448,8 +448,33 @@ export class WorldObjects {
   }
 
   /** The Palengke's sections whose string lights are on for this player (an object's `litId` drawn for its `section`):
-   *  the hook for the story's reward; nothing sets it yet. */
+   *  the finale's cutscene lights them (`lightSection`), and they stay lit for them after it. */
   litSections = new Set<string>();
+  /** The string lights made so far (objects with a `litId` and a `section`), and once lit their glows (at night). */
+  private strings: { o: MapObject; sprite: Phaser.GameObjects.Image; glows: Phaser.GameObjects.Image[] }[] = [];
+
+  /** A section's string lights on, at once (those made later come lit). */
+  lightSection(section: string): void {
+    this.litSections.add(section);
+    for (const s of this.strings) if (s.o.section === section && !s.glows.length) this.lightString(s);
+  }
+
+  /** A string light's lit look and its glows: three soft warm ones along its bulbs (found by comparing its lit and dead
+   *  art), drawn as the lit hat's (ADD, a slow flicker) while the lamps are on. */
+  private lightString(s: (typeof this.strings)[number]): void {
+    const lit = s.o.litId ? (this.M.props[s.o.litId] as PropDef | undefined) : undefined;
+    const dead = this.M.props[s.o.id] as PropDef | undefined;
+    if (!lit?.file || !dead?.file || !this.scene.textures.exists(lit.file)) return;
+    s.sprite.setTexture(lit.file);
+    const glow = this.M.characters.wardrobe?.litGlow?.file;
+    if (!glow || !this.scene.textures.exists(glow)) return;
+    const flip = !!s.o.flip;
+    for (const [px, py] of bulbSpots(this.scene, lit.file, dead.file)) {
+      const x = s.sprite.x + (flip ? lit.anchor[0] - px : px - lit.anchor[0]);
+      const y = s.sprite.y + py - lit.anchor[1];
+      s.glows.push(this.scene.add.image(x, y, glow).setBlendMode(Phaser.BlendModes.ADD).setDepth(GLOW_DEPTH).setScale(2.2, 1.6).setVisible(false));
+    }
+  }
 
   private addProp(o: MapObject): void {
     if (this.M.props[o.id]?.front) return this.addHalves(o);
@@ -521,6 +546,11 @@ export class WorldObjects {
     // A bench: a seat on each tile of its footprint (a long bench seats 2 or 3, side by side).
     if (def.faces) for (let c = 0; c < fc; c++) for (let r = 0; r < fr; r++) this.benches.push({ col: o.col + c, row: o.row + r, faces: def.faces.toLowerCase() as Dir, depth, sprite });
     if (o.id === 'lamp-off' || o.id === 'lamp-on') this.addLamp(sprite);
+    if (o.litId && o.section) {
+      const s = { o, sprite, glows: [] };
+      this.strings.push(s);
+      if (lit) this.lightString(s);
+    }
   }
 
   /** A portal's strip played in place over its prop (never moved or turned: the frames only cycle its colours), its
@@ -578,6 +608,20 @@ export class WorldObjects {
         l.sprite.setTexture(lit ? onKey : offKey);
       }
       l.glow.setVisible(lit && l.sprite.visible);
+    }
+    // Lit string lights glow at night, flickering softly (dropped with their streamed region, like a lamp).
+    const t = time ?? this.scene.time.now;
+    for (let i = this.strings.length - 1; i >= 0; i--) {
+      const s = this.strings[i];
+      if (!s.sprite.scene) {
+        for (const g of s.glows) g.destroy();
+        this.strings.splice(i, 1);
+        continue;
+      }
+      s.glows.forEach((g, k) => {
+        g.setVisible(on && s.sprite.visible);
+        if (on) g.setAlpha(0.9 * (0.925 + 0.075 * Math.sin(t / 900 + k * 2.1 + s.o.col) * Math.cos(t / 2300 + s.o.row)));
+      });
     }
   }
 
@@ -748,4 +792,24 @@ function columnBases(scene: Phaser.Scene, key: string, step: number): number[] {
     out.push(base);
   }
   return out;
+}
+
+/** Where a string light's glows go (image px, three along its bulbs): the pixels that differ between its lit and dead
+ *  art, cut into three runs from left to right, each run's middle. Measured once per art. */
+const bulbCache = new Map<string, [number, number][]>();
+function bulbSpots(scene: Phaser.Scene, litFile: string, deadFile: string): [number, number][] {
+  const known = bulbCache.get(litFile);
+  if (known) return known;
+  const a = readPixels(scene, litFile);
+  const b = readPixels(scene, deadFile);
+  const lit: [number, number][] = [];
+  for (let y = 0; y < a.height; y++) for (let x = 0; x < a.width; x++) if (differs(a.data, b.data, (y * a.width + x) * 4)) lit.push([x + 0.5, y + 0.5]);
+  lit.sort((p, q) => p[0] - q[0]);
+  const spots: [number, number][] = [];
+  for (let k = 0; k < 3 && lit.length; k++) {
+    const run = lit.slice(Math.floor((k * lit.length) / 3), Math.floor(((k + 1) * lit.length) / 3));
+    if (run.length) spots.push([Math.round(run.reduce((n, p) => n + p[0], 0) / run.length), Math.round(run.reduce((n, p) => n + p[1], 0) / run.length)]);
+  }
+  bulbCache.set(litFile, spots);
+  return spots;
 }

@@ -14364,6 +14364,8 @@
   "quests": {
     "note": "Quests (quests/quests.json: main and side, their objectives and the givers' lines). Main quests are violet and side quests yellow everywhere a quest shows (tracker, log, toast, the marker over the giver): the palette's nearest to #9D7BFF and #F2C94C.",
     "file": "quests/quests.json",
+    "cutscenes": "quests/cutscenes.json",
+    "cutscenesNote": "The story's cutscenes (world/cutscene.ts): the art folder's docs/cutscenes/cutscenes.json, its words in English; each scene's steps, trigger, map; played once per character (quests.cutscenesSeen), watched again from the quest log.",
     "colours": {
       "main": "#B794F6",
       "side": "#FCDA4A"

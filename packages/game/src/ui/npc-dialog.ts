@@ -35,6 +35,8 @@ export interface NpcTalk {
    *  walking away), after onClose. */
   lines?: string[];
   onDone?: () => void;
+  /** The narrator (a cutscene's): the box with no name, title or portrait, the words in italics. */
+  narrator?: boolean;
 }
 
 const PX = 2; // screen px per art px, as the HUD's frames
@@ -48,6 +50,7 @@ const TEXT_PX = 17; // the line's text size, shrunk for a line that wouldn't fit
 const MIN_TEXT_PX = 11; // every line fits two rows at 17 px on a computer; on a phone the longest need 11
 const BLINK_MS = 150;
 const MARGIN = 12; // from the screen's edges and from HUD panels
+const CUTSCENE_BAR = 48; // a cutscene's bottom bar (world/cutscene.ts): the box sits over it
 /** HUD panels the box keeps clear of (whichever are showing): the hotbar, so it sits just above it, and what you use.
  *  Of the chat only its typing row: the see-through log above it (it fades when quiet) may be covered for a line, as
  *  may the stay box and the system feed; dodging those lifted it to the middle of a small window, off centre. */
@@ -82,6 +85,7 @@ export function openNpcDialog(t: NpcTalk): void {
   root.setAttribute('aria-live', 'polite');
   root.style.setProperty('--px', String(PX));
   root.style.width = `min(${WIDTH * PX}px, calc(100vw - ${MARGIN * 2}px))`;
+  if (t.narrator) root.classList.add('nd-narrator');
   if (art.box) {
     root.classList.add('nd-framed');
     root.style.setProperty('--frame', `url("${art.box.url}")`);
@@ -111,8 +115,9 @@ export function openNpcDialog(t: NpcTalk): void {
   const line = el('div', 'nd-line');
   const more = el('div', 'nd-more', '▼');
   more.setAttribute('aria-hidden', 'true');
-  words.append(el('div', 'nd-name', t.name), el('div', 'nd-title', t.title), line);
-  root.append(frame, words, more);
+  if (!t.narrator) words.append(el('div', 'nd-name', t.name), el('div', 'nd-title', t.title));
+  words.append(line);
+  root.append(...(t.narrator ? [] : [frame]), words, more);
   if (t.action) {
     const { label, run } = t.action;
     const button = el('button', 'nd-action', label);
@@ -178,14 +183,16 @@ export function openNpcDialog(t: NpcTalk): void {
   // centred would lift it into the top half of the screen ──
   const place = () => {
     const { width, height } = root.getBoundingClientRect();
-    const panels = HUD.map((sel) => document.querySelector(sel)?.getBoundingClientRect()).filter((r): r is DOMRect => !!r && r.width > 0 && r.height > 0);
+    // (A cutscene's faded HUD isn't in the way; its bottom bar is: the box sits just over it.)
+    const panels = HUD.map((sel) => document.querySelector(sel)).filter((e) => e && !e.closest('[data-cutscene-hidden]')).map((e) => e!.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+    const floor = document.body.classList.contains('cutscene-on') ? CUTSCENE_BAR + MARGIN / 2 : MARGIN;
     const clamp = (x: number) => Math.max(MARGIN, Math.min(innerWidth - MARGIN - width, x));
     const centre = (innerWidth - width) / 2;
     // Centred, or flush beside a panel on either side.
     const xs = [centre, ...panels.flatMap((r) => [r.right + MARGIN, r.left - MARGIN - width])].map(clamp);
     let best = { x: centre, bottom: Infinity };
     for (const x of xs) {
-      let bottom = MARGIN;
+      let bottom = floor;
       for (let moved = true, guard = 0; moved && guard < 8; guard++) {
         moved = false;
         const top = innerHeight - bottom - height;
@@ -222,6 +229,8 @@ export function openNpcDialog(t: NpcTalk): void {
   let swallow = false;
   const outside = (e: PointerEvent) => {
     if (root.contains(e.target as Node)) return;
+    // (A cutscene's Skip button works while its lines are up.)
+    if ((e.target as Element | null)?.closest?.('[data-dialog-pass]')) return;
     if (!queue) return close();
     e.preventDefault();
     e.stopPropagation();

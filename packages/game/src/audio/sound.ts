@@ -495,6 +495,20 @@ export function loadSoundSets(bases: string[]): void {
   if (queueSets(bases) && !s.load.isLoading()) s.load.start();
 }
 
+/** A sound by its name, whatever kind (a cutscene's `sound` step): one of SFX, else a set (loaded now if it wasn't:
+ *  this time it may be silent); a name that's neither is skipped quietly. `pitch` as playSound's. */
+export function playNamed(name: string, pitch = 0): void {
+  if (name in SFX) return playSound(name as Sfx, SFX[name as Sfx].volume, pitch);
+  if (setVolumeOf(name) === undefined) return void tap?.({ name, volume: 0, missing: true });
+  if (!sets.has(name)) loadSoundSets([name]);
+  playSet(name);
+}
+
+/** Sets a cutscene will play, loaded ahead (names that aren't sets are left out). */
+export function loadNamedSounds(names: string[]): void {
+  loadSoundSets(names.filter((n) => !(n in SFX) && setVolumeOf(n) !== undefined));
+}
+
 /** The sets asked for so far (debug: the sound hook in __town). */
 export const soundSets = (): string[] => [...sets.keys()];
 

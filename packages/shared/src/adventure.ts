@@ -206,8 +206,9 @@ export interface AdventureState {
    *  visit, as does one whose rewards had no room); `pieces`: done mini boss quests whose +5 piece has been given
    *  (classes/leveling.json miniBoss.questDrop; no room: a later visit); `flags`: one-off things done (Ang Silong cleared,
    *  Mang Ramon's note handed in: silong.ts SILONG_FLAGS); `dailyDone`: the day their last daily order was
-   *  handed in (palengke.ts dailyDay). */
-  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[]; dailyDone?: string; flags?: string[] };
+   *  handed in (palengke.ts dailyDay); `cutscenesSeen`: the cutscenes they've watched (CONTEXT.md Cutscene: each plays
+   *  once), `cutscenesDue`: ones whose moment came on another map, played the next time they're on theirs. */
+  quests: { active: QuestProgress[]; done: string[]; rewarded?: string[]; pieces?: string[]; dailyDone?: string; flags?: string[]; cutscenesSeen?: string[]; cutscenesDue?: string[] };
   /** What's worn in each place. */
   equipped: Partial<Record<EquipPlace, Item>>;
   /** The cosmetics worn (the Costume tab): out of the bag, bound, never stats. */
@@ -224,8 +225,13 @@ export interface AdventureState {
   trainingArmorGiven: boolean;
 }
 
-/** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`). */
-export type TownQuestAction = { quest: string; action: 'talk'; npc: string } | { quest: string; action: 'chooseClass'; cls: string } | { quest: string; action: 'report' };
+/** POST /town/quest: an objective done in the game (talked to `npc`, or chose `cls`), or a cutscene watched (`seen`) or
+ *  waiting for its map (`due`). */
+export type TownQuestAction =
+  | { quest: string; action: 'talk'; npc: string }
+  | { quest: string; action: 'chooseClass'; cls: string }
+  | { quest: string; action: 'report' }
+  | { action: 'cutscene'; cutscene: string; mark: 'seen' | 'due' };
 
 /** POST /town/equip: wear an item from the combat bag (by uid; in `place`, or the first free place for its kind, else the
  *  first one; what was there goes back to the bag), or take one off (needs a free bag slot). */

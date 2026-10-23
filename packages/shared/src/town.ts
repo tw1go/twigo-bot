@@ -199,6 +199,8 @@ export interface TownPlayer {
   hp?: number;
   maxHp?: number;
   out?: boolean;
+  /** Watching a cutscene (CONTEXT.md Cutscene): standing still with a "..." over them, away from fights. */
+  cutscene?: boolean;
 }
 
 /** A mob's (or the golem's) hit on a player as the server rolled it: its damage, or a miss (0). */
@@ -260,6 +262,9 @@ export type TownClientMessage =
   | { t: 'drop'; item: string; count: number }
   /** Knocked out: come back now (at the map's way in, full) instead of waiting out the countdown. */
   | { t: 'revive' }
+  /** A cutscene started (`on`) or ended (CONTEXT.md Cutscene): meanwhile the town treats you as away (no mob goes after
+   *  you or hits you, nothing lands on you, you can't attack; others see "..."), for 60 s at most. */
+  | { t: 'cutscene'; on: boolean }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
   | { t: 'potion'; item: string }
   /** Cast one of your class's buffs (stats.json skills.buffs, by name; battle maps only). `target`: the party member's
@@ -781,13 +786,15 @@ export type TownServerMessage =
   | { t: 'level-up'; id: string; level: number }
   /** Your attack didn't land: too far, too fast, the mob's gone, the skill isn't one of yours or unlocked yet, or you're
    *  knocked out. */
-  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' | 'mp' | 'held' }
+  | { t: 'attack-refused'; reason: 'range' | 'slow' | 'gone' | 'skill' | 'locked' | 'out' | 'mp' | 'held' | 'cutscene' }
   /** Someone's HP (and yours with your MP) changed: to you (the HUD), to everyone in your room (only a party member's
    *  shows over their head) and to your party (its panel). */
   | { t: 'vitals'; id: string; hp: number; maxHp: number; mp?: number; maxMp?: number }
   /** Someone in your room (maybe you) was knocked out (0 HP): they fade out and can't act until they respawn.
    *  `reviveIn` (yours only): ms until you come back on your own; a 'revive' brings you back sooner. */
   | { t: 'knocked-out'; id: string; reviveIn?: number }
+  /** Someone in your room started or ended a cutscene: "..." over them meanwhile. */
+  | { t: 'cutscene'; id: string; on: boolean }
   /** Someone in your room (maybe you) is back after being knocked out, at the map's way in, with full HP and MP. */
   | { t: 'respawn'; id: string; col: number; row: number }
   /** The loot you can see in your room (on arrival): golem loot only its owner's. */
