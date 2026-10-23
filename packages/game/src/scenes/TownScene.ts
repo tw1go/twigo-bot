@@ -21,7 +21,9 @@ import { showParlor } from '../ui/parlor';
 import { type HouseArt, composeHouse, houseFiles, houseStyles, tidyLook } from '../houses/art';
 import { areaUrl, cameByLantern, cameFrom, hoodAction, loadHood, rogueAction, saveHouse } from '../net/hood';
 import { showHouseMenu } from '../ui/house-menu';
-import { closeNpcDialog, openNpcDialog, setNpcDialogArt } from '../ui/npc-dialog';
+import { closeNpcDialog, openNpcDialog, setNpcDialogArt, talkingTo } from '../ui/npc-dialog';
+import { type CutsceneHost, cutscenePlaying, dropCutscene, playCutscene } from '../world/cutscene';
+import type { Cutscene, CutsceneTrigger, CutscenesData } from '../assets/cutscenes';
 import { race as currentRace, raceNow, setRace } from '../net/race';
 import { setRacePortraits } from '../ui/race-bet';
 import { mosangName } from '../ui/race-box';
@@ -143,7 +145,7 @@ import type { AdventureData } from '../net/adventure';
 import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } from '../world/mobility';
-import { enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, devQuestBell, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
+import { cutscenesDue, cutscenesSeen, markCutsceneOf, enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, devQuestBell, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
@@ -897,7 +899,7 @@ export class TownScene extends Phaser.Scene {
     if (this.clickTo) {
       const to = this.clickTo;
       this.clickTo = null;
-      this.moveTo(to);
+      if (!this.watching) this.moveTo(to);
     }
     this.player.update(delta);
     if (this.fenceLater) {
@@ -1188,7 +1190,11 @@ export class TownScene extends Phaser.Scene {
         giver: (id) => this.giverOf(id),
         report: (id) => this.reportQuest(id),
         pin: marks && this.questMap ? { url: marks.pin, open: () => void this.questMap?.show('tap') } : undefined,
+        watch: (id) => this.watchAgain(id),
       });
+      // The story's cutscenes (CONTEXT.md Cutscene): their scripts, and the Old Market lit for you after the finale.
+      this.loadCutscenes();
+      this.lightMarket();
       // The new player guide: the guide arrow (the quest button, Report) for guided quests.
       if (G) {
         mountGuideArrow(G, asset, frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, Q.colours);
@@ -1203,9 +1209,17 @@ export class TownScene extends Phaser.Scene {
       // The Tanod's line as each quest of his is given (his leveling chain; also one given while you were away), once.
       this.afterReveal(titleCardMs() + 900, () => {
         this.giveReady = true;
+        this.enterCutscenes(); // (a map's first-time scene, one due here: before the lines, which wait for its end)
         this.giveLines();
+        // Dev: ?cutscene=<id> plays it here (on its map), changing nothing.
+        const watch = import.meta.env.DEV ? new URLSearchParams(location.search).get('cutscene') : null;
+        if (watch) this.debugCutscene(watch);
       });
-      onAdventure(() => this.giveLines());
+      onAdventure(() => {
+        this.giveLines();
+        this.afterStepScenes(); // (the finale, as the bell is rung)
+        this.lightMarket();
+      });
       if (this.npcs) this.npcs.script = (id) => this.questScript(id);
       const icons = this.M.ui.classIcons;
       const inv = this.M.ui.inventory;
@@ -1219,11 +1233,12 @@ export class TownScene extends Phaser.Scene {
         },
         slot: inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
         badge: (cls) => (icons ? url(icons.file.replace('{class}', cls)) : ''),
-        onSkill: (name) => this.mobility(name) ?? this.castBuff(name) ?? this.fight(name),
+        onSkill: (name) => (this.watching ? 'no' : (this.mobility(name) ?? this.castBuff(name) ?? this.fight(name))),
         onHold: (name) => this.holdCharge(name),
         onRelease: (name) => this.releaseCharge(name),
         // HP and MP Potions: the server heals and starts their shared cooldown (the town's `potion` message).
         onItem: (id) => {
+          if (this.watching) return true;
           const def = anyDef(id);
           if (isGearDef(def) || def?.kind !== 'potion') return false;
           if (!countOf(adventure()?.bag ?? [], id)) {
@@ -1494,7 +1509,7 @@ export class TownScene extends Phaser.Scene {
   /** Each active quest's give line (dialogue.give), once per quest in this browser (localStorage mk_quests_given), held
    *  while a report is under way (its own lines come first). */
   private giveLines(): void {
-    if (this.reporting || !this.giveReady) return;
+    if (this.reporting || !this.giveReady || cutscenePlaying() || this.sceneComing > performance.now()) return; // (a cutscene's end says them)
     let given: string[] = [];
     try {
       given = JSON.parse(localStorage.getItem('mk_quests_given') ?? '[]');
@@ -1511,6 +1526,8 @@ export class TownScene extends Phaser.Scene {
       const q = questDef(p.id)!;
       // A Palengke quest opening (its giver's lines, by name: no radio there); the Tanod's over his radio.
       for (const line of q.dialogue!.give!) q.handIn ? this.say(`${mobName(q.giver)}: “${line}”`, Math.min(6000, 2600 + line.length * 40), null, null) : this.tanodSays(line);
+      // (Said here, not in a talk: Q14's, whose first step is the fight. A scene after its give lines follows them.)
+      this.afterLines('questGive', p.id);
     }
     try {
       localStorage.setItem('mk_quests_given', JSON.stringify([...given, ...fresh.map((p) => p.id)].slice(-50)));
@@ -1535,6 +1552,7 @@ export class TownScene extends Phaser.Scene {
    *  "Gained" lines, the level-up from the town), then the next quest's line. False if it didn't go through. */
   private async reportQuest(id: string): Promise<boolean> {
     this.reporting = true;
+    this.expectScene('questReport', id);
     const r = await questReport(id);
     this.reporting = false;
     if (!r?.ok) {
@@ -1547,6 +1565,8 @@ export class TownScene extends Phaser.Scene {
     if (parts.length) this.say(parts.join(', '), 3500, 'good', coin ? Object.assign(document.createElement('img'), { src: `${import.meta.env.BASE_URL}assets/${coin.file}`, alt: '' }) : null);
     if (r.kusing) playSound('combat-coins');
     this.giveLines(); // the next one's
+    this.afterLines('questReport', id);
+    this.afterLines('questDone', id);
     return true;
   }
 
@@ -2113,6 +2133,7 @@ export class TownScene extends Phaser.Scene {
           void questTalk(quest.id, id).then((r) => {
             if (!r?.ok) return answered(r);
             this.questRewardPopup(quest, r);
+            if (r.completed) this.afterLines('questDone', quest.id);
           }),
       };
     }
@@ -2133,12 +2154,16 @@ export class TownScene extends Phaser.Scene {
       lines,
       onDone: () => {
         this.handingIn = id; // (the next quest's lines come in this talk, not as toasts: giveLines)
+        this.expectScene(last ? 'questReport' : 'questGive', quest.id);
         void questTalk(quest.id, id).then((r) => {
           this.handingIn = null;
+          if (!last) this.afterLines('questGive', quest.id); // (its give lines heard: a cutscene after them)
           if (!r?.ok) return void toast(r?.message ?? "Couldn't reach the bot. Try again in a moment.", 3000, 'bad');
           if (r.handed) this.handedToast(r.handed);
           if (!r.completed) return;
           this.questRewardPopup(quest, r);
+          this.afterLines('questReport', quest.id);
+          this.afterLines('questDone', quest.id);
           // The next one, given here and now by the same NPC (it's open at your level): their give lines at once, not
           // as a toast later.
           const next = questDef(quest.next ?? '');
@@ -2253,6 +2278,7 @@ export class TownScene extends Phaser.Scene {
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     await this.showClassChoice(async (c) => {
         holdQuestBanners(true); // the giver has a last line first
+        this.expectScene('questDone', questId);
         const r = await chooseClass(questId, c.id);
         if (!r?.ok) {
           holdQuestBanners(false);
@@ -2265,8 +2291,13 @@ export class TownScene extends Phaser.Scene {
         const body = r.gear?.map(itemDef).find((i) => i?.slot === 'body') ?? itemDef(r.gear?.[0]);
         if (body) this.time.delayedCall(item ? 3200 : 0, () => toast('Received: Training gear', 3500, 'good', gearPicture(body, asset)));
         const lines = (questDef(questId)?.dialogue?.complete ?? []).map((l) => l.replaceAll('{class}', c.name));
-        if (this.npcs && lines.length) this.npcs.talk(giver, this.player.tile, { lines, after: () => holdQuestBanners(false) });
-        else holdQuestBanners(false);
+        // (Then its cutscene: the Tanod sends you off to the Slums.)
+        const after = () => {
+          holdQuestBanners(false);
+          if (r.completed) this.afterLines('questDone', questId);
+        };
+        if (this.npcs && lines.length) this.npcs.talk(giver, this.player.tile, { lines, after });
+        else after();
         return true;
     });
   }
@@ -3644,7 +3675,7 @@ export class TownScene extends Phaser.Scene {
     watchClicks(this.game.canvas);
     // Touch hold-walk: after TAP_MS of holding, dragging the finger walks continuously toward the pointer tile.
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
-      if (!p.wasTouch || !p.isDown || this.intro || this.knockedOut || this.inside) return;
+      if (!p.wasTouch || !p.isDown || this.intro || this.knockedOut || this.inside || this.watching) return;
       if (performance.now() - this.touchDownAt < TAP_MS) return;
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = this.pickTile(world.x, world.y);
@@ -3655,6 +3686,7 @@ export class TownScene extends Phaser.Scene {
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.button === 1) return; // the middle button only targets
       if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
+      if (this.watching) return; // (a cutscene: the map isn't yours to click)
       if (p.wasTouch) {
         const wasHold = this.touchHoldTile !== null;
         this.touchHoldTile = null;
@@ -3700,7 +3732,7 @@ export class TownScene extends Phaser.Scene {
     // is never swallowed.
     const kb = this.input.keyboard!;
     kb.on('keydown', (e: KeyboardEvent) => {
-      if (typing()) return;
+      if (typing() || this.watching) return;
       if (actionOf(e, MOVE_ACTIONS)) {
         this.pending = null;
         this.player.cancelPath(); // the keys take over from a click path
@@ -3729,6 +3761,7 @@ export class TownScene extends Phaser.Scene {
 
     // Wheel zooms in whole steps only (1×–4×), keeping pixels crisp.
     this.input.on(Phaser.Input.Events.POINTER_WHEEL, (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      if (this.watching) return; // (a cutscene has the camera)
       this.intro?.complete(); // the wheel takes over from the arrival zoom
       this.zoomIndex = Phaser.Math.Clamp(this.zoomIndex + (dy < 0 ? 1 : -1), 0, ZOOMS.length - 1);
       if (this.bossCam) return; // (the boss camera holds its zoom; yours comes back after)
@@ -3749,6 +3782,7 @@ export class TownScene extends Phaser.Scene {
    * the wall through either of its two halves. Pressing into a wall just turns the player.
    */
   private keyStep(): Tile | null {
+    if (this.watching) return null;
     const dir = this.knockedOut || this.stunned || this.charging ? null : this.heldDir();
     // On ice with nothing held: on you slide (CONTEXT.md Ice). On a belt: it carries you.
     const sliding = !dir && !this.knockedOut && !this.stunned ? (this.iceSlide() ?? this.beltCarry()) : null;
@@ -4015,6 +4049,7 @@ export class TownScene extends Phaser.Scene {
     const frame = this.M.ui.inventory?.itemFrame;
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const npcs = new PalengkeNpcs(this, this.M, this.objects, list, () => adventure()?.quests.done ?? [], (obj) => this.tint >= 0 && obj.setTint(this.tint));
+    npcs.pathOf = (from, to) => this.grid.findPath(from, to); // (home again after a cutscene walked them off)
     // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
     npcs.action = (id) =>
       id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
@@ -4024,6 +4059,246 @@ export class TownScene extends Phaser.Scene {
           : undefined;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
     return npcs;
+  }
+
+  // ── Cutscenes (CONTEXT.md Cutscene; quests/cutscenes.json, played by world/cutscene.ts) ──
+
+  /** The scripts, once loaded (members only: a guest has no quests). */
+  private cutsceneData: CutscenesData | null = null;
+  /** A cutscene is playing: the town's walking, clicks, keys and skills wait (Esc skips it). */
+  private watching = false;
+  /** Cutscenes whose moment came, waiting their turn (one at a time, never over a dialog box, after a fight when asked). */
+  private sceneQueue: { id: string; cs: Cutscene; npc?: string; replay?: boolean }[] = [];
+  /** The speech bubble's art (the town NPCs' and yours), made once. */
+  private bubbleArt: BubbleArt | null | undefined;
+
+  private loadCutscenes(): void {
+    const file = this.M.quests?.cutscenes;
+    if (!file) return;
+    void fetch(`${import.meta.env.BASE_URL}assets/${file}`)
+      .then((r) => (r.ok ? (r.json() as Promise<CutscenesData>) : null))
+      .then((d) => {
+        this.cutsceneData = d;
+        this.enterCutscenes();
+      })
+      .catch(() => null);
+    // (Each moment that comes is queued; the queue plays them as soon as nothing's in the way.)
+    const clock = this.time.addEvent({ delay: 250, loop: true, callback: () => this.runSceneQueue() });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      clock.remove();
+      dropCutscene(); // (the map is changing: the bars and the hold go with it)
+    });
+  }
+
+  /** The scenes not seen yet whose trigger `fits`. */
+  private cutscenesFor(fits: (t: CutsceneTrigger) => boolean): [string, Cutscene][] {
+    const seen = cutscenesSeen();
+    return Object.entries(this.cutsceneData?.scenes ?? {}).filter(([id, cs]) => !seen.includes(id) && fits(cs.trigger));
+  }
+
+  /** On arrival (after the title card): a map's first-time scene, and any whose moment came on another map. */
+  private enterCutscenes(): void {
+    if (!this.cutsceneData || !this.giveReady || !adventure()) return;
+    const done = adventure()!.quests.done;
+    const due = cutscenesDue();
+    for (const [id, cs] of this.cutscenesFor((t) => !!t.firstEnter || !!t.questReport || !!t.questGive || !!t.questDone)) {
+      if (cs.map !== this.area) continue;
+      const t = cs.trigger;
+      const first = t.firstEnter === this.area && !(t.whenNotDone && done.includes(t.whenNotDone));
+      if (first || due.includes(id)) this.queueScene(id, cs);
+    }
+    this.afterStepScenes();
+  }
+
+  /** A quest's give lines heard, its report done or the quest finished (`kind`): the scenes after it. One for another
+   *  map waits for it (it's due there). */
+  private afterLines(kind: 'questGive' | 'questReport' | 'questDone', quest: string): void {
+    for (const [id, cs] of this.cutscenesFor((t) => t[kind] === quest && (kind === 'questDone' || t.after === 'lines'))) {
+      if (cs.map === this.area) this.queueScene(id, cs);
+      else void markCutsceneOf(id, 'due');
+    }
+  }
+
+  /** A quest moved past an objective a scene waits for (the finale: Q14's bell rung): the scene, then its report. */
+  private afterStepScenes(): void {
+    const s = adventure();
+    if (!s || !this.cutsceneData) return;
+    for (const [id, cs] of this.cutscenesFor((t) => !!t.afterStep && !!t.questReport)) {
+      const t = cs.trigger;
+      const q = questDef(t.questReport!);
+      const p = s.quests.active.find((x) => x.id === t.questReport);
+      if (!q || !p || cs.map !== this.area || q.objectives[p.step - 1]?.id !== t.afterStep) continue;
+      this.queueScene(id, cs, q.objectives[p.step]?.npc ?? q.giver);
+    }
+  }
+
+  /** A talk's cutscene before (or instead of) its quest lines: a hand-in quest's give talk or report talk. True when one
+   *  plays (the talk's quest step at its end, as hearing the lines would). */
+  private talkNow(id: string, me: Tile): void {
+    if (this.watching) return;
+    const q = questFor(id);
+    if (q?.quest.handIn) {
+      const last = q.step === q.quest.objectives.length - 1;
+      const kind = last ? 'questReport' : q.step === 0 ? 'questGive' : null;
+      const hit = kind ? this.cutscenesFor((t) => t[kind] === q.quest.id && (t.before === 'lines' || t.instead === 'lines'))[0] : null;
+      if (hit && hit[1].map === this.area) return this.queueScene(hit[0], hit[1], id);
+    }
+    this.npcs?.talk(id, me);
+  }
+
+  /** A moment with a scene after it is under way (a talk's last line, a report): the quest lines its answer starts wait
+   *  for the scene (giveLines), not over it; a few seconds at most if none comes. */
+  private expectScene(kind: 'questGive' | 'questReport' | 'questDone', quest: string): void {
+    const ahead = this.cutscenesFor((t) => t[kind] === quest && (kind === 'questDone' || t.after === 'lines') || (kind !== 'questDone' && t.questDone === quest)).some(([, cs]) => cs.map === this.area);
+    if (!ahead) return;
+    this.sceneComing = performance.now() + 4000;
+    this.time.delayedCall(4100, () => this.giveLines()); // (none came after all: the lines now)
+  }
+  private sceneComing = 0;
+
+  private queueScene(id: string, cs: Cutscene, npc?: string, replay = false): void {
+    if (this.sceneQueue.some((x) => x.id === id) || (!replay && cutscenePlaying())) return;
+    this.sceneQueue.push({ id, cs, ...(npc ? { npc } : {}), ...(replay ? { replay } : {}) });
+    this.runSceneQueue();
+  }
+
+  /** The next scene waiting, once nothing's in the way: none playing, no dialog box open, revealed, not knocked out or
+   *  inside, and (when its trigger asks) nothing has hit you or been hit by you for 4 s. */
+  private runSceneQueue(): void {
+    const next = this.sceneQueue[0];
+    if (!next || cutscenePlaying() || talkingTo() || !this.revealed || this.knockedOut || this.inside) return;
+    if (next.cs.trigger.outOfCombat && !next.replay && performance.now() - this.combatAt < 4000) return;
+    this.sceneQueue.shift();
+    this.playScene(next.id, next.cs, next.npc, next.replay);
+  }
+
+  /** Plays a scene. Not a replay: seen from now on, and at its end (or Skip) the quest steps it stands for: each quest's
+   *  lines it says count as heard (the talk they'd end), and one played instead of a report reports it. */
+  private playScene(id: string, cs: Cutscene, npc?: string, replay = false): void {
+    if (!replay) void markCutsceneOf(id, 'seen');
+    this.sceneComing = 0;
+    const talks = replay ? [] : cs.steps.flatMap((s) => (s.say && s.quest && s.say !== 'narrator' && s.say !== 'player' ? [{ npc: s.say, quest: s.quest }] : []));
+    playCutscene(this.cutsceneHost(), id, cs, {
+      replay,
+      done: () => {
+        for (const t of talks) if (questFor(t.npc)?.quest.id === t.quest) this.questScript(t.npc)?.onDone?.();
+        const T = cs.trigger;
+        if (!replay && npc && T.instead === 'lines' && questFor(npc)?.quest.id === (T.questReport ?? T.questGive)) this.questScript(npc)?.onDone?.();
+        if (!replay) this.lightMarket();
+        this.giveLines();
+      },
+    });
+  }
+
+  /** Watch again (the quest log): a done quest's scenes, in order, changing nothing. Null: it has none. */
+  private watchAgain(quest: string): (() => void) | null {
+    const list = Object.entries(this.cutsceneData?.scenes ?? {}).filter(([, cs]) => {
+      const t = cs.trigger;
+      return [t.questGive, t.questReport, t.questDone, t.whenNotDone].includes(quest);
+    });
+    if (!list.length) return null;
+    return () => {
+      const here = list.filter(([, cs]) => cs.map === this.area);
+      if (!here.length) return void toast(`Watch it again in ${list[0][1].map === 'palengke' ? 'the Old Market' : list[0][1].map === 'slums' ? 'the Slums' : 'town'}.`, 2600);
+      for (const [id, cs] of here) this.queueScene(id, cs, undefined, true);
+    };
+  }
+
+  /** The Old Market's string lights stay on for you once the finale has played (or you finished it before it had one). */
+  private lightMarket(): void {
+    if (this.area !== 'palengke' || !adventure()) return;
+    if (!adventure()!.quests.done.includes('palengke-14') && !cutscenesSeen().includes('huling-suki')) return;
+    for (const id of this.marketSections()) if (!this.objects.litSections.has(id)) this.objects.lightSection(id);
+  }
+
+  /** The Old Market's sections, nearest the entrance plaza first (the string lights' order). */
+  private marketSections(): string[] {
+    const [sc, sr] = this.map.spawn;
+    const mid = (r: [number, number, number, number]) => Math.hypot((r[0] + r[2]) / 2 - sc, (r[1] + r[3]) / 2 - sr);
+    return [...(this.map.sections ?? [])].sort((a, b) => mid(a.rect) - mid(b.rect)).map((s) => s.id);
+  }
+
+  /** Tiles a stall's vendor would stand on: walkable, next to a stall prop, within `radius` of a tile. */
+  private stallFronts(at: Tile, radius: number): Tile[] {
+    this.stallTiles ??= new Set(
+      this.map.objects.flatMap((o) => (o.kind === 'prop' && o.id.includes('stall') ? Array.from({ length: o.footprint[0] * o.footprint[1] }, (_, i) => `${o.col + (i % o.footprint[0])},${o.row + Math.floor(i / o.footprint[0])}`) : [])),
+    );
+    const stalls = this.stallTiles;
+    const near = (c: number, r: number) => [-1, 0, 1].some((dc) => [-1, 0, 1].some((dr) => stalls.has(`${c + dc},${r + dr}`)));
+    const out: Tile[] = [];
+    for (let r = at.row - radius; r <= at.row + radius; r++) for (let c = at.col - radius; c <= at.col + radius; c++) if (this.grid.walkable(c, r) && !stalls.has(`${c},${r}`) && near(c, r)) out.push({ col: c, row: r });
+    return out;
+  }
+  private stallTiles: Set<string> | null = null;
+
+  private cutsceneHost(): CutsceneHost {
+    const B = this.M.ui.speechBubble;
+    this.bubbleArt ??= B && this.textures.exists(B.file) ? lightBubble(this, { file: B.file, slice: B.nineSlice, tail: B.tail, tailAnchor: B.tailAnchor }) : null;
+    return {
+      scene: this,
+      M: this.M,
+      player: this.player,
+      grid: this.grid,
+      objects: this.objects,
+      fx: this.fxLayers,
+      cast: this.npcs,
+      bubbles: this.bubbleArt,
+      talker: (id) => this.npcs?.talker(id) ?? null,
+      questLines: (quest, part) => {
+        const v = (questDef(quest)?.dialogue as Record<string, string | string[] | undefined> | undefined)?.[part];
+        return typeof v === 'string' ? [v] : (v ?? []);
+      },
+      zoom: () => ZOOMS[this.zoomIndex],
+      follow: (on) => void (this.follow = on),
+      walkTo: (t) => this.moveTo(t),
+      pose: (anim) => this.cutscenePose(anim),
+      away: (on) => {
+        this.watching = on;
+        if (on) {
+          this.stopFight();
+          this.pending = null;
+          this.clickTo = null;
+        }
+        this.link?.send({ t: 'cutscene', on });
+      },
+      sections: () => this.marketSections(),
+      stallFronts: (at, r) => this.stallFronts(at, r),
+    };
+  }
+
+  /** A pose of yours in a cutscene: the doll's wave or cheer, or your class's pose (its ready stance: built for the
+   *  moment off a battle map, where the doll has none), held a moment. */
+  private async cutscenePose(anim: string): Promise<void> {
+    const p = this.player;
+    const later = (ms: number) => new Promise<void>((ok) => this.time.delayedCall(ms, ok));
+    if (anim === 'wave' || anim === 'cheer') {
+      p.emote(anim);
+      return later(800);
+    }
+    const cls = adventure()?.cls;
+    const K = this.M.classes;
+    if (p.inBattle) {
+      p.hold(anim);
+      return later(1200);
+    }
+    const b = cls && K ? await Promise.race([battleSheets(this, this.M.characters, K, cls, this.outfit), later(2500).then(() => null)]) : null;
+    if (!b || p.inBattle) {
+      p.emote('cheer');
+      return later(800);
+    }
+    p.setBattle(b);
+    p.hold(anim);
+    await later(1400);
+    if (!this.battleMap) p.setBattle(null);
+  }
+
+  /** Dev and the debug API: a cutscene played where you are, changing nothing (on its own map only). */
+  debugCutscene(id: string): string {
+    const cs = this.cutsceneData?.scenes[id];
+    if (!cs) return `no cutscene ${id}: ${Object.keys(this.cutsceneData?.scenes ?? {}).join(', ')}`;
+    if (cs.map !== this.area) return `${id} plays on ${cs.map}`;
+    this.queueScene(id, cs, undefined, true);
+    return 'ok';
   }
 
   /** Aling Conching's menu (ui/dish-menu.ts): her dishes, which you've unlocked, your Kusing and the dishes on you. */
@@ -4234,7 +4509,8 @@ export class TownScene extends Phaser.Scene {
     this.pending = null;
     this.byKeys = false;
     const me = this.player.tile;
-    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= TALK_RANGE) return this.npcs!.talk(id, me);
+    if (this.watching) return;
+    if (Math.max(Math.abs(at.col - me.col), Math.abs(at.row - me.row)) <= TALK_RANGE) return this.talkNow(id, me);
     const path = this.grid.findPath(this.player.heading, at) ?? this.grid.findPath(this.player.heading, this.grid.nearestReachable(this.player.heading, at) ?? this.player.heading);
     if (!path || path.length < 2) return;
     this.setBuildingAlert(null);
@@ -5631,6 +5907,8 @@ function exposeDebug(scene: TownScene): void {
     reward: (r: Reward) => scene.debugReward(r),
     /** The NPCs' tiles, or talk to one (walking over if needed). */
     npcs: () => scene.debugNpcs?.positions,
+    /** A cutscene played here (its map), changing nothing (CONTEXT.md Cutscene). */
+    cutscene: (id: string) => scene.debugCutscene(id),
     /** Everyone's pet: where it is (tile space) and what it plays. */
     pets: () => scene.debugPets,
     /** The neighbourhood's rogue signs: each lot's moon charm or mask (world/rogue-signs.ts). */

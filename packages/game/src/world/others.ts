@@ -22,7 +22,12 @@ interface Other {
   char: Character | null;
   /** Their resting weapon's art, once loaded. */
   rest?: ClassArt | null;
+  /** Watching a cutscene: their "..." said again every few seconds meanwhile. */
+  dots?: Phaser.Time.TimerEvent;
 }
+
+/** How often a cutscene watcher's "..." is said again (a bubble lasts about 4 s). */
+const DOTS_MS = 3800;
 
 /** The Arena's messages are the arena's business (ui/arena-net.ts), not the town's players'. */
 const isArena = (m: TownServerMessage): m is ArenaServerMessage => m.t.startsWith('arena-');
@@ -117,6 +122,9 @@ export class OtherPlayers {
         // Their HP: the thin bar over a hurt player's head.
         Object.assign(s, { hp: m.hp, maxHp: m.maxHp });
         return o.char?.setHp(m.hp, m.maxHp);
+      case 'cutscene':
+        s.cutscene = m.on || undefined;
+        return this.dots(o);
       case 'knocked-out':
         s.out = true;
         o.char?.setKnockedOut(true);
@@ -278,6 +286,7 @@ export class OtherPlayers {
       char.setAura(this.auraFor(s.weaponPlus));
       char.setNight(this.night);
       o.char = char;
+      this.dots(o);
       return this.dressRest(o);
     }), `player ${p.nickname}`);
   }
@@ -298,7 +307,18 @@ export class OtherPlayers {
     o.char?.readyFaint(); // (their faint in idle time: the doll's without a class)
   }
 
+  /** A cutscene watcher (CONTEXT.md Cutscene): "..." over them while it plays. */
+  private dots(o: Other): void {
+    o.dots?.remove();
+    o.dots = undefined;
+    if (!o.state.cutscene || !o.char || !this.bubbleArt) return;
+    const say = () => this.bubbleArt && o.char?.say('...', this.bubbleArt);
+    say();
+    o.dots = this.scene.time.addEvent({ delay: DOTS_MS, loop: true, callback: say });
+  }
+
   private remove(id: string): void {
+    this.all.get(id)?.dots?.remove();
     this.all.get(id)?.char?.destroy();
     if (this.all.delete(id)) this.onChange();
   }

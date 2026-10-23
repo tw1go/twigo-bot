@@ -673,6 +673,17 @@ in to her like a quest's; it gives XP, Kusing and a free dish. A new one comes a
 is handed in.
 _Avoid_: daily quest (fine in passing), daily mission
 
+**Cutscene**:
+A short scripted moment at one of the story's big beats (your first night in town, the class pick, the Old Market's
+gate, the Honest Weight, the finale…), played on the map you're on with its NPCs, the camera, the dialog box, bubbles,
+effects and sounds: black bars in, the HUD gone, you can't move, attack or be hit. Only you see it; others see you
+standing still with "...". Each plays once a character, at its moment; Esc or Skip ends it with its quest step counted.
+_Avoid_: scene (that's the game's screens), cinematic, movie
+
+**Watch again**:
+The quest log's button on a done quest that has a cutscene: plays it again for you, changing nothing.
+_Avoid_: replay (fine in passing), rewatch
+
 ## Rogues and stealing
 
 **Steal** (a steal attempt):

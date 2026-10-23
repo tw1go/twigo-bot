@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, type PalengkeData, addToBag, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, markCutscene, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -93,6 +93,8 @@ function advance(s: AdventureState, q: QuestDef, now = Date.now()): string | und
 }
 
 type Result = Omit<TownAdventureResponse, 'adventure'>;
+/** A quest action proper (a cutscene's mark is townQuest's alone). */
+type QuestStepAction = Exclude<TownQuestAction, { action: 'cutscene' }>;
 
 /** What the host knows for a quest step: whether they have a practice run open (Aling Nena hands over no ticket then),
  *  and the time. */
@@ -119,7 +121,7 @@ function handTicket(s: AdventureState, p: { givenAt?: number }, ticket: string, 
 
 /** An objective done in the game: checked against the quest's current objective. Talking to an offered quest's giver
  *  starts it (CONTEXT.md "Offered quest"). */
-export function questStep(s: AdventureState, a: TownQuestAction, ctx: QuestCtx = {}): Result & { ups?: number } {
+export function questStep(s: AdventureState, a: QuestStepAction, ctx: QuestCtx = {}): Result & { ups?: number } {
   const now = ctx.now ?? Date.now();
   advanceCollects(s, QUESTS);
   const q = QUESTS.find((x) => x.id === a.quest);
@@ -776,6 +778,7 @@ export function petXpFor(userId: string, n: number): { pet: Item; ups: number } 
 /** The body of POST /town/quest, if it's a valid one. */
 export function parseQuestAction(body: unknown): TownQuestAction | null {
   const b = body as Record<string, unknown> | null;
+  if (b?.action === 'cutscene' && typeof b.cutscene === 'string' && (b.mark === 'seen' || b.mark === 'due')) return { action: 'cutscene', cutscene: b.cutscene, mark: b.mark };
   if (!b || typeof b.quest !== 'string') return null;
   if (b.action === 'talk' && typeof b.npc === 'string') return { quest: b.quest, action: 'talk', npc: b.npc };
   if (b.action === 'chooseClass' && typeof b.cls === 'string') return { quest: b.quest, action: 'chooseClass', cls: b.cls };
@@ -820,6 +823,11 @@ export function parseEquipAction(body: unknown): TownEquipAction | null {
 /** POST /town/quest for a member: the step checked and saved. `changed`: their class or weapon changed (the town shows it). */
 export function townQuest(userId: string, a: TownQuestAction, ctx: QuestCtx = {}): TownAdventureResponse & { changed: boolean; ups?: number } {
   const s = load(userId);
+  // A cutscene watched, or waiting for its map (CONTEXT.md Cutscene: once each, on every device).
+  if (a.action === 'cutscene') {
+    if (markCutscene(s.quests, a.cutscene, a.mark)) save(userId, s);
+    return { ok: true, adventure: s, changed: false };
+  }
   startQuests(s);
   const before = `${s.cls}|${s.equipped.weapon?.defId}`;
   const r = questStep(s, a, ctx);

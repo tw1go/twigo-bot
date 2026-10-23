@@ -46,6 +46,8 @@ interface Npc {
   /** An emote is playing until then (nothing turns it meanwhile). */
   busyUntil: number;
   talking: boolean;
+  /** A cutscene has it (CONTEXT.md Cutscene): its routine waits (no walking off, turning or gossip) until it's let go. */
+  held: boolean;
   /** In the Mosang race (world/race-track.ts): her lane, her next warm-up at the line, the stop she's in, cheered. */
   racing: { lane: number; warmAt: number; stop: TownRaceStop | null; gotUp: boolean; cheered: boolean } | null;
 }
@@ -77,6 +79,16 @@ function toward(a: Tile, b: Tile): Dir | null {
   return dirForStep(dc, dr);
 }
 
+/** The NPCs a cutscene can direct (world/cutscene.ts): each one's Character, its own spot, and a hold on its routine
+ *  (paused while held; let go, it carries on from where the scene left it). The town's and the Old Market's. */
+export interface CutsceneCast {
+  actor(id: string): Character | null;
+  /** How it shows in the dialog box. */
+  talker(id: string): { name: string; title: string; portrait: string; voice: number; mirror: boolean } | null;
+  home(id: string): Tile | null;
+  hold(id: string, on: boolean): void;
+}
+
 export interface NpcWorld {
   scene: Phaser.Scene;
   M: Manifest;
@@ -91,7 +103,7 @@ export interface NpcWorld {
   asset: (file: string) => string;
 }
 
-export class NpcLife {
+export class NpcLife implements CutsceneCast {
   private readonly npcs: Npc[] = [];
   private nextGossip: number;
   private bubbleUntil = 0;
@@ -136,7 +148,7 @@ export class NpcLife {
       // Just the name over the head (the characteristic is in the dialog box).
       char.setNameTag(text.name, { name: text.title, color: '#FFFFFF' }, { nameOnly: true });
       char.sprite.setInteractive({ pixelPerfect: true });
-      const npc: Npc = { place, text, char, deck: [], last: null, nextAt: 0, stop: 0, dest: null, busyUntil: 0, talking: false, racing: null };
+      const npc: Npc = { place, text, char, deck: [], last: null, nextAt: 0, stop: 0, dest: null, busyUntil: 0, talking: false, held: false, racing: null };
       npc.nextAt = w.scene.time.now + this.restMs(npc);
       char.onArrive = () => this.arrived(npc);
       this.npcs.push(npc);
@@ -191,7 +203,7 @@ export class NpcLife {
         this.runRace(npc, now);
         continue;
       }
-      if (npc.talking) continue;
+      if (npc.talking || npc.held) continue;
       // Walking somewhere a player has stepped onto: stop (after this step) and pick again later.
       if (npc.dest && taken.has(key(npc.dest))) {
         npc.dest = null;
@@ -382,7 +394,7 @@ export class NpcLife {
   private gossip(now: number): void {
     if (now < this.nextGossip || now < this.bubbleUntil || !this.w.bubbles) return;
     const me = this.players[0];
-    const near = me ? this.npcs.filter((n) => n.place.gossip && !n.talking && !n.racing && dist(n.char.tile, me) <= GOSSIP_RANGE) : [];
+    const near = me ? this.npcs.filter((n) => n.place.gossip && !n.talking && !n.held && !n.racing && dist(n.char.tile, me) <= GOSSIP_RANGE) : [];
     const npc = near[Math.floor(Math.random() * near.length)];
     if (!npc) {
       this.nextGossip = now + 5_000;
@@ -413,6 +425,28 @@ export class NpcLife {
 
   tileOf(id: string): Tile | null {
     return this.npcs.find((n) => n.place.id === id)?.char.tile ?? null;
+  }
+
+  actor(id: string): Character | null {
+    return this.npcs.find((n) => n.place.id === id)?.char ?? null;
+  }
+
+  talker(id: string): { name: string; title: string; portrait: string; voice: number; mirror: boolean } | null {
+    const n = this.npcs.find((x) => x.place.id === id);
+    return n ? { name: n.text.name, title: n.text.title, portrait: this.w.asset(n.text.portrait), voice: n.place.voice, mirror: n.place.portrait === 'sw' } : null;
+  }
+
+  home(id: string): Tile | null {
+    const n = this.npcs.find((x) => x.place.id === id);
+    return n ? { col: n.place.home[0], row: n.place.home[1] } : null;
+  }
+
+  hold(id: string, on: boolean): void {
+    const n = this.npcs.find((x) => x.place.id === id);
+    if (!n || n.held === on) return;
+    n.held = on;
+    n.dest = null;
+    if (!on) n.nextAt = this.w.scene.time.now + this.restMs(n);
   }
 
   /** A quest's lines for an NPC instead of its own (ui/quests via the scene), or null for its usual one. */
