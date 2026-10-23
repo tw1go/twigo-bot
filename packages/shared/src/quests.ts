@@ -82,3 +82,25 @@ export function takeFromBag(bag: Item[], defId: string, count: number): boolean 
   }
   return true;
 }
+
+/** The longest a cutscene id may be, and how many each list keeps. */
+const CUTSCENE_ID = /^[a-z0-9-]{1,40}$/;
+const CUTSCENES_KEPT = 50;
+
+/** A cutscene watched (`seen`: off the due list, onto the seen one) or waiting for its map (`due`: unless seen). False
+ *  for an id that can't be one, or nothing to change. */
+export function markCutscene(q: AdventureState['quests'], id: string, mark: 'seen' | 'due'): boolean {
+  if (!CUTSCENE_ID.test(id)) return false;
+  const seen = q.cutscenesSeen ?? [];
+  const due = q.cutscenesDue ?? [];
+  if (mark === 'due') {
+    if (seen.includes(id) || due.includes(id)) return false;
+    q.cutscenesDue = [...due, id].slice(-CUTSCENES_KEPT);
+    return true;
+  }
+  if (seen.includes(id) && !due.includes(id)) return false;
+  q.cutscenesSeen = [...seen.filter((x) => x !== id), id].slice(-CUTSCENES_KEPT);
+  q.cutscenesDue = due.filter((x) => x !== id);
+  if (!q.cutscenesDue.length) delete q.cutscenesDue;
+  return true;
+}
