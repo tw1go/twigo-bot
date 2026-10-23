@@ -698,7 +698,7 @@
       ],
       "miniBoss": {
        "id": "atsarah",
-       "name": "Atsarah",
+       "name": "Delemon",
        "art": "mobs/garapon-jars (palengke art) at drawScale 2.5",
        "level": 38,
        "hp": 159996,
@@ -749,7 +749,8 @@
           "where": "room edge"
          }
         }
-       ]
+       ],
+       "nameNote": "Repo change (23 Oct 2026, the owner): Delemon (was Atsarah)."
       }
      },
      {
@@ -1437,7 +1438,7 @@
       22
      ],
      [
-      44,
+      54,
       21
      ],
      [
@@ -1463,7 +1464,7 @@
     ],
     "marks": {
      "bossTile": [
-      53,
+      44,
       28
      ],
      "arrive": [
@@ -1487,7 +1488,7 @@
    "facing": "down-left (screen SW) only",
    "moves": false,
    "tile": [
-    53,
+    44,
     28
    ],
    "body": "the K tiles of B3",
@@ -1514,11 +1515,12 @@
      "telegraphMs": 2000,
      "shape": "cone",
      "angleDeg": 120,
-     "length": 7,
+     "length": 10,
      "facing": "down-left (its fan)",
      "atkMult": 2.0,
      "chillStacks": 2,
-     "cover": "a player with an ice block between them and the fan takes nothing (line of sight from the fan tile)"
+     "cover": "a player with an ice block between them and the fan takes nothing (line of sight from the fan tile)",
+     "lengthNote": "Repo change (23 Oct 2026, the owner): 10 (was 7: the cone looked small beside the machine); the breath art is scaled to it (world/silong.ts)."
     },
     {
      "id": "beltRush",
@@ -1562,7 +1564,8 @@
      "look": "its eye lamps turn red (the -enraged sheets)"
     }
    ],
-   "death": "the fan grinds to a stop and an ice fist cracks off; then the frost across the whole cellar melts into steam (fx-silong-melt-steam over frosted tiles, then Chill turns off for the run)"
+   "death": "the fan grinds to a stop and an ice fist cracks off; then the frost across the whole cellar melts into steam (fx-silong-melt-steam over frosted tiles, then Chill turns off for the run)",
+   "tileNote": "Repo change (23 Oct 2026, the owner): its body (B3's K tiles) moved to the middle of the Ice Plant's north wall, cols 40-49 (was the east corner, 52-61), and its fan tile to [44, 28], under the middle of its face (was [53, 28], by its left end)."
   },
   "miniBossLook": {
    "drawScale": 2.5,
