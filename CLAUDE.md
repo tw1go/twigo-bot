@@ -160,7 +160,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
   `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
-  asked, 23 Oct 2026).
+  asked, 23 Oct 2026), and twice the mob zones' spawn points (23 Oct 2026: 80 a zone, the Fish Market's 56 on baha,
+  spread out from the art folder's 40; copying the map over again loses them) with stats.json
+  `aliveperZoneIn.palengke` 40 and mobs.json's Garapon Jars `alive` 20 / Banyera Lurkers 28.
 - The Palengke's quests (20 Oct 2026): `classes/palengke-leveling.json` each quest's `dialogue.give` / `dialogue.report`
   (from the art folder's docs/palengke/palengke-story.md section 3, Aling Conching for its "Aling Nena"; a few report lines
   written here: Q3, Q5, Q6, Q7's second, Q9, Q11's Suki Card line, Q13's second, the Q14 finale), `reportTo` (Q1 Mang Pido,
@@ -918,8 +920,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Its mobs (20 Oct 2026; CONTEXT.md Front block, Tear cloud, Spilled rice, Ambush, Weigh; the art folder's
   monsters/palengke/pixellab-v1/anim as it is, in `mobs/<mob>/`, manifest `mobs.<mob>` with two looks as `variants` and
   eight `directions`; their rules in mobs/mobs.json): `MobRoom` with `MobRoomOptions.area` 'palengke' keeps stats.json
-  mobBehaviour `aliveperZoneIn.palengke` (20) a zone, a kind's mobs.json `alive` winning (the Garapon Jars' 10 packs of
-  `pack` [3, 3], the Banyera Lurkers' 14); passive Payong Flapper and Garapon Jars (packAssist), the rest aggressive at
+  mobBehaviour `aliveperZoneIn.palengke` (40) a zone, a kind's mobs.json `alive` winning (the Garapon Jars' 20 packs of
+  `pack` [3, 3], the Banyera Lurkers' 28; all doubled 23 Oct 2026 with the map's spawn points: about 330 mobs, 0.21 ms
+  a server tick with 16 players fighting); passive Payong Flapper and Garapon Jars (packAssist), the rest aggressive at
   aggroTiles, the Monobloc ranged (rangeTiles 4). Eight facings (`facing8`, a kind whose manifest has eight `directions`:
   `MobKind.eight`; TownMobFacing has s/e/n/w too; the Slums' mobs keep four; the game's `sheetDir` maps a facing to the
   sheets a kind has). Traits (mobs.json, the server decides, tested in `web/palengke-mobs.test.ts`):

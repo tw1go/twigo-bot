@@ -1666,9 +1666,9 @@
     },
     "sameAsNote": "Repo addition (20 Oct 2026): the Silong's frost recolours live as their originals (aggressive or not, pack assist, reach).",
     "aliveperZoneIn": {
-      "palengke": 20
+      "palengke": 40
     },
-    "aliveperZoneInNote": "Repo addition (Mac, 20 Oct 2026): a map's own count per zone (the Lumang Palengke's zones are about 4x a Slums zone); a kind's mobs/mobs.json `alive` wins over both (the Garapon Jars' 10 packs, the Banyera Lurkers' 14).",
+    "aliveperZoneInNote": "Repo addition (Mac, 20 Oct 2026): a map's own count per zone (the Lumang Palengke's zones are about 4x a Slums zone); a kind's mobs/mobs.json `alive` wins over both (the Garapon Jars' 20 packs, the Banyera Lurkers' 28). Doubled on 23 Oct 2026 (was 20, the Jars 10, the Lurkers 14; the owner's call), with maps/palengke.json's spawn points doubled to match (80 a zone, the Fish Market's 56 on baha).",
     "passive": [
       "tinCan",
       "bottleCaps",
