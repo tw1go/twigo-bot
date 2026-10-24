@@ -348,7 +348,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   over everything, never at less than 3 screen px per art px. Zoom is 2×–4×.
 - Front page (`twigo.dev/`, Caddy `handle /` serves the game build's `front.html`; the game stays at `/play/`, deep paths
   and the login's return unchanged): a light page without Phaser (`front.html` + `src/front/`: `content.ts` every word,
-  `facts.ts` its numbers from the game's data (classes, mobs, golem, dungeon, quests, wardrobe), `render.ts` the HTML,
+  `facts.ts` its numbers from the game's data (classes, mobs, golem, dungeon, quests, wardrobe; since 24 Oct 2026 the Old
+  Market's mobs, the Great Scale, the Cellar's floors and Ice Machine, the level cap, pets, and the Halloween card's end:
+  left out of builds after `events/halloween.json` endsAt; sprites drawn smaller than their cell are cropped to their
+  idle frames: scripts/front-page.ts `CROPPED`), `render.ts` the HTML,
   built by the `frontPage` Vite plugin in `scripts/front-page.ts`; `main.ts` the runtime, ~20 KB of JS). The hero is the
   title screen's splash (`ui/splash.ts`, shared); classes are dressed with the paper doll in idle-ready SE
   (`drawPose` through an `ImageHost`: doll.ts and kit-art.ts only draw and import Phaser for types; the Phaser loaders

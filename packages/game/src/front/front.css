@@ -124,6 +124,8 @@ section { padding-block: 88px 0; }
 .mob .lvtag { font: 400 22px/1 var(--f-num); color: var(--gold); }
 @media (max-width: 1000px) { .mobs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .mobs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mob .sprite { --s: 2; } } /* (the mock's: every mob at 2× on phones) */
+.mobs.eight { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* (the Old Market's eight: two rows of four) */
+@media (max-width: 700px) { .mobs.eight { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Boss band */
 .boss { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 32px; position: relative; overflow: hidden;
@@ -149,6 +151,7 @@ section { padding-block: 88px 0; }
 .route .mb { color: #F59E0B; font: 500 14px var(--f-display); text-align: right; }
 .route li.final::before { content: '!'; color: var(--red); }
 .route li.final .mb { color: var(--red); }
+@media (max-width: 560px) { .route li { grid-template-columns: 36px 1fr; row-gap: 2px; } .route li::before { grid-row: span 2; } .route .mb { grid-column: 2; text-align: left; } } /* (phones: a floor's mini bosses under its name) */
 .titan { position: relative; display: flex; flex-direction: column; align-items: center; overflow: hidden;
   background: radial-gradient(ellipse at 50% 100%, rgba(194, 65, 12, .35), transparent 60%), linear-gradient(#141228, #1A1838); }
 .titan .label { align-self: stretch; padding: 22px 22px 0; display: grid; gap: 4px; }

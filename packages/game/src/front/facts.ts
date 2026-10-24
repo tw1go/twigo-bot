@@ -14,6 +14,9 @@ export interface GameData {
   dungeons: Json;
   slums: Json;
   warrens: Json;
+  palengke: Json;
+  palengkeLeveling: Json;
+  halloween: Json;
 }
 
 export interface ClassFacts {
@@ -28,6 +31,10 @@ export interface Facts {
   classes: Record<string, ClassFacts>;
   mobLevel: Record<string, number>;
   dungeon: { areas: { name: string; boss: string; last: boolean }[]; lastBoss: { name: string; title: string } };
+  /** The Cellar: a row per floor with its mini bosses, then the Ice Plant and its last boss. */
+  cellar: { areas: { name: string; boss: string; last: boolean }[]; lastBoss: { name: string; title: string; level: number } };
+  /** When the Halloween event ends (ms), for its Town life card (gone from builds after it). */
+  halloweenEnds: number;
   /** Filled into the content's `{name}` tokens. */
   tokens: Record<string, string | number>;
 }
@@ -52,10 +59,18 @@ export function gameFacts(d: GameData): Facts {
   const skins = Object.keys(d.manifest.characters.skinTones).filter((k) => k !== 'keys' && k !== 'faceTweak');
   const boss = d.slums.boss ?? {};
   const partyMax = W.entry?.partyMax ?? 6;
+  const S = d.dungeons.silong;
+  const cellarAreas = (S.floors as Json[]).map((fl) => ({ name: fl.name, boss: (fl.rooms as Json[]).map((r) => r.miniBoss?.name).filter(Boolean).join(' · '), last: false }));
+  cellarAreas.push({ name: 'The Ice Plant', boss: S.lastBoss.name, last: true });
+  const scale = d.palengke.boss ?? {};
+  const marketQuests: Json[] = d.palengkeLeveling.quests ?? [];
+  const friends = (n: number) => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][n - 1] ?? String(n - 1);
   return {
     classes,
     mobLevel,
     dungeon: { areas, lastBoss: { name: W.lastBoss.name, title: W.lastBoss.title } },
+    cellar: { areas: cellarAreas, lastBoss: { name: S.lastBoss.name, title: S.lastBoss.title, level: S.lastBoss.level } },
+    halloweenEnds: Date.parse(d.halloween.endsAt ?? '') || 0,
     tokens: {
       skillCount: (first.skills ?? []).length,
       dashLevel: mobility[0]?.level ?? 5,
@@ -66,10 +81,22 @@ export function gameFacts(d: GameData): Facts {
       golemWarn: boss.warnMinutes ?? 5,
       dungeonLevel: W.entry?.minLevel ?? 15,
       dungeonMinutes: W.run?.timeLimitMinutes ?? 20,
-      partyFriends: ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'][partyMax - 1] ?? String(partyMax - 1),
+      partyFriends: friends(partyMax),
+      levelCap: d.stats.levelCap ?? 40,
+      marketFrom: Math.min(...(d.palengke.mobZones ?? []).map((z: Json) => z.level ?? 99)),
+      marketQuests: marketQuests.length,
+      scaleName: scale.name ?? 'The Great Scale',
+      scaleLevel: scale.level ?? mobLevel['great-scale'],
+      scaleHours: Math.round(((scale.everyMinutes ?? 120) / 60) * 10) / 10,
+      scaleWarn: scale.warnMinutes ?? 5,
+      cellarLevel: S.entry?.minLevel ?? 37,
+      cellarMinutes: S.run?.timeLimitMinutes ?? 45,
+      cellarFriends: friends(S.entry?.partyMax ?? 6),
+      petCount: Object.keys(d.stats.pets?.list ?? {}).length,
+      halloweenEnds: d.halloween.endsAt ? new Date(d.halloween.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' }) : '',
       questCount: quests.length,
       questTop: Math.max(...quests.map((q) => q.targetLevel ?? 0), 0),
-      miniBosses: (d.slums.mobZones ?? []).reduce((n: number, z: Json) => n + (z.miniBosses?.length ?? 0), 0),
+      miniBosses: [d.slums, d.palengke].reduce((n: number, m: Json) => n + (m.mobZones ?? []).reduce((k: number, z: Json) => k + (z.miniBosses?.length ?? 0), 0), 0),
       skins: skins.length,
       hairs: (wardrobe.hair ?? []).length,
     },

@@ -8,7 +8,7 @@ import type { Outfit } from '../characters/doll.ts';
 export const content = {
   head: {
     title: 'Mikazuki | twigo',
-    description: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
+    description: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums and the Old Market.',
     url: 'https://twigo.dev/',
     image: 'https://twigo.dev/play/mikazuki-og-1200x630.png',
     imageAlt: 'The Mikazuki logo over the night-time pixel town',
@@ -19,8 +19,8 @@ export const content = {
     links: [
       { href: '#classes', label: 'Classes' },
       { href: '#slums', label: 'The Slums' },
-      { href: '#boss', label: 'Field boss' },
-      { href: '#warrens', label: 'Dungeon' },
+      { href: '#market', label: 'Old Market' },
+      { href: '#warrens', label: 'Dungeons' },
       { href: '#town', label: 'Town life' },
       { href: '#get', label: 'Get the game' },
     ],
@@ -31,7 +31,7 @@ export const content = {
     badge: 'Close beta',
     /** The logo's alt text (the hero shows the logo: render.ts). */
     title: 'Mikazuki',
-    tagline: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
+    tagline: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums and the Old Market.',
     apply: 'Apply to close beta',
     play: 'Play',
     madeBy: 'a game made by',
@@ -61,10 +61,10 @@ export const content = {
   about: {
     eyebrow: 'What is Mikazuki',
     title: 'A town that stays up late',
-    lede: 'Mikazuki is a multiplayer town you can play on your computer or your phone. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive.',
+    lede: 'Mikazuki is a multiplayer town you can play on your computer or your phone. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive, then on to the Old Market, where the wares have too.',
     pillars: [
       { title: 'Hang out', text: 'Chat, wave and sit by the fountain. Dress up at the Parlor and build a house of your own.' },
-      { title: 'Fight the junk', text: 'Choose one of 6 classes, level to 20 with the Tanod’s quests, and hunt rare loot with blue and orange affixes.' },
+      { title: 'Fight the junk', text: 'Choose one of 6 classes, level to {levelCap} through two maps of quests, and hunt rare loot with blue and orange affixes.' },
       { title: 'Play the town', text: 'Jack en poy in the Arena, flip coins at Kara y Krus, and turn rogue and break into a neighbour’s house.' },
     ],
   },
@@ -189,12 +189,58 @@ export const content = {
     },
   },
 
+  market: {
+    eyebrow: 'Second map: the Old Market',
+    title: 'The market that never closed',
+    lede: 'West of the Slums, the old palengke shut after a typhoon, and what it sold got up and walked. Lv {marketFrom} to {levelCap}: eight new kinds of mob, Aling Conching’s cooking, and {marketQuests} quests of a story to finish.',
+    /** `variant`: which look of it (manifest mobs.<id>.variants); `scale`: whole-number size on its card. */
+    mobs: [
+      { id: 'payong-flapper', name: 'Payong Flapper', variant: 'stripes', scale: 2, text: 'Flaps about harmlessly until you hit it. While its umbrella is open, hits from the front glance off.' },
+      { id: 'sibuyas-sobber', name: 'Sibuyas Sobber', variant: 'red', scale: 2, text: 'Cries on you. Its tears hang round your head in a cloud, and you miss more until it clears.' },
+      { id: 'garapon-jars', name: 'Garapon Jars', variant: 'candy', scale: 2, text: 'Sit in threes on the shelves. Knock one and all three come rolling.' },
+      { id: 'sako-slammer', name: 'Sako Slammer', variant: 'plain', scale: 2, text: 'A rice sack that body-slams. Its spilled rice slows anyone who walks through it.' },
+      { id: 'monobloc-stack', name: 'Monobloc Stack', variant: 'green', scale: 2, text: 'Throws plastic chairs from 4 tiles. Keep moving and they miss; break it and it runs out of chairs.' },
+      { id: 'sangkalan-chomper', name: 'Sangkalan Chomper', variant: 'mossy', scale: 2, text: 'A chopping board with teeth. It shrugs off hits to its face, so get round its side.' },
+      { id: 'banyera-lurker', name: 'Banyera Lurker', variant: 'armour', scale: 2, text: 'Lies under the floodwater, unseen, until you wade too close. Its first hit lands hard.' },
+      { id: 'timbangan-sentinel', name: 'Timbangan Sentinel', variant: 'rust', scale: 2, text: 'Weighs you up: the healthier you are, the harder it hits.' },
+    ],
+  },
+
+  scale: {
+    eyebrow: 'Field boss',
+    id: 'great-scale',
+    scale: 2,
+    facts: [
+      { term: 'Wakes', text: 'In the Market Hall, {scaleHours} hours after it last fell asleep. The market gets a warning {scaleWarn} minutes before.' },
+      { term: 'Made of', text: 'A palengke weighing scale the size of a stall, with a pan for a hand and a dial for a face.' },
+      { term: 'Loot', text: 'Everyone who deals 5% of its HP gets a drop of their own. When it falls, ring its bell.' },
+    ],
+    moves: [
+      { name: 'Pan Slam' },
+      { name: 'Weigh-in' },
+      { name: 'Kulang sa Timbang' },
+      { name: 'Calls Timbangan Sentinels' },
+      { name: 'Enrage at 25%', enrage: true },
+    ],
+  },
+
+  cellar: {
+    eyebrow: 'Second dungeon',
+    title: 'The Cellar',
+    lede: 'Under the Market Hall is its cold storage: three frozen floors joined by a freight elevator, for you and up to {cellarFriends} friends. Stand still too long and the Chill sets in; keep moving, or warm up by a work lamp.',
+    gate: 'Open the Cellar Hatch in the Market Hall from <b>Lv {cellarLevel}</b>, once you’ve seen the Old Market’s story through. One Cellar Key opens a {cellarMinutes}-minute run for the whole party.',
+    machine: {
+      eyebrow: 'Last boss',
+      text: 'The ice plant itself, woken up. It drops blocks of ice, breathes frost from its fan, floods the floor with brine and sends the belts racing.',
+    },
+  },
+
   town: {
     eyebrow: 'Town life',
     title: 'More to do between fights',
     /** `live`: in the game now (a green tag); false: a grey "Coming soon". */
     features: [
-      { tag: 'Quests', title: 'The Tanod’s rounds', text: '{questCount} leveling quests from Lv 1 to {questTop}, and {miniBosses} named mini bosses to hunt.', live: true },
+      { tag: 'Quests', title: 'Two stories', text: 'The Tanod’s {questCount} quests take you to Lv {questTop}; the Old Market’s story, The Last Regular, carries on to {levelCap}. {miniBosses} named mini bosses to hunt.', live: true },
       { tag: 'Loot', title: 'Gear worth chasing', text: 'Blue and orange affixes, agimat slots, and enhancement up to +20 with weapon auras.', live: true },
       { tag: 'Party', title: 'Party up and trade', text: 'Parties of up to 6 share XP and Kusing. Trade gear and Kusing with other players.', live: true },
       { tag: 'Minigame', title: 'Jack en poy Arena', text: 'Bato, papel, gunting. First to two wins, against a bot or a real player, for Kowens.', live: true },
@@ -202,7 +248,13 @@ export const content = {
       { tag: 'Heist', title: 'Bakod heist', text: 'Turn rogue, sneak into a neighbour’s house and try to pocket a few percent of their Kowens. Get caught (it happens more often than not) and you pay them a fine and cool off in jail. Once you steal, other rogues can rob you back, and a house that’s been robbed is safe. A Bakod keeps rogues out: rust it with a Kalawang Potion, or gamble a Master Key on its lock.', live: true },
       { tag: 'Style', title: 'Dress up', text: 'Paper-doll outfits: {skins} skin tones, {hairs} hairstyles, hats, glasses, tops, bottoms and shoes. Restyle any time at the Parlor.', live: true },
       { tag: 'Housing', title: 'Houses and the Parlor', text: 'Build a house on your own street and give it a new look whenever you like. Wear your titles at the Parlor. Put up a Bakod, because rogues can break in.', live: true },
-    ],
+      { tag: 'Pets', title: 'A pet at your heels', text: '{petCount} pets to raise. Each one follows you everywhere, levels up as you fight and grows its own stat tree.', live: true },
+      { tag: 'Style', title: 'Costume sets', text: 'Five costume sets in the sari-sari store, from bat wings to imp horns, worn over your gear in town and in every combat pose.', live: true },
+      { tag: 'Food', title: 'Aling Conching’s cooking', text: 'Lugaw, pancit and more from the one stall still open. Each dish is a buff that lasts through every map.', live: true },
+      { tag: 'Travel', title: 'Lantern Posts', text: 'Light a Return Lantern at a post to cross between the town, the Slums and the Old Market in a flash.', live: true },
+      { tag: 'Friends', title: 'Friends and mail', text: 'Add friends, whisper, and choose who sees your balance. Letters in your mailbox can carry gifts.', live: true },
+      { tag: 'Event', title: 'Halloween in Mikazuki', text: 'Find Mikko Kalabasa hiding round town, beat the giant Biikko in the Slums and reunite the Manananggal, until {halloweenEnds}.', live: true, event: 'halloween' },
+    ] as { tag: string; title: string; text: string; live: boolean; event?: string }[],
     soon: 'Coming soon',
   },
 
