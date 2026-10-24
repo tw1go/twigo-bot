@@ -349,7 +349,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Front page (`twigo.dev/`, Caddy `handle /` serves the game build's `front.html`; the game stays at `/play/`, deep paths
   and the login's return unchanged): a light page without Phaser (`front.html` + `src/front/`: `content.ts` every word,
   `facts.ts` its numbers from the game's data (classes, mobs, golem, dungeon, quests, wardrobe; since 24 Oct 2026 the Old
-  Market's mobs, the Great Scale, the Cellar's floors and Ice Machine, the level cap, pets, and the Halloween card's end:
+  Market's mobs, the Great Scale, the level cap, the party size, pets, and the Halloween card's end; the dungeons are one
+  general section, never a list of them (the owner: a list grows and reads as all there is): what every run is like and
+  a couple of last bosses as a taste, `content.dungeon.bosses`;
   left out of builds after `events/halloween.json` endsAt; sprites drawn smaller than their cell are cropped to their
   idle frames: scripts/front-page.ts `CROPPED`), `render.ts` the HTML,
   built by the `frontPage` Vite plugin in `scripts/front-page.ts`; `main.ts` the runtime, ~20 KB of JS). The hero is the

@@ -58,7 +58,7 @@ export function frontPage(): Plugin {
         const json = (f: string) => JSON.parse(readFileSync(join(assets, f), 'utf8'));
         const manifest = json('manifest.json');
         const K = manifest.classes;
-        const facts = gameFacts({ manifest, stats: json(K.stats), classes: json(K.data), leveling: json(K.leveling), dungeons: json(K.dungeons), slums: json('maps/slums.json'), warrens: json('maps/warrens.json'), palengke: json('maps/palengke.json'), palengkeLeveling: json(K.palengkeLeveling), halloween: json(manifest.events.halloween) });
+        const facts = gameFacts({ manifest, stats: json(K.stats), classes: json(K.data), leveling: json(K.leveling), dungeons: json(K.dungeons), slums: json('maps/slums.json'), palengke: json('maps/palengke.json'), palengkeLeveling: json(K.palengkeLeveling), halloween: json(manifest.events.halloween) });
         const crops = Object.fromEntries(CROPPED.map(({ id, variant, dir }) => {
           const m = manifest.mobs[id];
           const [w, h] = (variant && m.variants?.[variant]?.size) || m.size;

@@ -158,6 +158,10 @@ section { padding-block: 88px 0; }
 .titan .label h3 { font-size: 30px; color: var(--daisy); text-shadow: 2px 2px 0 var(--night); }
 .titan .label p { color: var(--muted); font-size: 15px; max-width: 40ch; }
 .titan .sprite { margin-top: auto; margin-bottom: -30px; }
+.depths { margin-top: 20px; } /* (the Dungeons section: a taste of what waits at the bottom, under its points) */
+@media (max-width: 560px) { .depths .sprite { --s: 1; } } /* (phones: each at its own size) */
+.titan .caption { align-self: stretch; padding: 18px 22px 0; color: var(--muted); font-size: 15px; }
+.more { margin-top: 18px; color: var(--muted); text-align: center; font: 500 16px var(--f-display); }
 .ticket { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 15px; }
 .ticket b { color: var(--daisy); }
 @media (max-width: 860px) { .dungeon { grid-template-columns: 1fr; } }

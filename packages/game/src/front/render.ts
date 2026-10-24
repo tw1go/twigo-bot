@@ -201,32 +201,29 @@ export function renderBody(input: RenderInput): string {
   const boss = bossSection('boss', c.boss, `The ${f.tokens.golemName}`, f.tokens.golemLevel);
   const scale = bossSection('great-scale', c.scale, String(f.tokens.scaleName), f.tokens.scaleLevel);
 
-  /** A dungeon: its way in (the entrance's prop), its areas and their bosses in order, and its last boss. */
-  const dungeonSection = (id: string, d: { eyebrow: string; title: string; lede: string; gate: string; boss: { eyebrow: string; text: string } }, route: Facts['dungeon'], way: { prop: string; label: string }, last: { mob: string; dir: string }) => {
-    const gate = M.props[way.prop];
-    const crop = crops[last.mob];
-    if (!crop) throw new Error(`front page: no crop for "${last.mob}" (scripts/front-page.ts)`);
+  /** Every dungeon in one section: what they're like, and a couple of the last bosses as a taste (never a list). */
+  const D = c.dungeon;
+  const titans = D.bosses.map((b) => {
+    const crop = crops[b.mob];
+    if (!crop) throw new Error(`front page: no crop for "${b.mob}" (scripts/front-page.ts)`);
     const [bx, by, bw, bh] = crop;
-    const ba = anim(last.mob, 'idle');
+    const a = anim(b.mob, 'idle');
     return `
-<section id="${id}">
-  <div class="wrap">
-    <div class="head"><span class="eyebrow">${esc(d.eyebrow)}</span><h2>${esc(d.title)}</h2><p class="lede">${esc(t(d.lede))}</p></div>
-    <div class="dungeon">
-      <div class="panel dun-info">
-        <div class="ticket">${canvas(gate.size[0], gate.size[1], 1, { prop: way.prop }, way.label)}<p>${t(d.gate)}</p></div>
-        <ol class="route">${route.areas.map((a) => `<li${a.last ? ' class="final"' : ''}><span class="area">${esc(a.name)}</span><span class="mb">${esc(a.boss)}</span></li>`).join('')}</ol>
-      </div>
       <div class="panel titan">
-        <div class="label"><span class="eyebrow">${esc(d.boss.eyebrow)}</span><h3>${esc(route.lastBoss.name)}, ${esc(route.lastBoss.title)}</h3><p>${esc(d.boss.text)}</p></div>
-        ${canvas(bw, bh, 1, { mob: last.mob, variant: '', dir: last.dir, frames: ba.frames, fps: ba.fps, scale: 1, lazy: 1, crop: `${bx},${by},${bw},${bh}` }, `${route.lastBoss.name}, idle`)}
-      </div>
+        <p class="caption">${esc(b.caption)}</p>
+        ${canvas(bw, bh, b.scale, { mob: b.mob, variant: '', dir: b.dir, frames: a.frames, fps: a.fps, scale: b.scale, lazy: 1, crop: `${bx},${by},${bw},${bh}` }, b.caption)}
+      </div>`;
+  });
+  const dungeon = `
+<section id="warrens">
+  <div class="wrap">
+    <div class="head"><span class="eyebrow">${esc(D.eyebrow)}</span><h2>${esc(D.title)}</h2><p class="lede">${esc(t(D.lede))}</p></div>
+    <div class="pillars">${D.points.map((p) => `<div class="panel pillar"><h3>${esc(p.title)}</h3><p>${esc(t(p.text))}</p></div>`).join('')}</div>
+    <div class="dungeon depths">${titans.join('')}
     </div>
+    <p class="more">${esc(D.more)}</p>
   </div>
 </section>`;
-  };
-  const dungeon = dungeonSection('warrens', { ...c.dungeon, boss: c.dungeon.titan }, f.dungeon, { prop: 'slums-warren-gate', label: 'The Warren Gate' }, { mob: 'barong-barong', dir: 's' });
-  const cellar = dungeonSection('cellar', { ...c.cellar, boss: c.cellar.machine }, f.cellar, { prop: 'palengke-silong-hatch', label: 'The Cellar Hatch' }, { mob: 'makinang-yelo', dir: 'sw' });
 
   const town = `
 <section id="town">
@@ -305,5 +302,5 @@ export function renderBody(input: RenderInput): string {
 </div>
 <script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated, devices: c.devices, get: { soon: g.soon, windows: g.windows.button, mac: g.mac.button } }).replace(/</g, '\\u003c')}</script>`;
 
-  return [nav, hero, '<main>', about, classes, slums, boss, dungeon, market, scale, cellar, town, get, '</main>', closing, footer, dialog].join('\n');
+  return [nav, hero, '<main>', about, classes, slums, boss, market, scale, dungeon, town, get, '</main>', closing, footer, dialog].join('\n');
 }

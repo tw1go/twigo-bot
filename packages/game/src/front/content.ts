@@ -178,15 +178,23 @@ export const content = {
     ],
   },
 
+  /** Every dungeon in one section: what they're like, a couple of what's waiting at the bottom as a taste (never the
+   *  full list: more keep coming), so the page doesn't grow with each one. */
   dungeon: {
-    eyebrow: 'Dungeon',
-    title: 'The Scrap Warrens',
-    lede: 'Under the Slums is a maze for you and up to {partyFriends} friends. Each area is sealed until its mini boss falls, and at the very bottom something enormous is waiting.',
-    gate: 'Enter through the Warren Gate near the golem pit from <b>Lv {dungeonLevel}</b>, once you\'ve found Aling Nena\'s binoculars in a practice run. One Warren Ticket opens a {dungeonMinutes}-minute run for the whole party.',
-    titan: {
-      eyebrow: 'Last boss',
-      text: 'A shack-built giant rising out of a junk heap. It rains roof sheets, slams its fists and calls Scraplings to its side.',
-    },
+    eyebrow: 'Dungeons',
+    title: 'Go below',
+    lede: 'Under the maps are dungeons for you and up to {partyFriends} friends. A ticket or a key opens a timed run for the whole party: each area is sealed until its mini boss falls, and something enormous waits at the bottom.',
+    points: [
+      { title: 'Party up', text: 'Up to {partyMax} in a run, and the mobs grow tougher with every one of you.' },
+      { title: 'Sealed areas', text: 'Each area stays shut until its mini boss falls, and every boss has moves to read and dodge.' },
+      { title: 'Worth the trip', text: 'Better gear than up top, and loot rolled for the whole party.' },
+    ],
+    /** A taste of what waits at the bottom (scripts/front-page.ts crops their art; `scale`: whole-number, about the same size). */
+    bosses: [
+      { mob: 'barong-barong', dir: 's', scale: 1, caption: 'A shack-built giant, under the Slums' },
+      { mob: 'makinang-yelo', dir: 'sw', scale: 2, caption: 'A frozen machine, under the Old Market' },
+    ],
+    more: 'More dungeons are being dug.',
   },
 
   market: {
@@ -222,17 +230,6 @@ export const content = {
       { name: 'Calls Timbangan Sentinels' },
       { name: 'Enrage at 25%', enrage: true },
     ],
-  },
-
-  cellar: {
-    eyebrow: 'Second dungeon',
-    title: 'The Cellar',
-    lede: 'Under the Market Hall is its cold storage: three frozen floors joined by a freight elevator, for you and up to {cellarFriends} friends. Stand still too long and the Chill sets in; keep moving, or warm up by a work lamp.',
-    gate: 'Open the Cellar Hatch in the Market Hall from <b>Lv {cellarLevel}</b>, once you’ve seen the Old Market’s story through. One Cellar Key opens a {cellarMinutes}-minute run for the whole party.',
-    machine: {
-      eyebrow: 'Last boss',
-      text: 'The ice plant itself, woken up. It drops blocks of ice, breathes frost from its fan, floods the floor with brine and sends the belts racing.',
-    },
   },
 
   town: {
