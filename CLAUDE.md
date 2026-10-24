@@ -218,7 +218,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
   with the picture).
 - Cutscenes (23 Oct 2026): `quests/cutscenes.json` (the art folder's docs/cutscenes/cutscenes.json: its words in
-  English, palengke-gate's `whenNotDone` palengke-01, huling-suki's `afterStep` bell, town-arrival's second camera on the
+  English, palengke-gate's `whenNotDone` palengke-01 and its walk to [264, 98] (beside Aling Conching: [264, 100] stood you in front of her), huling-suki's `afterStep` bell, town-arrival's second camera on the
   Tanod, `rules.map`, its `note` says so), the manifest's `quests.cutscenes`; `maps/palengke.json` the 58 more string
   lights of the art folder's docs/cutscenes/string-lights.json (copying the map over again loses them).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
@@ -1144,7 +1144,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   docs/cutscenes/cutscenes.json in English (manifest `quests.cutscenes`, types `assets/cutscenes.ts`; its `steps` and
   `rules` say what each step does), 11 scenes at the story's beats, each on its own `map`): `world/cutscene.ts` plays one
   (`playCutscene`: its steps in order, each a promise; bars (each 12% of the screen height, 48 px at least: `cutsceneBarPx`; the dialog box sits just over the bottom one, measured) in over 250 ms and the HUD faded (`[data-cutscene-hidden]`),
-  the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut), the dialog box (`openNpcDialog`; `narrator` = no name or
+  the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut; a camera step on someone, you or an NPC, then follows them as they
+  walk until the next camera step: `startFollow`, let go as it ends), the dialog box (`openNpcDialog`; `narrator` = no name or
   portrait, italics), bubbles, walks / place / face / anims on the NPCs (`CutsceneCast` in world/npc-life.ts: the town's
   NpcLife and the Old Market's PalengkeNpcs, `actor` / `home` / `hold` / `talker`; held, an NPC's routine waits; let go,
   the Old Market's walk home) and on you (`walkTo` = a click's walk; `pose`: your class's ready stance, built for the
