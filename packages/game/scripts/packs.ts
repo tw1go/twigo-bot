@@ -81,11 +81,16 @@ function walk(dir: string): string[] {
 }
 
 /** Character layers group by item (the name without -{anim}-{dir}); a class's combat poses by class and anim
- *  (characters/classes/<class>/<anim>), a cosmetic's pose sheets by class and cosmetic, the class fx by their folder
+ *  (characters/classes/<class>/<anim>), a cosmetic's pose sheets by class and cosmetic, a weapon skin's by class and skin, the class fx by their folder
  *  (fx/<class>), mobs by mob (mobs/<mob>, its fx folder apart), the Halloween decorations together, the Lumang
  *  Palengke's tiles and props apart; the rest by top folder. */
-function groupOf(file: string, anims: string[], dirs: string[]): string {
+function groupOf(file: string, anims: string[], dirs: string[], skins: string[] = []): string {
   const parts = file.split('/');
+  // A weapon skin's class sheets (char-weapon-<key>-<skin>-…: the Moonlight weapons' poses and the Hilot's balm-float): a
+  // sheet per class and skin, so only those wearing it load it, never everyone playing that class. (Its resting sheets
+  // in characters/resting are a group of their own already, by name.)
+  const skin = parts[0] === 'characters' && parts[1] === 'classes' && skins.length ? basename(file).match(new RegExp(`^char-weapon-[a-z]+-(${skins.join('|')})-`)) : null;
+  if (skin) return `class-${parts[2]}-skin-${skin[1]}`;
   // The Halloween decorations (CONTEXT.md Decoration): one sheet of their own, loaded only while the event is on.
   if (((parts[0] === 'props' || parts[0] === 'fx') && parts[1] === 'halloween') || (parts[0] === 'buildings' && file.endsWith('-halloween.png'))) return 'halloween-deco';
   // The Lumang Palengke's ground and props, and Ang Silong's: sheets of their own, loaded only there (water strips stay sheets).
@@ -133,6 +138,8 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
   // NPC sheets (npc-<id>-<anim>-<dir>) group the same way: one sheet per NPC, the Tanod's whistle with his.
   const anims = [...new Set([...Object.keys(C.animations), ...Object.keys(manifest.npcs?.animations ?? {})])];
   const dirs: string[] = C.directions;
+  // The weapon skins (wardrobe.cosmeticWeapons): their class sheets packed apart.
+  const skins = [...new Set(Object.values((C.wardrobe?.cosmeticWeapons ?? {}) as Record<string, { skin: string }>).map((w) => w.skin))];
   const groups = new Map<string, Img[]>();
   const cells = mobCells(manifest);
   // Images only the page draws (manifest ui entries marked `dom`: the title screen's) stay loose: no pack carries them.
@@ -153,7 +160,7 @@ export function buildPacks(assetsDir: string): { index: PackIndex; out: { fileNa
       if (t) groups.set(`trim-${basename(file, '.png')}`, [{ file, png: t.png, trim: t.trim }]);
       continue;
     }
-    const g = groupOf(file, anims, dirs);
+    const g = groupOf(file, anims, dirs, skins);
     groups.set(g, [...(groups.get(g) ?? []), { file, png }]);
   }
 

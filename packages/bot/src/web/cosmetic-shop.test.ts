@@ -96,7 +96,7 @@ test('pose art: every cosmeticPoseTops key (the five Sets\' tops and the Witch R
   assert.equal(n, 2640); // (440 each)
 });
 
-test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {
+test('prices come from stats.json cosmeticShop: a Head, a Body, a Weapon, a Set', () => {
   const wares = cosmeticWares(D, fresh(), OFF, NOW);
   assert.equal(wares.find((w) => w.id === 'ember-imp-head')?.cost, R.headPrice);
   assert.equal(wares.find((w) => w.id === 'ember-imp-body')?.cost, R.bodyPrice);
@@ -105,8 +105,10 @@ test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {
   assert.equal(set?.name, 'Ember Imp Set');
   assert.deepEqual(set?.pieces, ['ember-imp-head', 'ember-imp-body']);
   assert.ok(R.setPrice < R.headPrice + R.bodyPrice);
-  // Every piece first, then a Set per Set.
-  assert.deepEqual(wares.map((w) => w.id), [...SETS.flatMap((s) => [`${s}-head`, `${s}-body`]), ...SETS.map((s) => `set:${s}`)]);
+  assert.equal(wares.find((w) => w.id === 'moonlight-stick')?.cost, (R as unknown as { weaponPrice: number }).weaponPrice);
+  // Every piece first (the Moonlight weapons after the Sets' pieces: moonlight.test.ts), then a Set per Set.
+  const MOONLIGHT = ['slingshot', 'stick', 'greatstick', 'broom', 'potlid', 'hilot'].map((c) => `moonlight-${c}`);
+  assert.deepEqual(wares.map((w) => w.id), [...SETS.flatMap((s) => [`${s}-head`, `${s}-body`]), ...MOONLIGHT, ...SETS.map((s) => `set:${s}`)]);
 });
 
 test('the Witch Hat, Robe and Set: only while Halloween is on, Limited until its end, refused outside it, and permanent', () => {

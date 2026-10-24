@@ -1,4 +1,4 @@
-import { type LootGot, type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel, timeLeftText } from '@mikazuki/shared';
+import { type LootGot, type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, cosmeticFits, wornItems, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel, timeLeftText } from '@mikazuki/shared';
 import { petTipLines } from './pet-tab';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
@@ -93,6 +93,13 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
   if (!isGearDef(def)) {
     const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'pet' ? 'Pet' : def.kind === 'quest' ? 'Quest item' : def.opens ? 'Pet box' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));
+    // A cosmetic with stats (a Moonlight weapon): what it gives, and only for its class (the wearer's: Info's, or yours).
+    if (def.kind === 'cosmetic' && def.stats) for (const [stat, v] of Object.entries(def.stats)) parts.push(el('div', 'eq-tip-line', lineText(stat, v)));
+    if (def.kind === 'cosmetic' && def.forClass) {
+      const who = classInfo(def.forClass)?.name ?? def.forClass;
+      const fits = cosmeticFits(def, owner ? owner.cls : adventure()?.cls);
+      parts.push(el('div', fits ? 'eq-tip-meta' : 'eq-tip-unmet', fits ? `For the ${who}` : `Only for the ${who}: no look or stats on another class`));
+    }
     if (def.kind === 'agimat' && item.stat) {
       parts.push(el('div', 'eq-tip-line', lineText(item.stat, agimatValue(D.stats, item.stat, item.level))));
       const only = agimatSlots(D.stats, item.stat);
@@ -193,7 +200,7 @@ export function wearDiff(item: Item): HTMLElement | null {
   const places = placesFor(def.slot);
   const to: EquipPlace = places.find((p) => !s.equipped[p]) ?? places[0];
   const stats = (equipped: Partial<Record<EquipPlace, Item>>) =>
-    derivedStats(D.stats, s.cls, s.progress.level, baseStats(D.stats, s.cls, s.progress.level, s.progress.points), itemTotals(D, Object.values(equipped).filter((i): i is Item => !!i), myMainStat()));
+    derivedStats(D.stats, s.cls, s.progress.level, baseStats(D.stats, s.cls, s.progress.level, s.progress.points), itemTotals(D, wornItems({ equipped, cosmetics: s.cosmetics }), myMainStat(), s.cls));
   const now = stats(s.equipped);
   const then = stats({ ...s.equipped, [to]: item });
   const row = el('div', 'eq-tip-diff');

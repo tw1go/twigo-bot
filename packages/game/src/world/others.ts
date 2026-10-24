@@ -43,7 +43,7 @@ export class OtherPlayers {
   /** Called when someone arrives or leaves (the online list). */
   onChange: () => void = () => {};
   /** The resting weapon art for a worn weapon (loaded), or null (the scene knows the items and classes). */
-  restFor: (weapon: string | null | undefined, cls: string | null | undefined) => Promise<ClassArt | null> = async () => null;
+  restFor: (weapon: string | null | undefined, cls: string | null | undefined, look?: Outfit | null) => Promise<ClassArt | null> = async () => null;
   /** A worn weapon's aura at its + (the scene knows the stats rules); none by default. */
   auraFor: (plus: number | undefined) => AuraTier | null = () => null;
   /** Battle maps (the Slums): a class's battle poses in a look (characters/battle-art.ts); null elsewhere. */
@@ -296,7 +296,7 @@ export class OtherPlayers {
   /** Their resting weapon (none without a weapon), unless they changed it again meanwhile. */
   private async dressRest(o: Other): Promise<void> {
     const { weapon, cls, id } = o.state;
-    const art = await this.restFor(weapon, cls);
+    const art = await this.restFor(weapon, cls, this.looks.get(id)); // (in their weapon skin: the server's resolved look)
     if (o.state.weapon !== weapon || !o.char) return;
     o.rest = art;
     o.char.setRestingWeapon(art, this.M.classes?.bodyOffset);

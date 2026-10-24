@@ -341,7 +341,7 @@ export function fighterStats(data: FightData, a: Attacker): DerivedStats & { lev
     return def ? [newItem(S, def, g!)] : [];
   });
   const main = a.cls ? (S.classes[a.cls]?.main ?? null) : null;
-  const d = derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), itemTotals(data, worn, main));
+  const d = derivedStats(S, a.cls, level, baseStats(S, a.cls, level, a.points), itemTotals(data, worn, main, a.cls)); // (a worn cosmetic's stats only on its class)
   return { ...(a.buffs ? withBuffs(S, d, a.buffs) : d), level };
 }
 

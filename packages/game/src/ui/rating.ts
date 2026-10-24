@@ -1,4 +1,4 @@
-import { type DerivedStats, baseStats, combatRating, derivedStats, itemTotals, withBuffs } from '@mikazuki/shared';
+import { type DerivedStats, baseStats, combatRating, derivedStats, itemTotals, withBuffs, wornItems } from '@mikazuki/shared';
 import { adventure, adventureData } from '../net/adventure';
 import { myBuffStats } from '../net/buffs';
 import { myMainStat } from './item-tip';
@@ -15,10 +15,10 @@ export function myStats(): { st: DerivedStats; up: DerivedStats; bare: DerivedSt
   const S = D?.stats;
   if (!s || !D || !S) return null;
   const p = s.progress;
-  const worn = Object.values(s.equipped).filter((i) => !!i);
+  const worn = wornItems(s); // (a worn cosmetic with stats too: a Moonlight weapon on its class)
   const base = baseStats(S, s.cls, p.level, p.points);
-  const st = derivedStats(S, s.cls, p.level, base, itemTotals(D, [...worn, ...(s.pet ? [s.pet] : [])], myMainStat()));
-  const bare = s.pet ? derivedStats(S, s.cls, p.level, base, itemTotals(D, worn, myMainStat())) : st;
+  const st = derivedStats(S, s.cls, p.level, base, itemTotals(D, [...worn, ...(s.pet ? [s.pet] : [])], myMainStat(), s.cls));
+  const bare = s.pet ? derivedStats(S, s.cls, p.level, base, itemTotals(D, worn, myMainStat(), s.cls)) : st;
   return { st, up: withBuffs(S, st, myBuffStats()), bare };
 }
 

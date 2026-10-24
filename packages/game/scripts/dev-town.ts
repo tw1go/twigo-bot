@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TestingSettings, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, wornItems, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -632,7 +632,7 @@ export function devTown(): Plugin {
             const p = levelOf(name);
             const kit = kits.get(name);
             const pet = gear.get(name)?.pet;
-            const worn = [...Object.values(gear.get(name)?.equipped ?? {}), ...(pet ? [pet] : [])];
+            const worn = [...wornItems(gear.get(name) ?? { equipped: {} }), ...(pet ? [pet] : [])]; // (a Moonlight weapon's stats too, on its class)
             return { cls: kit?.cls, level: p.level, points: p.points, gear: worn.length ? worn : [kit?.weapon], skills: damageSkillLevels(classOf(name), p), buffLevels: buffSkillLevels(classOf(name), p) }; // everything worn (its DEF, HP…)
           },
           kill: (name, mob) => {

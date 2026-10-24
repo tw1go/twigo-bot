@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
+import { weaponSkinFile } from '@mikazuki/shared';
 import type { CharacterDefs, ClassArt, ClassLayer, ClassesDefs, Dir } from '../assets/types';
-import { type ImageHost, type Outfit, bigHat, bigTop, clothesFiles, dressLayer, headFiles, litHat, sheetKey } from './doll';
+import { type ImageHost, type Outfit, bigHat, bigTop, clothesFiles, dressLayer, drawStill, headFiles, litHat, sheetKey } from './doll';
 
 // ⚔️ A class's weapon on a character, drawn onto a canvas (the class cards, the skill preview, the equipment panel):
 // the resting weapon over the doll's idle or walk (the same frame, or the Hilot's balm on its own clock), and the
@@ -9,6 +10,47 @@ import { type ImageHost, type Outfit, bigHat, bigTop, clothesFiles, dressLayer, 
 // back layers first, front layers last. Every direction has its own sheets: nothing is mirrored.
 
 export const CELL = 64;
+
+// ── Weapon skins (CONTEXT.md Weapon skin: the Moonlight weapons) ──
+// A worn weapon cosmetic that fits the wearer's class puts its id on the look (`weaponCosmetic`, shared cosmetics.ts);
+// manifest wardrobe.cosmeticWeapons gives its class and skin. Every class weapon sheet has a `-<skin>` twin of the same
+// size (weaponSkinFile), so the skinned art is the class's art with every weapon layer's file swapped: the poses, the
+// resting weapon, the balm, the files to load, the faint and the aura all follow it, and a layer matched by name
+// (the skill preview's hidden lid) still matches. Everything that draws a class weapon for a look takes `artFor`.
+
+/** Each skinned copy of a class's art, by art and skin (made once: textures and caches key on the art). */
+const skinned = new WeakMap<ClassArt, Map<string, ClassArt>>();
+
+/** A class's art with its weapon layers in `skin` (the poses' back and front, the resting and balm-float sheets). */
+export function skinnedArt(K: ClassesDefs, art: ClassArt, skin: string): ClassArt {
+  const mine = skinned.get(art) ?? skinned.set(art, new Map()).get(art)!;
+  const done = mine.get(skin);
+  if (done) return done;
+  const layers = (list: ClassLayer[]) => list.map((l) => ({ ...l, file: weaponSkinFile(l.file, skin) }));
+  const sides = <T extends { back: ClassLayer[]; front: ClassLayer[] }>(d: T | undefined): T | undefined => d && { ...d, back: layers(d.back), front: layers(d.front) };
+  const dirs = <T extends { back: ClassLayer[]; front: ClassLayer[] }>(m: Partial<Record<Dir, T>> | undefined) =>
+    m && (Object.fromEntries(Object.entries(m).map(([d, v]) => [d, sides(v)])) as Partial<Record<Dir, T>>);
+  const copy: ClassArt = {
+    ...art,
+    anims: Object.fromEntries(Object.entries(art.anims).map(([k, a]) => [k, { ...a, dirs: dirs(a.dirs)! }])),
+    rest: { ...art.rest, ...(art.rest.anims ? { anims: { idle: dirs(art.rest.anims.idle), walk: dirs(art.rest.anims.walk) } } : {}), ...(art.rest.dirs ? { dirs: dirs(art.rest.dirs) } : {}) },
+  };
+  const id = classOf(K, art);
+  if (id) classIds.set(copy, id); // (its pose sheets' names need the class: cosmeticPoseFile)
+  mine.set(skin, copy);
+  return copy;
+}
+
+/** The art a look's class weapon is drawn with: class `cls`'s, in the skin of the look's worn weapon cosmetic when it's
+ *  for that class (manifest wardrobe.cosmeticWeapons), else as it is. */
+export function artFor(C: CharacterDefs, K: ClassesDefs, cls: string, o: Pick<Outfit, 'weaponCosmetic'> | null | undefined): ClassArt | undefined {
+  const art = K.list[cls];
+  const w = o?.weaponCosmetic ? C.wardrobe.cosmeticWeapons?.[o.weaponCosmetic] : undefined;
+  return art && w && w.class === cls ? skinnedArt(K, art, w.skin) : art;
+}
+
+/** The skin a look shows its class weapon in (for cache keys), or ''. */
+export const skinKey = (C: CharacterDefs, o: Pick<Outfit, 'weaponCosmetic'>): string => (o.weaponCosmetic && C.wardrobe.cosmeticWeapons?.[o.weaponCosmetic]?.skin) || '';
 
 /** The resting weapon's back and front layers over the base `anim` facing `dir` (the Hilot's balm: its own). */
 export function restLayers(art: ClassArt, anim: 'idle' | 'walk', dir: Dir): { back: ClassLayer[]; front: ClassLayer[] } | null {
@@ -320,6 +362,15 @@ export function drawRested(
     drawCell(ctx, source(scene, big.sheet(anim, dir)), w, h, frame, x + K.bodyOffset[0] - big.offset[0], y + K.bodyOffset[1] - big.offset[1]);
   }
   for (const l of layers?.front ?? []) drawLayer(ctx, scene, K, l, wf, x, y);
+}
+
+/** A character standing still in town with its resting weapon (idle frame 0), straight from the doll's layers (no built
+ *  sheets: the store's worn preview of a weapon cosmetic): back layers, the doll, front layers. */
+export function drawRestedStill(ctx: CanvasRenderingContext2D, scene: ImageHost, C: CharacterDefs, K: ClassesDefs, o: Outfit, art: ClassArt, dir: Dir, x = 0, y = 0): void {
+  const layers = restLayers(art, 'idle', dir);
+  for (const l of layers?.back ?? []) drawLayer(ctx, scene, K, l, 0, x, y);
+  drawStill(ctx, scene, C, o, 'idle', dir, 0, x + K.bodyOffset[0], y + K.bodyOffset[1]);
+  for (const l of layers?.front ?? []) drawLayer(ctx, scene, K, l, 0, x, y);
 }
 
 /** A combat pose's frame at (x, y), the 64x64 cell's top left: back layers, the body and face in the look's skin, front

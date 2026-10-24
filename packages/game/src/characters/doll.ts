@@ -9,6 +9,8 @@ import { lagMark } from '../net/lag';
 // single sprite: cheap to draw and simple to depth-sort.
 
 export interface Outfit {
+  /** A worn weapon cosmetic fitting their class (resolved looks only: shared cosmetics.ts): the class weapon in its skin. */
+  weaponCosmetic?: string;
   skin: string; // skinTones key
   hair: string;
   hairColour: string; // colourPresets key

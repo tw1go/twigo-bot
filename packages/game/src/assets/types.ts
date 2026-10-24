@@ -332,6 +332,9 @@ export interface CharacterDefs {
     /** Cosmetic tops (never offered at the creator): item id → top key (the Witch Robe's witchrobe), drawn in their own
      *  colours; those that cover the legs (no bottom layer while worn). */
     cosmeticTops?: Record<string, string>;
+    /** A worn weapon cosmetic's item id → its class and skin (the Moonlight weapons): that class's weapon sheets drawn as
+     *  their `-<skin>` twins (characters/kit-art.ts artFor). */
+    cosmeticWeapons?: Record<string, { class: string; skin: string }>;
     cosmeticHidesBottom?: string[];
     /** Cosmetic tops that draw their own feet (no shoes layer while worn). */
     cosmeticHidesShoes?: string[];
