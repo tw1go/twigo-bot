@@ -124,8 +124,8 @@ section { padding-block: 88px 0; }
 .mob .lvtag { font: 400 22px/1 var(--f-num); color: var(--gold); }
 @media (max-width: 1000px) { .mobs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .mobs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mob .sprite { --s: 2; } } /* (the mock's: every mob at 2× on phones) */
-.mobs.eight { grid-template-columns: repeat(4, minmax(0, 1fr)); } /* (the Old Market's eight: two rows of four) */
-@media (max-width: 700px) { .mobs.eight { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.mobs.four { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 20px; } /* (the maps' taste: four mobs) */
+@media (max-width: 700px) { .mobs.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Boss band */
 .boss { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 32px; position: relative; overflow: hidden;

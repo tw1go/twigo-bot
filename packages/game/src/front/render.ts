@@ -155,72 +155,46 @@ export function renderBody(input: RenderInput): string {
   </div>
 </section>`;
 
-  /** A map's mobs: a card each with its idle, its level and what it does. */
-  const mobSection = (id: string, sec: { eyebrow: string; title: string; lede: string; mobs: { id: string; name: string; variant: string; scale: number; text: string }[] }) => {
-    const cards = sec.mobs.map((m) => {
-      const crop = crops[m.id]; // (cropped to its art: scripts/front-page.ts CROPPED)
-      const [w, h] = crop ? [crop[2], crop[3]] : cellOf(m.id, m.variant);
-      const a = anim(m.id, 'idle');
-      const lv = f.mobLevel[m.id];
-      if (lv === undefined) throw new Error(`front page: no level for "${m.id}" (stats.json mobs)`);
-      return `
-      <article class="panel mob"><div class="stage">${canvas(w, h, m.scale, { mob: m.id, variant: m.variant, dir: 'se', frames: a.frames, fps: a.fps, scale: m.scale, ...(crop ? { crop: crop.join(',') } : {}) }, `${m.name}, idle`)}</div><span class="lvtag">Lv ${lv}</span><h3>${esc(m.name)}</h3><p>${esc(m.text)}</p></article>`;
-    });
-    return `
-<section id="${id}">
-  <div class="wrap">
-    <div class="head"><span class="eyebrow">${esc(sec.eyebrow)}</span><h2>${esc(sec.title)}</h2><p class="lede">${esc(t(sec.lede))}</p></div>
-    <div class="mobs${sec.mobs.length === 8 ? ' eight' : ''}">${cards.join('')}
-    </div>
-  </div>
-</section>`;
+  /** A sprite cropped to its art (scripts/front-page.ts CROPPED) at a whole-number scale. */
+  const cropped = (mob: string, variant: string, dir: string, scale: number, label: string) => {
+    const crop = crops[mob];
+    if (!crop) throw new Error(`front page: no crop for "${mob}" (scripts/front-page.ts)`);
+    const [bx, by, bw, bh] = crop;
+    const a = anim(mob, 'idle');
+    return canvas(bw, bh, scale, { mob, variant, dir, frames: a.frames, fps: a.fps, scale, lazy: 1, crop: `${bx},${by},${bw},${bh}` }, label);
   };
-  const slums = mobSection('slums', c.slums);
-  const market = mobSection('market', c.market);
+  /** Big ones side by side as a taste, each with a caption over it (never a list). */
+  const taste = (bosses: { mob: string; dir: string; scale: number; caption: string }[]) => `
+    <div class="dungeon depths">${bosses.map((b) => `
+      <div class="panel titan">
+        <p class="caption">${esc(b.caption)}</p>
+        ${cropped(b.mob, '', b.dir, b.scale, b.caption)}
+      </div>`).join('')}
+    </div>`;
 
-  /** A field boss: its idle, level and name, its facts and its moves. */
-  const bossSection = (id: string, b: { eyebrow: string; id: string; scale: number; facts: { term: string; text: string }[]; moves: { name: string; enrage?: boolean }[] }, name: string, level: string | number) => {
-    const crop = crops[b.id]; // (cropped to its art: scripts/front-page.ts CROPPED)
-    const [gw, gh] = crop ? [crop[2], crop[3]] : cellOf(b.id, '');
-    const ga = anim(b.id, 'idle');
-    return `
-<section id="${id}">
+  /** Every map in one section: what they're like, a few mobs and the field bosses as a taste (never a list). */
+  const Mp = c.maps;
+  const mobCards = Mp.mobs.map((m) => `
+      <article class="panel mob"><div class="stage">${cropped(m.id, m.variant, 'se', m.scale, `${m.name}, idle`)}</div><h3>${esc(m.name)}</h3><p>${esc(m.text)}</p></article>`);
+  const maps = `
+<section id="maps">
   <div class="wrap">
-    <div class="panel boss">
-      <div class="stage">${canvas(gw, gh, b.scale, { mob: b.id, variant: '', dir: 'se', frames: ga.frames, fps: ga.fps, scale: b.scale, lazy: 1, ...(crop ? { crop: crop.join(',') } : {}) }, `${name}, idle`)}</div>
-      <div>
-        <span class="eyebrow">${esc(b.eyebrow)}</span>
-        <h2 class="name"><small>Lv ${level}</small>${esc(name)}</h2>
-        <dl class="facts">${b.facts.map((x) => `<dt>${esc(x.term)}</dt><dd>${esc(t(x.text))}</dd>`).join('')}</dl>
-        <ul class="moves">${b.moves.map((m) => `<li${m.enrage ? ' class="enrage"' : ''}>${esc(m.name)}</li>`).join('')}</ul>
-      </div>
-    </div>
+    <div class="head"><span class="eyebrow">${esc(Mp.eyebrow)}</span><h2>${esc(Mp.title)}</h2><p class="lede">${esc(t(Mp.lede))}</p></div>
+    <div class="pillars">${Mp.points.map((p) => `<div class="panel pillar"><h3>${esc(p.title)}</h3><p>${esc(t(p.text))}</p></div>`).join('')}</div>
+    <div class="mobs four">${mobCards.join('')}
+    </div>${taste(Mp.bosses)}
+    <p class="more">${esc(Mp.more)}</p>
   </div>
 </section>`;
-  };
-  const boss = bossSection('boss', c.boss, `The ${f.tokens.golemName}`, f.tokens.golemLevel);
-  const scale = bossSection('great-scale', c.scale, String(f.tokens.scaleName), f.tokens.scaleLevel);
 
   /** Every dungeon in one section: what they're like, and a couple of the last bosses as a taste (never a list). */
   const D = c.dungeon;
-  const titans = D.bosses.map((b) => {
-    const crop = crops[b.mob];
-    if (!crop) throw new Error(`front page: no crop for "${b.mob}" (scripts/front-page.ts)`);
-    const [bx, by, bw, bh] = crop;
-    const a = anim(b.mob, 'idle');
-    return `
-      <div class="panel titan">
-        <p class="caption">${esc(b.caption)}</p>
-        ${canvas(bw, bh, b.scale, { mob: b.mob, variant: '', dir: b.dir, frames: a.frames, fps: a.fps, scale: b.scale, lazy: 1, crop: `${bx},${by},${bw},${bh}` }, b.caption)}
-      </div>`;
-  });
   const dungeon = `
 <section id="warrens">
   <div class="wrap">
     <div class="head"><span class="eyebrow">${esc(D.eyebrow)}</span><h2>${esc(D.title)}</h2><p class="lede">${esc(t(D.lede))}</p></div>
     <div class="pillars">${D.points.map((p) => `<div class="panel pillar"><h3>${esc(p.title)}</h3><p>${esc(t(p.text))}</p></div>`).join('')}</div>
-    <div class="dungeon depths">${titans.join('')}
-    </div>
+${taste(D.bosses)}
     <p class="more">${esc(D.more)}</p>
   </div>
 </section>`;
@@ -302,5 +276,5 @@ export function renderBody(input: RenderInput): string {
 </div>
 <script type="application/json" id="front-text">${JSON.stringify({ sending: a.sending, send: a.send, offline: a.offline, doneText: a.doneText, doneUpdated: a.doneUpdated, devices: c.devices, get: { soon: g.soon, windows: g.windows.button, mac: g.mac.button } }).replace(/</g, '\\u003c')}</script>`;
 
-  return [nav, hero, '<main>', about, classes, slums, boss, market, scale, dungeon, town, get, '</main>', closing, footer, dialog].join('\n');
+  return [nav, hero, '<main>', about, classes, maps, dungeon, town, get, '</main>', closing, footer, dialog].join('\n');
 }

@@ -18,8 +18,7 @@ export const content = {
     brand: 'MIKAZUKI',
     links: [
       { href: '#classes', label: 'Classes' },
-      { href: '#slums', label: 'The Slums' },
-      { href: '#market', label: 'Old Market' },
+      { href: '#maps', label: 'The maps' },
       { href: '#warrens', label: 'Dungeons' },
       { href: '#town', label: 'Town life' },
       { href: '#get', label: 'Get the game' },
@@ -143,40 +142,31 @@ export const content = {
     ] satisfies { id: string; role: string; line: string; skills: { name: string; note: string }[]; look: Outfit }[],
   },
 
-  slums: {
-    eyebrow: 'First map: the Slums',
+  /** Every map in one section: what they're like, a few of their mobs and field bosses as a taste (never the full list:
+   *  more keep coming), so the page doesn't grow with each one. `scale`: whole-number; sprites cropped to their art
+   *  (scripts/front-page.ts). */
+  maps: {
+    eyebrow: 'The maps',
     title: 'The junk came alive',
-    lede: 'The people of the Slums are friendly. Their rubbish is not. Six kinds of junk roam the alleys, each with its own fixed level and its own way of fighting.',
-    /** `variant`: which colour of it (manifest mobs.<id>.variants); `scale`: whole-number size on its card. */
-    mobs: [
-      { id: 'tin-can', name: 'Tin Can', variant: '', scale: 3, text: 'Hops about minding its own business, until you hit it. Then it snaps its jagged lid.' },
-      { id: 'bottle-caps', name: 'Bottle Caps', variant: 'red', scale: 3, text: 'Roll in packs of 3 to 5. Hit one and the whole pack comes for you.' },
-      { id: 'tire-roller', name: 'Tire Roller', variant: 'yellow', scale: 2, text: 'Comes for you on sight and lunges in with a charge.' },
-      { id: 'plastic-bag-spook', name: 'Plastic Bag Spook', variant: 'white', scale: 2, text: 'Drifts close and wraps you in a slow.' },
-      { id: 'wire-tangle', name: 'Wire Tangle', variant: '', scale: 1, text: 'Spots you from 4 tiles away and zaps from a distance.' },
-      { id: 'scrap-crab', name: 'Scrap Crab', variant: 'rust', scale: 2, text: 'Its shell blocks every hit, except right after it swings. Time your attacks.' },
+    lede: 'Step out of town and the trouble starts. Every map has its own kinds of mob, each at its own level with its own trick: packs that come for you together, shells that block, umbrellas that shield, tubs that hide in the floodwater. Lv 1 to {levelCap} so far.',
+    points: [
+      { title: 'Every mob has a trick', text: 'Learn when its guard drops, where its tears land and how far it throws, and the fight gets easier.' },
+      { title: 'Named mini bosses', text: '{miniBosses} of them roam the maps, bigger and tougher than their kind, with better loot.' },
+      { title: 'Field bosses', text: 'Each map has one that wakes every few hours for everyone there. Deal 5% of its HP and a drop is yours.' },
     ],
+    mobs: [
+      { id: 'tin-can', name: 'Tin Can', variant: '', scale: 3, text: 'Minds its own business, until you hit it. Then it snaps its jagged lid.' },
+      { id: 'scrap-crab', name: 'Scrap Crab', variant: 'rust', scale: 3, text: 'Its shell blocks every hit, except right after it swings.' },
+      { id: 'monobloc-stack', name: 'Monobloc Stack', variant: 'green', scale: 2, text: 'Throws plastic chairs from across the room. Keep moving and they miss.' },
+      { id: 'banyera-lurker', name: 'Banyera Lurker', variant: 'armour', scale: 2, text: 'Lies under the floodwater, unseen, until you wade too close.' },
+    ],
+    bosses: [
+      { mob: 'scrapheap-golem', dir: 'se', scale: 3, caption: 'A golem of tires and roofing sheets, in the Slums' },
+      { mob: 'great-scale', dir: 'se', scale: 3, caption: 'A weighing scale the size of a stall, in the Old Market' },
+    ],
+    more: 'More maps are on the way.',
   },
 
-  boss: {
-    eyebrow: 'Field boss',
-    id: 'scrapheap-golem',
-    scale: 2,
-    facts: [
-      { term: 'Rises', text: 'In its pit in the Slums, {golemHours} hours after it was last beaten. The Slums get a warning {golemWarn} minutes before.' },
-      { term: 'Made of', text: 'Tire fists, a body of rusty roofing sheets, a tarp cape and a street lamp for a head.' },
-      { term: 'Loot', text: 'Everyone who deals 5% of its HP gets a drop of their own.' },
-    ],
-    moves: [
-      { name: 'Tire Slam' },
-      { name: 'Scrap Toss' },
-      { name: 'Lamp Glare' },
-      { name: 'Junk Drop' },
-      { name: 'Shockwave' },
-      { name: 'Call the Junk' },
-      { name: 'Enrage at 25%', enrage: true },
-    ],
-  },
 
   /** Every dungeon in one section: what they're like, a couple of what's waiting at the bottom as a taste (never the
    *  full list: more keep coming), so the page doesn't grow with each one. */
@@ -197,40 +187,7 @@ export const content = {
     more: 'More dungeons are being dug.',
   },
 
-  market: {
-    eyebrow: 'Second map: the Old Market',
-    title: 'The market that never closed',
-    lede: 'West of the Slums, the old palengke shut after a typhoon, and what it sold got up and walked. Lv {marketFrom} to {levelCap}: eight new kinds of mob, Aling Conching’s cooking, and {marketQuests} quests of a story to finish.',
-    /** `variant`: which look of it (manifest mobs.<id>.variants); `scale`: whole-number size on its card. */
-    mobs: [
-      { id: 'payong-flapper', name: 'Payong Flapper', variant: 'stripes', scale: 2, text: 'Flaps about harmlessly until you hit it. While its umbrella is open, hits from the front glance off.' },
-      { id: 'sibuyas-sobber', name: 'Sibuyas Sobber', variant: 'red', scale: 2, text: 'Cries on you. Its tears hang round your head in a cloud, and you miss more until it clears.' },
-      { id: 'garapon-jars', name: 'Garapon Jars', variant: 'candy', scale: 2, text: 'Sit in threes on the shelves. Knock one and all three come rolling.' },
-      { id: 'sako-slammer', name: 'Sako Slammer', variant: 'plain', scale: 2, text: 'A rice sack that body-slams. Its spilled rice slows anyone who walks through it.' },
-      { id: 'monobloc-stack', name: 'Monobloc Stack', variant: 'green', scale: 2, text: 'Throws plastic chairs from 4 tiles. Keep moving and they miss; break it and it runs out of chairs.' },
-      { id: 'sangkalan-chomper', name: 'Sangkalan Chomper', variant: 'mossy', scale: 2, text: 'A chopping board with teeth. It shrugs off hits to its face, so get round its side.' },
-      { id: 'banyera-lurker', name: 'Banyera Lurker', variant: 'armour', scale: 2, text: 'Lies under the floodwater, unseen, until you wade too close. Its first hit lands hard.' },
-      { id: 'timbangan-sentinel', name: 'Timbangan Sentinel', variant: 'rust', scale: 2, text: 'Weighs you up: the healthier you are, the harder it hits.' },
-    ],
-  },
 
-  scale: {
-    eyebrow: 'Field boss',
-    id: 'great-scale',
-    scale: 2,
-    facts: [
-      { term: 'Wakes', text: 'In the Market Hall, {scaleHours} hours after it last fell asleep. The market gets a warning {scaleWarn} minutes before.' },
-      { term: 'Made of', text: 'A palengke weighing scale the size of a stall, with a pan for a hand and a dial for a face.' },
-      { term: 'Loot', text: 'Everyone who deals 5% of its HP gets a drop of their own. When it falls, ring its bell.' },
-    ],
-    moves: [
-      { name: 'Pan Slam' },
-      { name: 'Weigh-in' },
-      { name: 'Kulang sa Timbang' },
-      { name: 'Calls Timbangan Sentinels' },
-      { name: 'Enrage at 25%', enrage: true },
-    ],
-  },
 
   town: {
     eyebrow: 'Town life',

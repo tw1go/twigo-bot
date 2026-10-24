@@ -9,19 +9,16 @@ import { renderBody, renderHead } from '../src/front/render.ts';
 // 🌐 The front page's build step: front.html gets its head (title, sharing, icons) and its whole body from
 // src/front/content.ts and the game's own data (src/front/facts.ts: levels, stats, the dungeon, counts), read fresh each
 // time (in dev, each page load), plus the few manifest entries its script draws from (the splash, the paper doll, the
-// classes' idle-ready poses, the mobs, the Warren Gate) as JSON, so the page fetches no manifest. Barong-Barong's
-// canvas is cropped to its idle frames' shared box, measured here from its sheet.
+// classes' idle-ready poses, the mobs) as JSON, so the page fetches no manifest. Each mob's canvas is cropped to its
+// idle frames' shared box, measured here from its sheet.
 
-const MOBS = ['tin-can', 'bottle-caps', 'tire-roller', 'plastic-bag-spook', 'wire-tangle', 'scrap-crab', 'scrapheap-golem', 'barong-barong',
-  'payong-flapper', 'sibuyas-sobber', 'garapon-jars', 'sako-slammer', 'monobloc-stack', 'sangkalan-chomper', 'banyera-lurker', 'timbangan-sentinel', 'great-scale', 'makinang-yelo'];
-/** Sprites cropped to their idle's box on the page (their cells are far bigger than the art): the last bosses whole,
- *  in the facing their sheet has, the Great Scale, and the Old Market's mobs on their cards (in the look and facing the page shows). */
+/** The mobs the page draws, each cropped to its idle frames' box (their cells are far bigger than their art): the maps'
+ *  and the dungeons' taste (content.ts), in the look and facing the page shows. */
 const CROPPED: { id: string; variant: string; dir: string }[] = [
-  { id: 'barong-barong', variant: '', dir: 's' },
-  { id: 'makinang-yelo', variant: '', dir: 'sw' },
-  { id: 'great-scale', variant: '', dir: 'se' }, // (its art sits off-centre in its cell: a phone's stage cut into it)
-  ...content.market.mobs.map((m) => ({ id: m.id, variant: m.variant, dir: 'se' })),
+  ...content.maps.mobs.map((m) => ({ id: m.id, variant: m.variant, dir: 'se' })),
+  ...[...content.maps.bosses, ...content.dungeon.bosses].map((b) => ({ id: b.mob, variant: '', dir: b.dir })),
 ];
+const MOBS = CROPPED.map((m) => m.id);
 
 /** The box (x, y, w, h) in a `w`×`h` cell that every one of a sheet's `frames` fits in (row by row). */
 function framesBox(file: string, w: number, h: number, frames: number): [number, number, number, number] {
@@ -58,7 +55,7 @@ export function frontPage(): Plugin {
         const json = (f: string) => JSON.parse(readFileSync(join(assets, f), 'utf8'));
         const manifest = json('manifest.json');
         const K = manifest.classes;
-        const facts = gameFacts({ manifest, stats: json(K.stats), classes: json(K.data), leveling: json(K.leveling), dungeons: json(K.dungeons), slums: json('maps/slums.json'), palengke: json('maps/palengke.json'), palengkeLeveling: json(K.palengkeLeveling), halloween: json(manifest.events.halloween) });
+        const facts = gameFacts({ manifest, stats: json(K.stats), classes: json(K.data), leveling: json(K.leveling), dungeons: json(K.dungeons), slums: json('maps/slums.json'), palengke: json('maps/palengke.json'), halloween: json(manifest.events.halloween) });
         const crops = Object.fromEntries(CROPPED.map(({ id, variant, dir }) => {
           const m = manifest.mobs[id];
           const [w, h] = (variant && m.variants?.[variant]?.size) || m.size;
@@ -71,7 +68,6 @@ export function frontPage(): Plugin {
           characters: manifest.characters,
           classes: { ...K, list: Object.fromEntries(Object.entries(K.list).map(([id, c]) => [id, { ...(c as object), anims: { 'idle-ready': (c as { anims: Record<string, unknown> }).anims['idle-ready'] } }])) },
           mobs: Object.fromEntries(MOBS.map((id) => [id, manifest.mobs[id]])),
-          props: { 'slums-warren-gate': manifest.props['slums-warren-gate'], 'palengke-silong-hatch': manifest.props['palengke-silong-hatch'] },
         };
         const preload = [
           `<link rel="preload" href="/assets/font/Pixelify_Sans/PixelifySans-VariableFont_wght.ttf" as="font" type="font/ttf" crossorigin>`, // (Vite adds the base)
