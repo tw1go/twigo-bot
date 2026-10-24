@@ -158,7 +158,7 @@ function describe(e: LongFrame): string {
   const end = e.startTime + e.duration;
   const paint = e.styleAndLayoutStart ? Math.round(end - e.styleAndLayoutStart) : 0;
   const game = e.renderStart ? Math.round((e.styleAndLayoutStart || end) - e.renderStart) : 0;
-  const scripts = (e.scripts ?? [])
+  const scripts = [...(e.scripts ?? [])] // (the browser's list is read-only: sorted as a copy)
     .sort((a, b) => b.duration - a.duration)
     .slice(0, 4)
     .map((s) => `${s.sourceFunctionName || s.invoker} (${(s.sourceURL ?? '').split('/').pop()?.replace(/\?.*/, '') || '?'}) ${Math.round(s.duration)} ms`);
