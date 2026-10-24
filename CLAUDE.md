@@ -170,9 +170,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
   `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
-  asked, 23 Oct 2026), twice the mob zones' spawn points (23 Oct 2026: 80 a zone, the Fish Market's 56 on baha,
-  spread out from the art folder's 40; copying the map over again loses them) with stats.json
-  `aliveperZoneIn.palengke` 40 and mobs.json's Garapon Jars `alive` 20 / Banyera Lurkers 28, and the Market Hall's four
+  asked, 23 Oct 2026), four times the mob zones' spawn points (doubled 23 Oct and again 24 Oct 2026: 160 a zone, the Fish Market's 112 on
+  baha, spread out from the art folder's 40; copying the map over again loses them) with stats.json
+  `aliveperZoneIn.palengke` 80 and mobs.json's Garapon Jars `alive` 40 / Banyera Lurkers 56, and the Market Hall's four
   doorways open (23 Oct 2026: the middle two tiles of each door piece, where its art is a doorway, were blocked, so the
   hall was cut off on foot since the first map; north (133-134, 79), west (109, 105-106), south (144-145, 139), east
   (169, 104-105) through the clock-tower front).
@@ -248,6 +248,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   picture, frame 0 of the upper half's idle-se centred in 64 × 64; a stand-in until the art folder has its own.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
   sheet at (80,46), 56 × 56; a stand-in until the art folder has its own.
+- `maps/slums.json`: twice the mob zones' spawn points (24 Oct 2026, the owner: new ones spread out on the zones' own
+  ground, 2 tiles inside their rects) with stats.json `mobBehaviour.aliveperZone` 20 (was 10, + `aliveperZoneNote`);
+  copying the map over again loses them.
 - `maps/slums.json`: the Golem Pit v3 changes (the art folder's copy still has the old 6×6 pit; see Scrapheap Golem), and
   the Warren Gate (object, its blocked tiles, `arrive.warrens`; written by `scripts/build-warrens.ts`).
 - Pets (14 Oct 2026): `pets/` (the art folder's pets/: box, icons, sheets with pets.json, tree), the manifest's `pets`
@@ -688,9 +691,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   shadow size (drawn as the shadow art's pixel ellipse at that size), `floats`, variants, the golem's toss/glare frames,
   `top`, and its `lamp` / `slamFist` / `tossFist` per facing, measured from the art; a bot test keeps its variants in step with the
   manifest's and checks every sheet exists). Shared by everyone: the bot runs them (`web/town-mobs.ts` MobRoom, tested; TownOptions
-  `mobs`, a quarter-second clock, ~0.15 ms a tick with all ~93 mobs and 5 players fighting). How they live is stats.json
+  `mobs`, a quarter-second clock, ~0.4-0.6 ms a tick with all ~200 mobs and 16 players fighting). How they live is stats.json
   `mobBehaviour` (`mobRules` in @mikazuki/shared; the guide's "Mob behaviour"; slums.json's zone `aggro`/`aggroRange`/
-  `leash`/`respawnSec` aren't read): `aliveperZone` (10) a zone, a pack counted once (ids `<zone>:<k>`), starting at
+  `leash`/`respawnSec` aren't read): `aliveperZone` (20, a repo change: the art folder's 10, doubled 24 Oct 2026 with
+  maps/slums.json's spawn points) a zone, a pack counted once (ids `<zone>:<k>`), starting at
   spread-out spawn points (`mobStartSpots`, shared: the game places the same); the spawn points are only places now: a
   dead mob is back `respawnSeconds` (30) later (`mob-spawn` with its tile, full) at a random spawn point of its zone with
   no living mob on or next to it and no player within 4 (`respawn`), which is its spawn from then on; a pack's cap comes
@@ -944,9 +948,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Its mobs (20 Oct 2026; CONTEXT.md Front block, Tear cloud, Spilled rice, Ambush, Weigh; the art folder's
   monsters/palengke/pixellab-v1/anim as it is, in `mobs/<mob>/`, manifest `mobs.<mob>` with two looks as `variants` and
   eight `directions`; their rules in mobs/mobs.json): `MobRoom` with `MobRoomOptions.area` 'palengke' keeps stats.json
-  mobBehaviour `aliveperZoneIn.palengke` (40) a zone, a kind's mobs.json `alive` winning (the Garapon Jars' 20 packs of
-  `pack` [3, 3], the Banyera Lurkers' 28; all doubled 23 Oct 2026 with the map's spawn points: about 330 mobs, 0.21 ms
-  a server tick with 16 players fighting); passive Payong Flapper and Garapon Jars (packAssist), the rest aggressive at
+  mobBehaviour `aliveperZoneIn.palengke` (80) a zone, a kind's mobs.json `alive` winning (the Garapon Jars' 40 packs of
+  `pack` [3, 3], the Banyera Lurkers' 56; all doubled 23 Oct 2026 and again 24 Oct 2026 with the map's spawn points:
+  about 660 mobs, 0.4-0.5 ms a server tick with 16 players fighting); passive Payong Flapper and Garapon Jars (packAssist), the rest aggressive at
   aggroTiles, the Monobloc ranged (rangeTiles 4). Eight facings (`facing8`, a kind whose manifest has eight `directions`:
   `MobKind.eight`; TownMobFacing has s/e/n/w too; the Slums' mobs keep four; the game's `sheetDir` maps a facing to the
   sheets a kind has). Traits (mobs.json, the server decides, tested in `web/palengke-mobs.test.ts`):

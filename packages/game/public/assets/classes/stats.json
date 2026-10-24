@@ -1661,7 +1661,8 @@
   },
   "mobBehaviour": {
     "respawnSeconds": 30,
-    "aliveperZone": 10,
+    "aliveperZone": 20,
+    "aliveperZoneNote": "Repo change (24 Oct 2026, the owner): 20 a Slums zone (was the art folder's 10), with maps/slums.json's spawn points doubled to match.",
     "sameAs": {
       "monobloc-stack-frost": "monobloc-stack",
       "sangkalan-chomper-frost": "sangkalan-chomper",
@@ -1670,9 +1671,9 @@
     },
     "sameAsNote": "Repo addition (20 Oct 2026): the Silong's frost recolours live as their originals (aggressive or not, pack assist, reach).",
     "aliveperZoneIn": {
-      "palengke": 40
+      "palengke": 80
     },
-    "aliveperZoneInNote": "Repo addition (Mac, 20 Oct 2026): a map's own count per zone (the Lumang Palengke's zones are about 4x a Slums zone); a kind's mobs/mobs.json `alive` wins over both (the Garapon Jars' 20 packs, the Banyera Lurkers' 28). Doubled on 23 Oct 2026 (was 20, the Jars 10, the Lurkers 14; the owner's call), with maps/palengke.json's spawn points doubled to match (80 a zone, the Fish Market's 56 on baha).",
+    "aliveperZoneInNote": "Repo addition (Mac, 20 Oct 2026): a map's own count per zone (the Lumang Palengke's zones are about 4x a Slums zone); a kind's mobs/mobs.json `alive` wins over both (the Garapon Jars' 20 packs, the Banyera Lurkers' 28). Doubled on 23 Oct 2026 (was 20, the Jars 10, the Lurkers 14; the owner's call) and again on 24 Oct 2026 (was 40, the Jars 20, the Lurkers 28), with maps/palengke.json's spawn points doubled to match each time (160 a zone, the Fish Market's 112 on baha).",
     "passive": [
       "tinCan",
       "bottleCaps",
