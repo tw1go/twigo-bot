@@ -48,6 +48,33 @@ export function startHomeScreenApp(onUpdate: () => void): void {
     .catch(() => null);
 }
 
+/** twigo.dev/ once answered with a permanent redirect to /play/ (Caddy's `redir / /play/ 308`, before the front page had
+ *  the address), and a browser keeps a permanent redirect for good: one that opened the game back then still jumps from
+ *  twigo.dev straight to /play/ without asking. Once per browser (the website only), the game asks for twigo.dev/ itself
+ *  with `cache: 'reload'`: the network's answer (the front page) takes the redirect's place in the browser's cache. */
+export function forgetOldFrontRedirect(): void {
+  if (!import.meta.env.PROD || isDesktopApp()) return;
+  try {
+    if (localStorage.getItem(FRONT_KEY)) return;
+  } catch {
+    return;
+  }
+  setTimeout(() => {
+    void fetch('/', { cache: 'reload', credentials: 'same-origin' })
+      .then((r) => {
+        if (!r.ok || r.redirected) return;
+        try {
+          localStorage.setItem(FRONT_KEY, '1');
+        } catch {
+          // (asked again next time)
+        }
+      })
+      .catch(() => null);
+  }, FRONT_AFTER_MS);
+}
+const FRONT_KEY = 'mk_front_fixed';
+const FRONT_AFTER_MS = 5000; // (once the game has loaded: never in its way)
+
 /** Pressed Start (or came through a gate): from now on a newer build waits for Reload now, never mid-game. */
 let entered = false;
 export const enteredGame = (): void => void (entered = true);

@@ -361,7 +361,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (bot `web/beta.ts`, tested: username 2–32, a class from the list or "Not sure yet", note ≤ 500, 5 an hour per address;
   one row per username or logged-in Discord id, a repeat updates it; schema v14 `beta_applications`, the IP only as a
   salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
-  to prefill it. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
+  to prefill it. Browsers that opened twigo.dev before the front page still had Caddy's old `redir / /play/ 308` cached
+  (a permanent redirect, followed without asking): the game asks for `/` once per browser with `cache: 'reload'`
+  (net/pwa.ts `forgetOldFrontRedirect`, localStorage `mk_front_fixed`), which puts the front page in its place. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
   http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
 - Ways to play (CONTEXT.md): the website (/play/ in a tab, as ever), the home screen app and the desktop app. Home screen
   app (a PWA; `vite.config.ts` homeScreenApp, vite-plugin-pwa, the game page only: front.html loses the manifest link):
