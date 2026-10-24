@@ -1,6 +1,7 @@
 import type Phaser from 'phaser';
 import type { CharacterDefs, Dir, Vec2 } from '../assets/types';
 import { isColour, visible } from '../util/pixels';
+import { lagMark } from '../net/lag';
 
 // Paper-doll characters. Each layer (body, face, shoes, bottom, top, hair, glasses, hat — manifest drawOrder) is a
 // sheet of 32×48 frames with zero offset. For an outfit we recolour every layer's grey key ramps, clip the hair
@@ -333,12 +334,14 @@ export async function buildOutfitSlowly(scene: Phaser.Scene, C: CharacterDefs, o
   let start = performance.now();
   for (const [anim, dir] of outfitSheets(C)) {
     if (performance.now() - start > budgetMs) {
+      lagMark('a look', performance.now() - start); // (the lag report: net/lag.ts)
       await new Promise((r) => requestAnimationFrame(r));
       if (!scene.sys.isActive() && !scene.sys.isSleeping()) return; // (the scene went: nothing to build for)
       start = performance.now();
     }
     buildSheet(scene, C, o, anim, dir);
   }
+  lagMark('a look', performance.now() - start);
 }
 
 /** One composited sheet (an anim facing a direction) and its animation, once. */

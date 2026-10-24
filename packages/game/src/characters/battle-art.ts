@@ -4,6 +4,7 @@ import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types'
 import { type Outfit, litHat, sheetKey } from './doll';
 import { CELL, cosmeticPoseFiles, drawLitHead, drawPose, lookImages, poseFiles } from './kit-art';
 import { loadImages } from './loading';
+import { lagMark } from '../net/lag';
 
 // ⚔️ Battle poses (maps with mobs: the Slums): a character with a class is drawn in its class's combat sheets there
 // instead of the town doll, every pose composited once per class and look (back weapon layers, the body and face in
@@ -49,6 +50,7 @@ const SLICE_MS = 6;
 let sliceFrom = 0;
 async function breathe(): Promise<void> {
   if (performance.now() - sliceFrom < SLICE_MS) return;
+  lagMark('combat poses', performance.now() - sliceFrom); // (the lag report: net/lag.ts)
   await new Promise((r) => setTimeout(r, 16));
   sliceFrom = performance.now();
 }

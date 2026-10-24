@@ -3,6 +3,7 @@ import type { CharacterDefs, ClassArt, ClassesDefs, Dir, Manifest, Vec2 } from '
 import { type Outfit, drawStill, outfitKey } from './doll';
 import { drawPose } from './kit-art';
 import { loadImages } from './loading';
+import { lagMark } from '../net/lag';
 
 // 😵 The faint (CONTEXT.md Faint): a knocked-out character buckles, kneels and falls forwards the way they face, then lies
 // on the ground with dizzy eyes until they respawn. No art of its own: it's the look's own standing frame (the town
@@ -407,12 +408,14 @@ async function drain(scene: Phaser.Scene, M: Manifest): Promise<void> {
       let r = steps.next();
       while (!r.done) {
         if (performance.now() - start > BUDGET_MS) {
+          lagMark('a faint', performance.now() - start); // (the lag report: net/lag.ts)
           await nextFrame();
           if (!scene.sys.textures) return; // (the scene went away)
           start = performance.now();
         }
         r = steps.next();
       }
+      lagMark('a faint', performance.now() - start);
       wanted.delete(id);
       if (r.value) built.set(id, r.value);
       w.resolve(r.value);

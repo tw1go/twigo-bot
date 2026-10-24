@@ -12,6 +12,7 @@ import { sanitize } from '../characters/looks';
 import type { BubbleArt } from '../ui/labels';
 import { type WorldObjects, characterDepth } from './objects';
 import { rng } from './rng';
+import { lagEvent } from '../net/lag';
 
 // Everyone else in town, as the server reports them (net/town.ts): a paper doll each, with their name and title,
 // walking the steps the server passes on. A character appears once its look has loaded; messages that arrive
@@ -260,6 +261,7 @@ export class OtherPlayers {
     const C = this.M.characters;
     const o: Other = { state: { ...p }, char: null };
     this.all.set(p.id, o);
+    lagEvent(`${p.nickname} arrived (${p.cls ?? 'no class'})`); // (the lag report: net/lag.ts)
     this.onChange();
     // Unknown items (an older or newer wardrobe) fall back to a look seeded by their id.
     const look = sanitize(C, p.outfit, randomOutfit(C, rng(parseInt(p.id.slice(0, 8), 16) || 1)));
@@ -318,6 +320,8 @@ export class OtherPlayers {
   }
 
   private remove(id: string): void {
+    const s = this.all.get(id)?.state;
+    if (s) lagEvent(`${s.nickname} left`);
     this.all.get(id)?.dots?.remove();
     this.all.get(id)?.char?.destroy();
     if (this.all.delete(id)) this.onChange();

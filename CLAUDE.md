@@ -2057,6 +2057,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   images and links never drag out as pictures (main.ts `dragstart`), while the game's `[draggable]` drags still work. No focus rings either: Tab is dead, a mouse-clicked button is blurred
   (main.ts), and no pop-up or panel focuses its Close (the reward box, Settings, the casino): Space and Enter are game
   keys, and a focused Close went off on them. Only choice boxes focus their Yes (forge, drop, class choice, Teleport).
+- Lag report (`net/lag.ts`, always on, cheap; Settings → Game → "Copy lag report (N slow frames)", `__town.lag()`): every
+  frame over 50 ms is kept (the last 60) with what ran in it: the timed jobs (`lagSpan` / `lagMark`: a pack sheet's
+  `unpack`, `a look` (doll.ts buildOutfitSlowly), `combat poses` (battle-art.ts), `a faint`), the server's messages handled
+  (count, types, ms: net/town.ts), the textures made (GPU uploads: the TextureManager's addtexture), and in Chromium the
+  Long Animation Frames API's breakdown (the game's frame, layout and paint, its scripts); events round them (`lagEvent`:
+  a map entered, someone arriving or leaving, the server quiet over 1.2 s on a battle map then a burst of 5+ messages);
+  the header: build, browser, screen, cores, GPU (WEBGL_debug_renderer_info), area, others here. Time a new heavy job with
+  `lagMark` where it yields. The bot's side: `web/stalls.ts` `watchStalls` (server.ts: a 100 ms timer more than 250 ms
+  late = `[lag] the bot stalled N ms (n players on)` in its log; tested).
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use
   `--use-angle=metal` for real frame rates; SwiftShader under-reports.

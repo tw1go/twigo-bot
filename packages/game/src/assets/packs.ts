@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import index from 'virtual:packs';
+import { lagMark } from '../net/lag';
 
 // In a build the images come packed into a few sheets (scripts/packs.ts). The game still asks for an image by its
 // path under assets/: the loader fetches the sheet holding it, then every image on that sheet is cut back out
@@ -77,7 +78,9 @@ function unpack(textures: Phaser.Textures.TextureManager, page: number): void {
     for (const [file, [p]] of Object.entries(index!.files)) byPage.set(p, [...(byPage.get(p) ?? []), file]);
   }
   const img = textures.get(pageKey(page)).getSourceImage() as HTMLImageElement;
-  for (const file of byPage.get(page) ?? []) {
+  const t = performance.now();
+  const files = byPage.get(page) ?? [];
+  for (const file of files) {
     if (textures.exists(file)) continue;
     const [, x, y, w, h, ...trim] = index!.files[file];
     if (trim.length) trims.set(file, trim);
@@ -91,4 +94,5 @@ function unpack(textures: Phaser.Textures.TextureManager, page: number): void {
   }
   textures.remove(pageKey(page));
   queued.delete(page);
+  lagMark(`unpack ${index!.pages[page].split('/').pop()} (${files.length} images)`, performance.now() - t); // (the lag report)
 }

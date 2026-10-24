@@ -9,6 +9,7 @@ import { startHud } from './hud';
 import { checkVersionNow, newVersionReady, showVersion } from './ui/version';
 import { onPackMissing } from './assets/packs';
 import { startHomeScreenApp, tidyCaches } from './net/pwa';
+import { startLag } from './net/lag';
 import { isDesktopApp } from './net/platform';
 import { setTextSize, textSize } from './ui/text-size';
 
@@ -62,7 +63,7 @@ if (isDesktopApp()) void import('./net/desktop').then((d) => d.startDesktopApp()
 function startGame(): void {
   // The login corner stays out of the way while the game starts (the creator shows it; the town has its own HUD).
   document.getElementById('hud')?.setAttribute('hidden', '');
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
     backgroundColor: '#1a1b26',
@@ -74,4 +75,5 @@ function startGame(): void {
     loader: { imageLoadType: 'HTMLImageElement' },
     scene: [BootScene, TownScene, WardrobeScene, CreateScene, TownPreloadScene, HouseScene, ArenaScene], // the arena last: drawn over the town
   });
+  startLag(game); // (the lag report: net/lag.ts)
 }
