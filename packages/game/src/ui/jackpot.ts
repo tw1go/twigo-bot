@@ -141,7 +141,7 @@ export function showJackpot(): void {
   const body = [pot, draw, slots, chance, buttons, note, list, last, rules];
   const wrap = el('div', 'jp-body');
   wrap.append(...body);
-  const closed = showPopup({ title: 'Jackpot', body: [wrap], button: 'Close', celebrate: false, lights: true, sound: 'card' });
+  const closed = showPopup({ title: 'Jackpot', body: [wrap], button: 'Close', celebrate: false, lights: true, sound: 'card', closeX: true });
   followWallet(closed, () => !busy && void loadJackpot().then((j) => j && !busy && render(j)));
 
   // The countdown ticks; when the draw comes the booth reloads (the pot starts over).

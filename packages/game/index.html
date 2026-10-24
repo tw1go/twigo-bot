@@ -333,7 +333,7 @@
       @keyframes jt-pulse { 50% { box-shadow: 0 0 10px 2px rgba(248, 191, 39, 0.55); } }
       #town-hud .th-left .th-jackpot { margin-top: 12px; } /* phones: under the Kowens and shovels (ui/townhud.ts moves it) */
       @media (prefers-reduced-motion: reduce) { #town-hud .jt-bulb, #town-hud .jt-soon { animation: none; } }
-      body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the megaphone closes it again */
+      @media (min-height: 501px) { body:has(#reward .nw-body) #town-hud .th-corner { z-index: 5; } } /* over the dimmed town on non-landscape screens, so the megaphone closes it again */
       #settings { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.6); font: calc(15px * var(--text))/1.4 var(--ui-font); }
       #settings .st-card { position: relative; width: min(680px, calc(100vw - 32px)); box-sizing: border-box; padding: 20px 22px; border: 3px solid #7C2AE8; background: #fff; color: #1E1B3A; }
       /* Two columns of sections (ui/settings.ts: Audio, Display | Game, Privacy, Account), Keybinds and Credits across the
@@ -399,6 +399,12 @@
         #town-hud .th-buttons { flex-direction: column; gap: 6px; }
         #town-hud .th-settings { min-width: 40px; padding: 2px; line-height: 32px; }
         #town-hud .th-row { max-width: calc(100vw - 80px); }
+      }
+      @media (max-height: 500px) and (min-width: 561px) {
+        /* 2 buttons per row; settings and fullscreen go right-column only */
+        #town-hud .th-buttons { display: grid; grid-template-columns: repeat(2, auto); }
+        #town-hud .th-buttons .th-settings:not(.th-guide):not(.th-news):not(.th-fullscreen),
+        #town-hud .th-buttons .th-fullscreen { grid-column: 2; }
       }
       #reward { position: fixed; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 4, 12, 0.72); font: calc(15px * var(--text))/1.4 var(--ui-font); animation: rw-dim 0.2s ease-out; }
       #reward.rw-out { opacity: 0; transition: opacity 0.18s; }
@@ -843,6 +849,9 @@
       #reward .hw-rewards { list-style: none; margin: -6px 0 18px; padding: 0; display: grid; gap: 6px; justify-content: center; text-align: left; }
       #reward .hw-rewards li { display: flex; align-items: center; gap: 8px; font-weight: 600; }
       #reward .hw-rewards li > :first-child { flex: none; width: 16px; height: 16px; image-rendering: pixelated; background-size: contain; }
+      @media (max-height: 500px) {
+        #reward .hw-panel { flex: 1; min-height: 0; overflow-y: auto; margin-bottom: 0; }
+      }
       #chat .ch-event { color: #FDBA74; }
       #chat .ch-event img { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; image-rendering: pixelated; }
       #town-hud .th-events > .th-jackpot { width: auto; justify-self: stretch; justify-content: start; }
@@ -1409,7 +1418,7 @@
          all and Delete read under both; on phones one or the other (.reading), with Back. A fixed size, like News. */
       #reward .rw-card:has(.ml-body) { width: min(680px, calc(100vw - 32px)); }
       @media (min-width: 761px) and (min-height: 501px) { #reward:has(.ml-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
-      body:has(#reward .ml-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the mail button closes it again */
+      @media (min-height: 501px) { body:has(#reward .ml-body) #town-hud .th-corner { z-index: 5; } } /* over the dimmed town on non-landscape screens, so the mail button closes it again */
       #reward .ml-body { display: grid; grid-template-columns: 220px 1fr; grid-template-rows: min(400px, 52vh, calc(100vh - 360px)) auto auto; gap: 10px 12px; margin-bottom: 14px; text-align: left; font-size: calc(14px * var(--text)); color: #3D4256; }
       #reward .ml-list, #reward .ml-read { min-height: 0; overflow-x: hidden; overflow-y: auto; overflow-wrap: anywhere; }
       #reward .ml-list { display: flex; flex-direction: column; gap: 4px; }
@@ -1449,7 +1458,7 @@
          board's markdown classes); on phones the tabs become a scrolling row over the page. A fixed size, like News. */
       #reward .rw-card:has(.gd-body) { width: min(720px, calc(100vw - 32px)); }
       @media (min-width: 761px) and (min-height: 501px) { #reward:has(.gd-body) { padding-top: 96px; } } /* wide: clear of the jackpot counter and minimap above */
-      body:has(#reward .gd-body) #town-hud .th-corner { z-index: 5; } /* over the dimmed town, so the "?" closes it again */
+      @media (min-height: 501px) { body:has(#reward .gd-body) #town-hud .th-corner { z-index: 5; } } /* over the dimmed town on non-landscape screens, so the "?" closes it again */
       #reward .gd-body { display: grid; grid-template-columns: 184px 1fr; gap: 14px; height: min(440px, 58vh, calc(100vh - 330px)); margin-bottom: 14px; text-align: left; }
       #reward .gd-tabs { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding-right: 2px; }
       #reward .gd-tab { display: flex; flex: none; align-items: center; gap: 8px; padding: 6px 8px; border: 2px solid #E2DDF3; border-radius: 2px; background: #fff; color: #5B21B6; font: inherit; font-size: calc(14px * var(--text)); font-weight: 700; text-align: left; white-space: nowrap; }
@@ -1468,22 +1477,25 @@
         #reward .gd-tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 4px; }
         #reward .gd-tab { padding: 5px 8px; font-size: calc(13px * var(--text)); }
       }
-      /* Phones: News and the tutorial keep clear of the HUD's column of buttons on the right (raised over the dimmed
-         town); short (landscape) screens get the tabs at the side again, and every pop-up taller than the screen scrolls. */
-      @media (max-width: 560px), (max-height: 500px) {
+      /* Phones held upright: News and the tutorial keep clear of the HUD's column of buttons (raised over the dimmed town). */
+      @media (max-width: 560px) {
         #reward:has(.gd-body), #reward:has(.nw-body) { padding-right: 64px; }
         #reward .rw-card:has(.gd-body), #reward .rw-card:has(.nw-body) { width: min(720px, calc(100vw - 80px)); }
       }
+      /* Short (landscape) screens: card is a flex column — title and Close are pinned, only the body scrolls. */
       @media (max-height: 500px) {
-        #reward { align-items: flex-start; overflow-y: auto; padding-top: 8px; padding-bottom: 8px; }
+        #reward { align-items: flex-start; overflow-y: auto; overflow-x: hidden; padding-top: 8px; padding-bottom: 8px; }
         #reward > * { margin-block: auto; } /* centred, but scrolls from the top when taller than the screen */
-        #reward .rw-card { padding-top: 12px; padding-bottom: 10px; }
-        #reward .rw-title { margin-bottom: 6px; font-size: calc(18px * var(--text)); }
-        #reward .gd-body { height: calc(100vh - 150px); margin-bottom: 8px; }
-        #reward .nw-panel { height: calc(100vh - 236px); }
-        #reward:has(.gd-body), #reward:has(.nw-body) { padding-right: 168px; } /* clear of the minimap too */
-        #reward .rw-card:has(.gd-body), #reward .rw-card:has(.nw-body) { width: min(720px, calc(100vw - 184px)); }
-        #reward .nw-body { margin-bottom: 8px; }
+        #reward .rw-card { display: flex; flex-direction: column; padding-top: 12px; padding-bottom: 10px; max-height: calc(100vh - 16px); overflow-x: hidden; overflow-y: auto; } /* (a body that doesn't shrink, the bank's, the board's: the card scrolls, Close at its end) */
+        #reward .rw-title { flex-shrink: 0; margin-bottom: 6px; font-size: calc(18px * var(--text)); }
+        #reward .rw-ok { flex-shrink: 0; align-self: center; margin-top: 8px; }
+        /* Tutorial: the grid fills the remaining height; tabs column and content column scroll inside it */
+        #reward .gd-body { flex: 1; min-height: 0; height: auto; margin-bottom: 0; }
+        /* News: nw-body becomes a flex column so nw-panel grows and the note stays pinned at the bottom */
+        #reward .nw-body { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+        #reward .nw-panel { flex: 1; min-height: 0; height: auto; }
+        /* Mail: grid fills remaining height, first row (list/read) expands */
+        #reward .ml-body { flex: 1; min-height: 0; height: auto; grid-template-rows: 1fr auto auto; }
       }
       /* The Arena's menu (arena/menu.ts), in the reward box: two big modes, or the queue's wait. */
       /* The Arena's menu (arena/menu.ts, Popup theme 'arena'): a dark stone slab in bronze trim with corner rivets under a
@@ -1674,6 +1686,24 @@
       #reward .sh-buy:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 1px 0 #1E1B3A; }
       #reward .sh-buy:disabled { background: #F5F3FF; color: #7A8099; box-shadow: none; border-color: #E2DDF3; }
       #reward .sh-body .bk-note { height: 36px; min-height: 0; margin-top: 6px; overflow: hidden; }
+      @media (max-height: 500px) {
+        /* Smaller items; grid scrolls, detail stays pinned at the bottom */
+        #reward .sh-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 0; }
+        #reward .sh-grid { flex: 1; min-height: 0; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); height: auto; overflow-y: auto; }
+        #reward .sh-card { padding: 5px 3px 4px; gap: 1px; }
+        #reward .sh-name { min-height: 2em; font-size: calc(11px * var(--text)); }
+        /* Detail: shrink the character preview and art so the grid still has room */
+        #reward .sh-preview canvas { width: 80px; height: 80px; margin: -14px -5px -12px 0; }
+        #reward .sh-detail { flex-shrink: 0; height: auto; margin-top: 6px; padding-top: 6px; }
+        #reward .sh-detail-head { gap: 8px; }
+        #reward .sh-detail-head > .sh-art, #reward .sh-detail-head > .sh-set-art { width: 48px !important; height: 48px !important; }
+        #reward .sh-detail-head > .sh-art .it-pic,
+        #reward .sh-detail-head > .sh-set-art .it-pic { width: calc(100% - 4px) !important; height: calc(100% - 4px) !important; background-size: contain !important; }
+        #reward .sh-detail-name { font-size: calc(13px * var(--text)); }
+        #reward .sh-about { font-size: calc(10px * var(--text)); margin-top: 1px; }
+        #reward .sh-buy-row { margin-top: 6px; }
+        #reward .sh-body .bk-note { height: 20px; margin-top: 4px; }
+      }
       /* Bank (ui/bank.ts) */
       #reward .rw-card:has(.bk-body) { width: min(400px, calc(100vw - 32px)); }
       #reward .bk-body { margin-bottom: 14px; text-align: left; }
@@ -1745,6 +1775,19 @@
       #reward .jp-last { margin-top: 8px; font-size: calc(12px * var(--text)); color: #3D4256; }
       #reward .jp-last:empty { display: none; }
       #reward .jp-rules { margin-top: 4px; font-size: calc(11px * var(--text)); color: #7A8099; }
+      /* Jackpot landscape: shrink upper content so the player list shows ~3 rows without scrolling */
+      @media (max-height: 500px) {
+        #reward .jp-pot { margin: 0; }
+        #reward .jp-amount { font-size: calc(20px * var(--text)); }
+        #reward .jp-draw { margin-bottom: 6px; font-size: calc(12px * var(--text)); }
+        #reward .jp-tickets { margin-bottom: 4px; }
+        #reward .jp-ticket { width: 26px; height: 16px; }
+        #reward .jp-chance { margin-bottom: 4px; font-size: calc(12px * var(--text)); }
+        #reward .jp-buy { gap: 6px; }
+        #reward .jp-button { padding: 3px 10px 4px; min-width: 100px; box-shadow: inset 0 2px 0 #FFF59A, inset 0 -2px 0 #D99A0B, 0 2px 0 #1E1B3A; }
+        #reward .jp-note { min-height: 0; margin: 2px 0; font-size: calc(12px * var(--text)); }
+        #reward .jp-players { max-height: min(80px, 25vh); }
+      }
       #reward .lb-podium { display: flex; justify-content: center; align-items: flex-end; gap: 6px; margin: 4px 0 12px; }
       #reward .lb-spot { display: flex; flex-direction: column; align-items: center; width: 108px; }
       #reward .lb-spot-name { max-width: 104px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(13px * var(--text)); font-weight: 700; color: #1E1B3A; }
@@ -1808,7 +1851,7 @@
       #skill-book .sb-close:hover { color: #fff; }
       #skill-book .sb-stage { position: relative; flex: none; width: 300px; height: 176px; margin: 0 auto 8px; border: 2px solid #1E1B3A; line-height: 0; background: #0B0A1A; }
       #skill-book .sb-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #a9b1d6; font-size: calc(13px * var(--text)); line-height: 1; }
-      #skill-book .sb-rows { overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(183, 148, 246, 0.6) transparent; }
+      #skill-book .sb-rows { flex: 1; overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(183, 148, 246, 0.6) transparent; }
       #skill-book .sb-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
       #skill-book .sb-line { display: flex; justify-content: space-between; gap: 8px; }
       #skill-book .sb-desc { color: #a9b1d6; font-size: calc(12px * var(--text)); }
@@ -1883,7 +1926,11 @@
         body.hotbar-on #hotbar .hb-key { display: none; }
         body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
         body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
-        body.hotbar-on #skill-book:not([hidden]) { display: flex; }
+        body.hotbar-on #skill-book:not([hidden]) { display: flex; top: 8px; bottom: 52px; transform: none; max-height: none; }
+        body.hotbar-on #skill-book .sb-stage { height: 100px; overflow: hidden; }
+        body.hotbar-on #skill-book .sb-stage > * { transform: translateY(-76px); }
+        body.hotbar-on #skill-book .hb-note { display: none; }
+        body.hb-top-open.hotbar-on #skill-book:not([hidden]) { bottom: 90px; }
         body.hotbar-on #chat, body.hotbar-on #bag-button { bottom: 52px; }
         body.hotbar-on #toast { bottom: 52px; }
         /* Inventory: full-screen overlay from top to just above the hotbar */
@@ -1901,8 +1948,9 @@
         body.hb-top-open.hotbar-on #toast { bottom: 90px; }
         body.hb-top-open.hotbar-on #inventory:not([hidden]) { bottom: 98px; }
         body.hb-top-open.hotbar-on #equipment:not([hidden]) { max-height: calc(100vh - 106px); }
-        /* Settings: a scrollable overlay (its two columns are everywhere wider than a phone held upright) */
+        /* Settings: card scrolls internally */
         #settings { align-items: flex-start; overflow-y: auto; }
+        #settings .st-card { max-height: calc(100vh - 32px); overflow-y: auto; }
       }
       #quest-tracker { position: fixed; left: 12px; z-index: 2; width: 150px; box-sizing: border-box; padding: 6px 8px 8px; border-radius: 6px; background: rgba(10, 12, 24, 0.55); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); cursor: var(--cur-hand, pointer); }
       #quest-tracker[hidden] { display: none; }

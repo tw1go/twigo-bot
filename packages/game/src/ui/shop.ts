@@ -330,7 +330,7 @@ export function showShop(): void {
     if (res.ok && it.currency !== 'kusing') window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (and shovels)
   };
 
-  const closed = showPopup({ title: 'Sari-sari store', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const closed = showPopup({ title: 'Sari-sari store', body: [wrap], button: 'Close', celebrate: false, sound: 'door', closeX: true });
   followWallet(closed, () => !busy && void load().then((s) => s && !busy && ((shop = s), render())));
   // Kusing (loot picked up while it's open) and the combat bag's room follow the adventure state.
   const off = onAdventure((a) => {
