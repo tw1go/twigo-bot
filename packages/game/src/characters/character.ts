@@ -4,6 +4,7 @@ import { slice } from '../assets/packs';
 import { restLayers } from './kit-art';
 import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
+import { floatNumber } from '../world/damage-number';
 import type { Tile } from '../world/grid';
 import { type BigPiece, type Outfit, bigHat, bigTop, headTop, litHat, sheetKey } from './doll';
 import { FAINT_ANCHOR, FAINT_CELL, FAINT_DOWN_MS, FAINT_SHADOW, type FaintPose, faintOf, wantFaint } from './faint';
@@ -812,18 +813,7 @@ export class Character {
   hitNumber(text: string, mine: boolean, colour?: string): void {
     const word = !/^\d+$/.test(text) && !colour;
     const zoom = Math.max(1, this.zoom);
-    const t = this.scene.add
-      .text(Math.round(this.sprite.x), Math.round(this.headY - 6), text, {
-        fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
-        fontSize: `${word ? 10 : mine ? 13 : 11}px`,
-        color: colour ?? (word ? '#CBD5E1' : mine ? '#F87171' : '#FECACA'),
-        stroke: '#1E1B3A',
-        strokeThickness: 3,
-        resolution: Math.max(2, zoom * 2),
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(LABEL_DEPTH);
-    this.scene.tweens.add({ targets: t, y: t.y - 14, alpha: { from: 1, to: 0 }, duration: 800, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+    floatNumber(this.scene, this.sprite.x, this.headY - 6, text, { size: word ? 13 : mine ? 17 : 14, colour: colour ?? (word ? '#CBD5E1' : mine ? '#F87171' : '#FECACA'), depth: LABEL_DEPTH, zoom });
   }
 
   /**

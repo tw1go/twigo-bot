@@ -59,7 +59,11 @@ export interface CutsceneRun {
   done?: (skipped: boolean) => void;
 }
 
-const BAR_PX = 48;
+/** The black bars: each a share of the screen's height (12%: a cinema's widescreen on a 16:9 screen), 48 px at least. */
+const BAR_SHARE = 0.12;
+const BAR_MIN_PX = 48;
+/** How tall each bar is now (px). */
+export const cutsceneBarPx = () => Math.max(BAR_MIN_PX, Math.round(innerHeight * BAR_SHARE));
 const BAR_MS = 250;
 const BANNER_FADE_MS = 400;
 const EMOTE_MS = 800; // an NPC's wave, cheer or whistle: 8 frames at 10 fps
@@ -281,7 +285,7 @@ class Player {
       });
       bottom.append(skip);
       root.append(top, bottom);
-      root.style.setProperty('--bar', `${BAR_PX}px`);
+      root.style.setProperty('--bar', `max(${BAR_MIN_PX}px, ${BAR_SHARE * 100}vh)`);
       root.style.setProperty('--bar-ms', `${BAR_MS}ms`);
       document.body.append(root);
       this.root = root;
@@ -479,10 +483,11 @@ class Player {
     const list: CutsceneGhost[] = [...(s.ghosts ?? [])];
     if (s.around && s.count) {
       const taken = new Set(list.map((g) => `${g.at[0]},${g.at[1]}`));
+      const bar = cutsceneBarPx() / h.scene.cameras.main.zoom; // (never under a bar)
       const free = h.stallFronts({ col: s.around[0], row: s.around[1] }, s.radius ?? 8).filter((t) => {
         const x = (t.col - t.row) * 16;
         const y = (t.col + t.row + 1) * 8;
-        return !taken.has(`${t.col},${t.row}`) && x > view.x + 16 && x < view.right - 16 && y > view.y + 48 && y < view.bottom - 16;
+        return !taken.has(`${t.col},${t.row}`) && x > view.x + 16 && x < view.right - 16 && y > view.y + bar + 32 && y < view.bottom - bar;
       });
       Phaser.Utils.Array.Shuffle(free);
       for (const t of free.slice(0, s.count)) list.push({ at: [t.col, t.row], look: 'random', face: Math.random() < 0.5 ? 'se' : 'sw', do: Math.random() < 0.3 ? 'wave' : null });

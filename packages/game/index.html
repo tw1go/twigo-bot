@@ -902,9 +902,9 @@
       #npc-dialog .nd-action:active { transform: translateY(2px); }
       #npc-dialog .nd-portrait { background-repeat: no-repeat; background-position: 0 0; image-rendering: pixelated; }
       #npc-dialog .nd-words { min-width: 0; }
-      #npc-dialog .nd-name { font-size: calc(16px * var(--text)); font-weight: 700; color: #FFFFFF; line-height: 1.2; }
-      #npc-dialog .nd-title { font-size: calc(12px * var(--text)); color: #A9B1D6; line-height: 1.3; margin-bottom: 3px; }
-      #npc-dialog .nd-line { height: 46px; overflow: hidden; overflow-wrap: anywhere; } /* two rows at 17px */
+      #npc-dialog .nd-name { font-size: calc(16px * var(--text) * var(--nd-k, 1)); font-weight: 700; color: #FFFFFF; line-height: 1.2; }
+      #npc-dialog .nd-title { font-size: calc(12px * var(--text) * var(--nd-k, 1)); color: #A9B1D6; line-height: 1.3; margin-bottom: 3px; }
+      #npc-dialog .nd-line { height: calc(46px * var(--nd-k, 1)); overflow: hidden; overflow-wrap: anywhere; } /* two rows at 17px (× --nd-k: ui/npc-dialog.ts) */
       /* A cutscene's narrator: no name or portrait, the words in italics. */
       #npc-dialog.nd-narrator .nd-line { font-style: italic; color: #E5E7EB; }
       /* A cutscene (world/cutscene.ts): black bars slide in from the top and bottom, the HUD fades out, a Skip button at
@@ -922,7 +922,7 @@
       #cutscene .cs-banner-sub { margin-top: 8px; font: 400 calc(18px * var(--text)) var(--ui-font); color: #E5E7EB; }
       [data-cutscene-hidden] { opacity: 0 !important; pointer-events: none !important; transition: opacity 250ms ease !important; }
       body.cutscene-on #npc-dialog { z-index: 45; }
-      #npc-dialog .nd-more { position: absolute; right: 4px; bottom: 0; font-size: calc(11px * var(--text)); color: #F8BF27; visibility: hidden; }
+      #npc-dialog .nd-more { position: absolute; right: 4px; bottom: 0; font-size: calc(11px * var(--text) * var(--nd-k, 1)); color: #F8BF27; visibility: hidden; }
       #npc-dialog .nd-more.nd-ready { visibility: visible; animation: nd-blink 0.9s steps(1) infinite; }
       @keyframes nd-blink { 50% { opacity: 0; } }
       @keyframes nd-in { from { opacity: 0; transform: translateY(6px); } }
