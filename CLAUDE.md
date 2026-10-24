@@ -168,7 +168,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   layout), the Ice Machine's body on the Ice Plant's north wall (the layout's K, cols 40-49; `bossTile` and
   `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7); the B3 door opens as the
   closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
-  `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
+  `maps/palengke.json` the Entrance plaza's 85 more props (24 Oct 2026, the owner: two baletes, carts, umbrellas, Aling
+  Conching's tables and chairs, a vegetable and a fish seller, crates and sacks; the road, the NPCs, the Lantern Post and the
+  arrival kept clear, their tiles in `blocked`) and its front gate mirrored (`flip`, row 104: its arch along the map's
+  east edge, centred on the gate; it faced south across the road), the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
   asked, 23 Oct 2026), four times the mob zones' spawn points (doubled 23 Oct and again 24 Oct 2026: 160 a zone, the Fish Market's 112 on
   baha, spread out from the art folder's 40; copying the map over again loses them) with stats.json
