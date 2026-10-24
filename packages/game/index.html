@@ -1477,11 +1477,16 @@
         #reward .gd-tabs { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 0 0 4px; }
         #reward .gd-tab { padding: 5px 8px; font-size: calc(13px * var(--text)); }
       }
+      /* Phones held upright: News and the tutorial keep clear of the HUD's column of buttons (raised over the dimmed town). */
+      @media (max-width: 560px) {
+        #reward:has(.gd-body), #reward:has(.nw-body) { padding-right: 64px; }
+        #reward .rw-card:has(.gd-body), #reward .rw-card:has(.nw-body) { width: min(720px, calc(100vw - 80px)); }
+      }
       /* Short (landscape) screens: card is a flex column — title and Close are pinned, only the body scrolls. */
       @media (max-height: 500px) {
         #reward { align-items: flex-start; overflow-y: auto; overflow-x: hidden; padding-top: 8px; padding-bottom: 8px; }
         #reward > * { margin-block: auto; } /* centred, but scrolls from the top when taller than the screen */
-        #reward .rw-card { display: flex; flex-direction: column; padding-top: 12px; padding-bottom: 10px; max-height: calc(100vh - 16px); overflow: hidden; }
+        #reward .rw-card { display: flex; flex-direction: column; padding-top: 12px; padding-bottom: 10px; max-height: calc(100vh - 16px); overflow-x: hidden; overflow-y: auto; } /* (a body that doesn't shrink, the bank's, the board's: the card scrolls, Close at its end) */
         #reward .rw-title { flex-shrink: 0; margin-bottom: 6px; font-size: calc(18px * var(--text)); }
         #reward .rw-ok { flex-shrink: 0; align-self: center; margin-top: 8px; }
         /* Tutorial: the grid fills the remaining height; tabs column and content column scroll inside it */
@@ -1662,7 +1667,7 @@
       #reward .sh-price { display: flex; align-items: center; gap: 3px; font-size: calc(13px * var(--text)); font-weight: 700; color: #BA7F05; }
       #reward .sh-badge { position: absolute; top: 4px; right: 4px; padding: 0 4px; border: 2px solid #1E1B3A; background: #A3E635; font-size: calc(10px * var(--text)); font-weight: 700; line-height: 14px; color: #1E1B3A; }
       #reward .sh-have { background: #FCDA4A; }
-      #reward .sh-detail { height: 150px; margin-top: 12px; padding-top: 10px; border-top: 2px solid #E2DDF3; }
+      #reward .sh-detail { height: 150px; overflow-y: auto; margin-top: 12px; padding-top: 10px; border-top: 2px solid #E2DDF3; }
       #reward .sh-detail-head { display: flex; gap: 12px; align-items: flex-start; }
       #reward .sh-detail-name { font-size: calc(16px * var(--text)); font-weight: 700; color: #5B21B6; }
       #reward .sh-about { margin-top: 2px; font-size: calc(13px * var(--text)); color: #3D4256; }
