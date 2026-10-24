@@ -9,6 +9,7 @@ import { TEXT_SIZES, setTextSize, textSize } from './text-size';
 import { isDesktopApp } from '../net/platform';
 import { changePrivacy, privacy } from '../net/privacy';
 import { changeTesting, testing } from '../net/testing';
+import { lagCount, lagReport } from '../net/lag';
 
 // ⚙️ The settings box (from the Settings button under your profile): centred over the dimmed town, white in the
 // game's pixel frame like the reward pop-up. Audio (music and sound-effect volumes, mute), for members logging
@@ -273,7 +274,20 @@ function leave(): HTMLElement {
     playSound('click');
   });
   trail.append(trailBox, el('span', undefined, 'Show the quest trail'));
-  section.append(el('h3', 'st-heading', 'Game'), trail, out);
+  // The lag report (net/lag.ts): what ran in each slow frame, to paste to the developers.
+  const lag = el('button', 'st-button', `Copy lag report (${lagCount()} slow frame${lagCount() === 1 ? '' : 's'})`);
+  lag.addEventListener('click', () => {
+    playSound('click');
+    const text = lagReport();
+    void navigator.clipboard.writeText(text).then(
+      () => toast('Lag report copied: paste it to the developers.', 2600, 'good'),
+      () => {
+        console.log(text);
+        toast("Couldn't copy it here: it's in the browser's console.", 3000, 'bad');
+      },
+    );
+  });
+  section.append(el('h3', 'st-heading', 'Game'), trail, lag, el('p', 'st-note', 'Lag or stutter? Copy this right after it happens and send it to the developers.'), out);
   return section;
 }
 

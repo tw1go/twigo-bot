@@ -157,6 +157,7 @@ import { mountSkillPreview } from '../ui/skill-preview';
 import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
 import { NPC_PLACES } from '../world/npcs';
 import { pick, tileRandom } from '../world/rng';
+import { lagContext, lagEvent, lagReport } from '../net/lag';
 
 const MOVE_ACTIONS = ['up', 'left', 'down', 'right'];
 const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
@@ -643,6 +644,8 @@ export class TownScene extends Phaser.Scene {
     };
     // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
     this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
+    lagContext({ area: this.area, battle: this.battleMap });
+    lagEvent(`entered ${this.area}`);
     if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
     // Each skill's reach (classes/skill-hits.json `range`, the same table the bot uses).
     if (this.battleMap)
@@ -2421,6 +2424,7 @@ export class TownScene extends Phaser.Scene {
     }
     this.others.onChange = () => {
       online.update([me, ...this.others.players.map((p) => ({ name: p.nickname, title: p.title }))]);
+      lagContext({ players: this.others.players.length }); // (the lag report: net/lag.ts)
       this.target?.check((id) => this.others.has(id));
       this.inspect?.check((id) => this.others.has(id));
     };
@@ -5931,6 +5935,8 @@ function exposeDebug(scene: TownScene): void {
     /** Shows these buffs in the buff tray (none: the dev demo's). */
     buffs: (list?: ActiveBuff[]) => (list ? scene.buffTray?.set(list) : scene.demoBuffs()),
     /** The Slums' mobs: id, look, tile, facing, and where each is on the screen (for clicking one in tests). */
+    /** The lag report (net/lag.ts), as Settings → Game → Copy lag report copies it. */
+    lag: () => lagReport(),
     mobs: () =>
       scene.debugMobs?.list.map((m) => {
         const cam = scene.cameras.main;

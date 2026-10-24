@@ -1,4 +1,5 @@
 import type { Area } from '../assets/types';
+import { lagMessage } from './lag';
 import { townSocket } from './endpoints';
 import type { TownClientMessage, TownServerMessage } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
@@ -65,7 +66,10 @@ export class TownLink {
     };
     ws.onmessage = (e) => {
       try {
-        this.onMessage(JSON.parse(String(e.data)) as TownServerMessage);
+        const t = performance.now();
+        const m = JSON.parse(String(e.data)) as TownServerMessage;
+        this.onMessage(m);
+        lagMessage(m.t, performance.now() - t); // (the lag report: net/lag.ts)
       } catch {
         // not ours
       }

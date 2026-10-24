@@ -22,6 +22,7 @@ import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBe
 import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
+import { watchStalls } from './stalls.js';
 import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import { clearRankOf, golemBestOf, recordClear, recordGolem, topClears, topGolem } from './records.js';
@@ -1345,4 +1346,6 @@ export function startWebServer(client: Client): void {
   const welcomed = welcomeEveryone();
   if (welcomed) console.log(`[welcome] gave the welcome gift to ${welcomed} member(s) with a character`);
   server.listen(port, '127.0.0.1', () => console.log(`[web] room API on 127.0.0.1:${port}`));
+  // The bot freezing (every player's game with it): in the log with who was on, to match players' lag reports.
+  watchStalls((ms) => console.warn(`[lag] the bot stalled ${ms} ms (${town?.here().length ?? 0} players on)`));
 }
