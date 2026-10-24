@@ -1505,7 +1505,7 @@
       ],
       "hatPattern": "characters/layers/hat/char-hat-{item}-{anim}-{dir}.png",
       "hatClipPattern": "characters/layers/hat/char-hatclip-{item}-{anim}-{dir}.png",
-      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top. A hat with a hatCanvas entry (the Witch Hat's witch) is drawn from a bigger cell (size) with the doll's 32x48 cell at offset inside it: each frame goes at the doll's position less offset; its clip masks stay 32x48, zero offset. Hats without an entry are 32x48 at zero offset. Head cosmetics' hats draw over the hair like any other hat, so long hair still shows below them (Mac, 17 Oct 2026): the lamp clips it with its masks; the witch doesn't (hatClips false: the art folder's char-hatclip-witch-* masks are solid white, made when head cosmetics hid all the hair; its big hat drawn over the head covers what it should). The store's Sets' hats (19 Oct 2026: nightwing, emberimp, gremlin, gravecaller, sylph) are 64x64 hatCanvas hats with the doll's cell at (16, 16), fixed colours, no clip: drawn over the hair like the witch's.",
+      "hatNote": "Hats are recoloured on the MAIN ramp (DCDCF0,A8A8C8,74749A,48486A). beanie and cap ship a clip mask per frame: white pixels = hide the hair layer there (erase hair under the hat) before drawing the hat. ribbon has no clip mask and hides no hair. When a clipping hat is worn with 'buns', draw 'crop' instead (hatHairFallback). Cosmetic hats (cosmeticHats: item id → hat key, the Lamp-head Hat's lamp) are never in hats: the creator, the Parlor, randomOutfit and the NPCs never offer them; only wearing the item puts one on a look. fixedColourHats use their own colours (no hat ramp swap). litHats ship a hatlit sheet per frame (hatLitPattern: the glass and bulb only), drawn untinted over the doll at night with litGlow (fx) centred on the glass, offset px below the head's top. A hat with a hatCanvas entry (the Witch Hat's witch) is drawn from a bigger cell (size) with the doll's 32x48 cell at offset inside it: each frame goes at the doll's position less offset; its clip masks stay 32x48, zero offset. Hats without an entry are 32x48 at zero offset. Head cosmetics' hats draw over the hair like any other hat, so long hair still shows below them (Mac, 17 Oct 2026): the lamp clips it with its masks; the witch doesn't (hatClips false: the art folder's char-hatclip-witch-* masks are solid white, made when head cosmetics hid all the hair; its big hat drawn over the head covers what it should). The store's Sets' hats (19 Oct 2026: nightwing, emberimp, gremlin, gravecaller, sylph) are 64x64 hatCanvas hats with the doll's cell at (16, 16), fixed colours, no clip: drawn over the hair like the witch's. The 24 Oct 2026 Sets' hats (agent: the Midnight Agent's shades, following the face; visitor: the Little Visitor's glass dome) are 64x64 hatCanvas hats like those; the dome clips the hair (hatClips true: its char-hatclip-visitor-* masks keep only the short crop's shape, which the glass covers, so long hair never pokes out).",
       "hatHairFallback": {
         "buns": "crop"
       },
@@ -1519,7 +1519,9 @@
         "emberimp": false,
         "gremlin": false,
         "gravecaller": false,
-        "sylph": false
+        "sylph": false,
+        "agent": false,
+        "visitor": true
       },
       "cosmeticHats": {
         "lamp-hat": "lamp",
@@ -1529,7 +1531,9 @@
         "lilac-gremlin-head": "gremlin",
         "gravecaller-head": "gravecaller",
         "moonlit-sylph-head": "sylph",
-        "witch-hat": "witch"
+        "witch-hat": "witch",
+        "midnight-agent-head": "agent",
+        "little-visitor-head": "visitor"
       },
       "fixedColourHats": [
         "lamp",
@@ -1538,7 +1542,9 @@
         "emberimp",
         "gremlin",
         "gravecaller",
-        "sylph"
+        "sylph",
+        "agent",
+        "visitor"
       ],
       "hatLitPattern": "characters/layers/hat/char-hatlit-{item}-{anim}-{dir}.png",
       "litHats": [
@@ -1612,6 +1618,26 @@
             16,
             16
           ]
+        },
+        "agent": {
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            16,
+            16
+          ]
+        },
+        "visitor": {
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            16,
+            16
+          ]
         }
       },
       "cosmeticTops": {
@@ -1621,7 +1647,9 @@
         "lilac-gremlin-body": "gremlin",
         "gravecaller-body": "gravecaller",
         "moonlit-sylph-body": "sylph",
-        "witch-robe": "witchrobe"
+        "witch-robe": "witchrobe",
+        "midnight-agent-body": "agent",
+        "little-visitor-body": "visitor"
       },
       "cosmeticHidesBottom": [
         "witchrobe",
@@ -1629,12 +1657,16 @@
         "emberimp",
         "gremlin",
         "gravecaller",
-        "sylph"
+        "sylph",
+        "agent",
+        "visitor"
       ],
       "cosmeticHidesShoes": [
         "nightwing",
         "emberimp",
-        "gremlin"
+        "gremlin",
+        "agent",
+        "visitor"
       ],
       "topCanvas": {
         "nightwing": {
@@ -1686,6 +1718,26 @@
             16,
             16
           ]
+        },
+        "agent": {
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            16,
+            16
+          ]
+        },
+        "visitor": {
+          "size": [
+            64,
+            64
+          ],
+          "offset": [
+            16,
+            16
+          ]
         }
       },
       "topOverPattern": "characters/layers/top/char-topover-{item}-{anim}-{dir}.png",
@@ -1700,10 +1752,12 @@
         "gremlin",
         "gravecaller",
         "sylph",
-        "witchrobe"
+        "witchrobe",
+        "agent",
+        "visitor"
       ],
       "cosmeticPoseNote": "A top in cosmeticPoseTops has a sheet fitted to every combat pose (cosmeticPosePattern: each class, anim and direction of classes.list, 64x64 cells in the pose's own cell, the pose body's frame count; the art folder's cosmetics/custom/poses), drawn over the pose's body in place of its idle top and topover; its shoes and bottom stay hidden, the hair and hat are laid on as for any look.",
-      "cosmeticTopsNote": "Cosmetic tops (cosmeticTops: item id → top key, the Witch Robe's witchrobe): a worn body cosmetic draws characters/layers/top/char-top-<key>-* in the top's place in its own colours (no ramp swap); one in cosmeticHidesBottom covers the legs, so the bottom layer isn't drawn while it's worn (shoes still are). One in cosmeticHidesShoes draws its own feet, so the shoes aren't drawn either; one in topCanvas also has a topover sheet (topOverPattern, a bigger cell with the doll's at offset, like hatCanvas) holding only what reaches past the doll's cell (wings, tails, a wide hem), drawn whole just above the doll; one in cosmeticBodyClip ships a 32x48 mask per frame (bodyClipPattern): white = the body layer isn't drawn there (the Velvet Nightwing floats with no legs). Never in top: the creator, the Parlor, randomOutfit and the NPCs never offer them, and a saved look never holds one."
+      "cosmeticTopsNote": "Cosmetic tops (cosmeticTops: item id → top key, the Witch Robe's witchrobe): a worn body cosmetic draws characters/layers/top/char-top-<key>-* in the top's place in its own colours (no ramp swap); one in cosmeticHidesBottom covers the legs, so the bottom layer isn't drawn while it's worn (shoes still are). One in cosmeticHidesShoes draws its own feet, so the shoes aren't drawn either; one in topCanvas also has a topover sheet (topOverPattern, a bigger cell with the doll's at offset, like hatCanvas) holding only what reaches past the doll's cell (wings, tails, a wide hem), drawn whole just above the doll; one in cosmeticBodyClip ships a 32x48 mask per frame (bodyClipPattern): white = the body layer isn't drawn there (the Velvet Nightwing floats with no legs). Never in top: the creator, the Parlor, randomOutfit and the NPCs never offer them, and a saved look never holds one. The Midnight Agent's and Little Visitor's suits (agent, visitor) draw their own trousers and shoes; the visitor's shock gauntlets ride with the hands, in town and on every combat pose."
     },
     "colourPresets": {
       "violet": [

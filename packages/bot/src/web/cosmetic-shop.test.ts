@@ -5,7 +5,7 @@ import { type AdventureState, type Item, type ShopEvents, buyCosmetic, cosmeticW
 import { loadHalloween } from './halloween.js';
 import { loadItemData } from './stats-data.js';
 
-// The sari-sari store's Cosmetics tab (shared cosmetic-shop.ts; CONTEXT.md Cosmetic, Set): the five Sets' ten pieces and
+// The sari-sari store's Cosmetics tab (shared cosmetic-shop.ts; CONTEXT.md Cosmetic, Set): the seven Sets' fourteen pieces and
 // their art on the doll (every animation and direction) and on every combat pose, prices from stats.json cosmeticShop, the Witch Hat and Robe only
 // during Halloween, one of each at a time, and a Set for less than its two pieces.
 
@@ -19,6 +19,8 @@ const W = M.characters.wardrobe as {
   cosmeticHats: Record<string, string>;
   cosmeticTops: Record<string, string>;
   hatPattern: string;
+  hatClipPattern: string;
+  hatClips: Record<string, boolean>;
   topOverPattern: string;
   bodyClipPattern: string;
   pattern: string;
@@ -27,7 +29,7 @@ const W = M.characters.wardrobe as {
   hatCanvas: Record<string, unknown>;
 };
 const R = (D.stats as unknown as { cosmeticShop: { headPrice: number; bodyPrice: number; setPrice: number } }).cosmeticShop;
-const SETS = ['velvet-nightwing', 'ember-imp', 'lilac-gremlin', 'gravecaller', 'moonlit-sylph'];
+const SETS = ['velvet-nightwing', 'ember-imp', 'lilac-gremlin', 'gravecaller', 'moonlit-sylph', 'midnight-agent', 'little-visitor'];
 const OFF: ShopEvents = { halloween: { on: false, window: H } };
 const ON: ShopEvents = { halloween: { on: true, window: H } };
 const NOW = Date.parse('2026-10-20T12:00:00+08:00');
@@ -41,7 +43,7 @@ const wallet = (have: number) => {
 };
 const item = (defId: string): Item => newItem(D.stats, D.defs.get(defId)!, uid());
 
-test('the five Sets: ten cosmetic pieces with their icons, and every hat, top, topover and body clip sheet on the doll', () => {
+test('the seven Sets: fourteen cosmetic pieces with their icons, and every hat, hair clip, top, topover and body clip sheet on the doll', () => {
   const anims = Object.entries(M.characters.animations).flatMap(([anim, a]) => (a.directions ?? M.characters.directions).map((dir) => [anim, dir] as const));
   assert.equal(anims.length, 44, '(anim, dir) pairs');
   const fill = (pattern: string, vars: Record<string, string>) => pattern.replace(/\{(\w+)\}/g, (_, k: string) => vars[k]);
@@ -60,7 +62,7 @@ test('the five Sets: ten cosmetic pieces with their icons, and every hat, top, t
       assert.ok(key, `${id} in the manifest`);
       for (const [anim, dir] of anims) {
         const files = place === 'head'
-          ? [fill(W.hatPattern, { item: key, anim, dir })]
+          ? [fill(W.hatPattern, { item: key, anim, dir }), ...(W.hatClips[key] ? [fill(W.hatClipPattern, { item: key, anim, dir })] : [])]
           : [fill(W.pattern, { slot: 'top', item: key, anim, dir }), fill(W.topOverPattern, { item: key, anim, dir }), ...(W.cosmeticBodyClip.includes(key) ? [fill(W.bodyClipPattern, { item: key, anim, dir })] : [])];
         for (const f of files) assert.ok(existsSync(asset(f)), f);
       }
@@ -69,13 +71,13 @@ test('the five Sets: ten cosmetic pieces with their icons, and every hat, top, t
   }
 });
 
-test('pose art: every cosmeticPoseTops key (the five Sets\' tops and the Witch Robe) has a sheet for each class, combat pose and direction, frame for frame', () => {
+test('pose art: every cosmeticPoseTops key (the seven Sets\' tops and the Witch Robe) has a sheet for each class, combat pose and direction, frame for frame', () => {
   const C = JSON.parse(readFileSync(asset('manifest.json'), 'utf8')) as {
     characters: { wardrobe: { cosmeticPoseTops: string[]; cosmeticPosePattern: string; cosmeticTops: Record<string, string> } };
     classes: { list: Record<string, { anims: Record<string, { dirs: Record<string, { body: string }> }> }> };
   };
   const { cosmeticPoseTops: keys, cosmeticPosePattern: pattern, cosmeticTops } = C.characters.wardrobe;
-  assert.deepEqual([...keys].sort(), [...SETS.map((s) => cosmeticTops[`${s}-body`]), cosmeticTops['witch-robe']].sort(), "the five Sets' tops and the Witch Robe");
+  assert.deepEqual([...keys].sort(), [...SETS.map((s) => cosmeticTops[`${s}-body`]), cosmeticTops['witch-robe']].sort(), "the seven Sets' tops and the Witch Robe");
   /** A PNG's width and height (its IHDR). */
   const size = (file: string) => {
     const b = readFileSync(asset(file));
@@ -93,7 +95,7 @@ test('pose art: every cosmeticPoseTops key (the five Sets\' tops and the Witch R
           n++;
         }
       }
-  assert.equal(n, 2640); // (440 each)
+  assert.equal(n, 3520); // (440 each)
 });
 
 test('prices come from stats.json cosmeticShop: a Head, a Body, a Set', () => {
