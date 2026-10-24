@@ -168,7 +168,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   layout), the Ice Machine's body on the Ice Plant's north wall (the layout's K, cols 40-49; `bossTile` and
   `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7); the B3 door opens as the
   closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
-  `maps/palengke.json` the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
+  `maps/palengke.json` the Entrance plaza's 85 more props (24 Oct 2026, the owner: two baletes, carts, umbrellas, Aling
+  Conching's tables and chairs, a vegetable and a fish seller, crates and sacks; the road, the NPCs, the Lantern Post and the
+  arrival kept clear, their tiles in `blocked`) and its front gate mirrored (`flip`, row 104: its arch along the map's
+  east edge, centred on the gate; it faced south across the road), the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
   footprint 4 x 4 at (269,108) keeping its front corner, its 16 tiles blocked, a newspaper under it removed; the owner
   asked, 23 Oct 2026), four times the mob zones' spawn points (doubled 23 Oct and again 24 Oct 2026: 160 a zone, the Fish Market's 112 on
   baha, spread out from the art folder's 40; copying the map over again loses them) with stats.json
@@ -215,7 +218,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
   with the picture).
 - Cutscenes (23 Oct 2026): `quests/cutscenes.json` (the art folder's docs/cutscenes/cutscenes.json: its words in
-  English, palengke-gate's `whenNotDone` palengke-01, huling-suki's `afterStep` bell, town-arrival's second camera on the
+  English, palengke-gate's `whenNotDone` palengke-01 and its walk to [264, 98] (beside Aling Conching: [264, 100] stood you in front of her), huling-suki's `afterStep` bell, town-arrival's second camera on the
   Tanod, `rules.map`, its `note` says so), the manifest's `quests.cutscenes`; `maps/palengke.json` the 58 more string
   lights of the art folder's docs/cutscenes/string-lights.json (copying the map over again loses them).
 - Lantern Posts: `items/items.json` `return-lantern` (its `shop: travel`, `price`, `useAt`; `useAt` on `warren-ticket` too),
@@ -358,7 +361,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (bot `web/beta.ts`, tested: username 2–32, a class from the list or "Not sure yet", note ≤ 500, 5 an hour per address;
   one row per username or logged-in Discord id, a repeat updates it; schema v14 `beta_applications`, the IP only as a
   salted hash (kv 'beta-salt'); an embed in `BETA_APPLICATIONS_CHANNEL_ID` if set, no pings); `/me` carries `username`
-  to prefill it. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
+  to prefill it. Browsers that opened twigo.dev before the front page still had Caddy's old `redir / /play/ 308` cached
+  (a permanent redirect, followed without asking): the game asks for `/` once per browser with `cache: 'reload'`
+  (net/pwa.ts `forgetOldFrontRedirect`, localStorage `mk_front_fixed`), which puts the front page in its place. CMS tab Beta applications (`GET /api/beta`, `POST /api/beta/status`, `GET /api/beta.csv`). Dev:
   http://localhost:5173/play/front.html (the apply form needs a bot on 8787: Vite proxies `/api`).
 - Ways to play (CONTEXT.md): the website (/play/ in a tab, as ever), the home screen app and the desktop app. Home screen
   app (a PWA; `vite.config.ts` homeScreenApp, vite-plugin-pwa, the game page only: front.html loses the manifest link):
@@ -1141,7 +1146,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   docs/cutscenes/cutscenes.json in English (manifest `quests.cutscenes`, types `assets/cutscenes.ts`; its `steps` and
   `rules` say what each step does), 11 scenes at the story's beats, each on its own `map`): `world/cutscene.ts` plays one
   (`playCutscene`: its steps in order, each a promise; bars (each 12% of the screen height, 48 px at least: `cutsceneBarPx`; the dialog box sits just over the bottom one, measured) in over 250 ms and the HUD faded (`[data-cutscene-hidden]`),
-  the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut), the dialog box (`openNpcDialog`; `narrator` = no name or
+  the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut; a camera step on someone, you or an NPC, then follows them as they
+  walk until the next camera step: `startFollow`, let go as it ends), the dialog box (`openNpcDialog`; `narrator` = no name or
   portrait, italics), bubbles, walks / place / face / anims on the NPCs (`CutsceneCast` in world/npc-life.ts: the town's
   NpcLife and the Old Market's PalengkeNpcs, `actor` / `home` / `hold` / `talker`; held, an NPC's routine waits; let go,
   the Old Market's walk home) and on you (`walkTo` = a click's walk; `pose`: your class's ready stance, built for the

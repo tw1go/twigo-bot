@@ -8,7 +8,7 @@ import { HouseScene } from './scenes/HouseScene';
 import { startHud } from './hud';
 import { checkVersionNow, newVersionReady, showVersion } from './ui/version';
 import { onPackMissing } from './assets/packs';
-import { startHomeScreenApp, tidyCaches } from './net/pwa';
+import { forgetOldFrontRedirect, startHomeScreenApp, tidyCaches } from './net/pwa';
 import { startLag } from './net/lag';
 import { isDesktopApp } from './net/platform';
 import { setTextSize, textSize } from './ui/text-size';
@@ -58,6 +58,7 @@ void startHud(document.getElementById('hud')!);
 showVersion();
 onPackMissing(checkVersionNow); // (art this build can't find any more: a newer one has replaced it)
 startHomeScreenApp(newVersionReady); // the home screen app's service worker (the website only), and the install prompt
+forgetOldFrontRedirect(); // (an old permanent redirect from twigo.dev/ to /play/ some browsers still keep)
 if (isDesktopApp()) void import('./net/desktop').then((d) => d.startDesktopApp()); // (its own chunk: never on the website)
 
 function startGame(): void {

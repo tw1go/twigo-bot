@@ -15,7 +15,8 @@ import { type WorldObjects, characterDepth } from './objects';
 
 // 🎬 A cutscene (CONTEXT.md Cutscene; quests/cutscenes.json, its steps doc): its steps played in order on the map you're
 // on, each a promise (a `walk` with `wait: false` doesn't hold the next). Black bars slide in and the HUD fades; the
-// camera stops following you and goes where the scene says; the scene's NPCs leave their routines (CutsceneCast) and
+// camera stops following you and goes where the scene says (a camera step on someone keeps following them as they
+// walk, until the next camera step); the scene's NPCs leave their routines (CutsceneCast) and
 // you can't move, attack or be hit (the scene sends the town `cutscene` on). Esc or the Skip button ends it at once
 // with its end state: every quest line it stands for counted as heard, the lights it turns on on. Every scene ends
 // the same way: bars off, the camera on you at your zoom, the HUD back, the NPCs let go.
@@ -70,6 +71,8 @@ const EMOTE_MS = 800; // an NPC's wave, cheer or whistle: 8 frames at 10 fps
 const GHOST = { tint: 0xbfd4ff, alpha: 0.35, inMs: 600, outMs: 900, bob: 1 };
 /** Body height: the camera looks at a tile this far above its ground (px). */
 const BODY_PX = 16;
+/** How quickly the camera catches up with someone it follows (Phaser's lerp, 0-1). */
+const FOLLOW_LERP = 0.12;
 /** The night navy fades go to (#111827). */
 const NAVY: [number, number, number] = [17, 24, 39];
 /** The HUD that fades out while a scene plays. */
@@ -189,6 +192,10 @@ class Player {
     if (s.camera !== undefined) {
       const to = this.point(s.camera, true);
       if (!to) return;
+      // (A camera on someone keeps following them as they walk, until the next camera step.)
+      cam.stopFollow();
+      const who = !Array.isArray(s.camera) && s.camera !== 'home' ? this.actor(s.camera) : null;
+      const follow = () => who && cam.startFollow(who.sprite, true, FOLLOW_LERP, FOLLOW_LERP, 0, BODY_PX);
       const ms = s.ms ?? 0;
       const zoom = s.zoom ?? null;
       if (!ms) {
@@ -202,6 +209,7 @@ class Player {
           ]),
         );
       }
+      follow();
       if (s.hold) await this.wait(s.hold);
       return;
     }
@@ -557,6 +565,7 @@ class Player {
     if (this.faded || this.skipped) cam.resetFX();
     cam.panEffect.reset();
     cam.zoomEffect.reset();
+    cam.stopFollow(); // (the scene's own follow takes over)
     cam.setZoom(h.zoom());
     h.follow(true);
     for (const id of this.held) h.cast?.hold(id, false);
