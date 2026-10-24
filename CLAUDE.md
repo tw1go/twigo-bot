@@ -746,7 +746,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
   rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
   hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
-  and is back as above. The game shows damage numbers (gold for a crit; "Blocked" off a shell; "Miss"), an HP bar
+  and is back as above. The game shows damage numbers (`world/damage-number.ts` `floatNumber`, 16 world px, players' 14 / yours 17; a crit gold at 22,
+  dropping in big and slamming down with a gold ring, a shake, then rising: reduced motion just big and gold; "Blocked" off a shell; "Miss"), an HP bar
   of its `maxHp` over it while it's your target and for `hpBar.hideAfterSeconds` (5 s, `mobBarMs`) after each hit (`Mob.hitAt`), in the target's info bar, its death pose then a fade out. A mob's attack
   (`Mobs.strike`): turned the server's way, its attack pose, hooks `onAttackFrame` (mobs.json attackFrame) and `onHit` as
   it lands (TownScene: the number over them, red flash, and the Bag's slow badge + cold ring for `slow` ms, `showSlowed`), `onDeath`;
@@ -1139,7 +1140,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Cutscenes (CONTEXT.md Cutscene, Watch again; 23 Oct 2026; `quests/cutscenes.json` = the art folder's
   docs/cutscenes/cutscenes.json in English (manifest `quests.cutscenes`, types `assets/cutscenes.ts`; its `steps` and
   `rules` say what each step does), 11 scenes at the story's beats, each on its own `map`): `world/cutscene.ts` plays one
-  (`playCutscene`: its steps in order, each a promise; bars 48 px in over 250 ms and the HUD faded (`[data-cutscene-hidden]`),
+  (`playCutscene`: its steps in order, each a promise; bars (each 12% of the screen height, 48 px at least: `cutsceneBarPx`; the dialog box sits just over the bottom one, measured) in over 250 ms and the HUD faded (`[data-cutscene-hidden]`),
   the camera off you (`cam.pan`/`zoomTo`, Sine.easeInOut), the dialog box (`openNpcDialog`; `narrator` = no name or
   portrait, italics), bubbles, walks / place / face / anims on the NPCs (`CutsceneCast` in world/npc-life.ts: the town's
   NpcLife and the Old Market's PalengkeNpcs, `actor` / `home` / `hold` / `talker`; held, an NPC's routine waits; let go,
@@ -1210,7 +1211,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   a whistle heard within 2 tiles, wander, still; face the nearest player, Nena the plaza; gossip bubbles every 30–60 s
   near you, one at a time; lines from `npcs/npc-dialogue.json`, a shuffled deck per NPC). Click → walk over →
   `ui/npc-dialog.ts`: one line per talk (click/Space/E finishes it, then closes; Esc, outside or 4 tiles away close),
-  chat-window nine-slice at 2×, 320 art px, kept clear of HUD panels; the portrait at 3× on the top-right corner,
+  chat-window nine-slice at 2×, 320 art px (on a computer's screen, 1100 × 700 or more: 3×, its words 1.4×, the portrait 4×:
+  `SIZES`), kept clear of HUD panels; the portrait at 3× on the top-right corner,
   blinking, mirrored for 'sw'. Sounds (`audio/sound.ts`): talk blips (`playVoice`, sfx/npc-talk-a…u, a rate per NPC
   ±4%, every 3rd letter) and the gossip murmur (ambient/npc-murmur, one loop, `hearGossip`: 0.10 at 1 tile to 0 at 6
   from the nearest gossiping Aling, ducked to 0.03 under a dialog). Plates show the name only. Debug: `__town.npcs()`,

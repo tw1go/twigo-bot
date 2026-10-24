@@ -2,9 +2,10 @@ import { matches } from './keybinds';
 import { playVoice } from '../audio/sound';
 
 // 💬 Talking to an NPC (world/npc-life.ts): a box at the bottom, in the chat window's nine-slice (manifest
-// ui.chatWindow) at the HUD's scale (2 screen px per art px), 320 art px wide (narrower on small screens): centred
+// ui.chatWindow) at 2 screen px per art px (3 on a computer's screen, its words 1.4x: SIZES), 320 art px wide (narrower
+// on small screens): centred
 // when it fits, else slid along or lifted as little as it takes never to cover a HUD panel (the hotbar, chat, bag…).
-// The NPC's portrait in the item frame (ui.inventory.itemFrame) at 3× (mirrored for some: world/npcs.ts) stands on the box's top-right corner (just over
+// The NPC's portrait in the item frame (ui.inventory.itemFrame) at 3× (4× on a computer's screen; mirrored for some: world/npcs.ts) stands on the box's top-right corner (just over
 // its edge), blinking now and then (its frame 1 for a moment); the box holds the name, the characteristic, and the line,
 // typed out letter by letter in their voice (a soft blip every few letters, pitched per NPC). One line per talk: a
 // click on the box, a tap, Space or E shows the whole line, and once it's shown closes the box (click the NPC again
@@ -39,18 +40,21 @@ export interface NpcTalk {
   narrator?: boolean;
 }
 
-const PX = 2; // screen px per art px, as the HUD's frames
 const WIDTH = 320; // art px
 const PORTRAIT = 32; // art px
-const PORTRAIT_PX = 3; // screen px per art px for the portrait and its frame
-const PORTRAIT_OVERLAP = 30; // screen px of the portrait's frame over the box's top edge
+/** How big the box draws: on a phone or small window 2 screen px per art px (the HUD's frames), the portrait 3, the
+ *  line at 17 px; on a computer's screen (BIG) a size up, so the words read from across the room. `k` scales the text. */
+const SIZES = { small: { px: 2, portrait: 3, overlap: 30, k: 1 }, big: { px: 3, portrait: 4, overlap: 40, k: 1.4 } };
+const BIG = { width: 1100, height: 700 }; // screen px, at least
+const sizeNow = () => (innerWidth >= BIG.width && innerHeight >= BIG.height ? SIZES.big : SIZES.small);
 const CPS = 40; // letters typed a second
 const BLIP_EVERY = 3; // letters (not spaces or punctuation) per voice blip
-const TEXT_PX = 17; // the line's text size, shrunk for a line that wouldn't fit two rows
+const TEXT_PX = 17; // the line's text size (× the size's k), shrunk for a line that wouldn't fit two rows
 const MIN_TEXT_PX = 11; // every line fits two rows at 17 px on a computer; on a phone the longest need 11
 const BLINK_MS = 150;
 const MARGIN = 12; // from the screen's edges and from HUD panels
-const CUTSCENE_BAR = 48; // a cutscene's bottom bar (world/cutscene.ts): the box sits over it
+/** A cutscene's bottom bar (world/cutscene.ts): the box sits over it. Measured, so it follows the bar's size. */
+const cutsceneBar = () => document.querySelector('#cutscene .cs-bottom')?.getBoundingClientRect().height ?? 48;
 /** HUD panels the box keeps clear of (whichever are showing): the hotbar, so it sits just above it, and what you use.
  *  Of the chat only its typing row: the see-through log above it (it fades when quiet) may be covered for a line, as
  *  may the stay box and the system feed; dodging those lifted it to the middle of a small window, off centre. */
@@ -70,6 +74,9 @@ export function setNpcDialogArt(a: Art): void {
 let open: { id: string; close: () => void } | null = null;
 
 /** The NPC whose box is open, if any. */
+/** The open box's text scale (its size's k). */
+let textK = 1;
+
 export const talkingTo = (): string | null => open?.id ?? null;
 
 export function closeNpcDialog(): void {
@@ -83,7 +90,11 @@ export function openNpcDialog(t: NpcTalk): void {
   root.id = 'npc-dialog';
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
+  const S = sizeNow();
+  const [PX, PORTRAIT_PX, PORTRAIT_OVERLAP] = [S.px, S.portrait, S.overlap];
+  textK = S.k;
   root.style.setProperty('--px', String(PX));
+  root.style.setProperty('--nd-k', String(S.k));
   root.style.width = `min(${WIDTH * PX}px, calc(100vw - ${MARGIN * 2}px))`;
   if (t.narrator) root.classList.add('nd-narrator');
   if (art.box) {
@@ -185,7 +196,7 @@ export function openNpcDialog(t: NpcTalk): void {
     const { width, height } = root.getBoundingClientRect();
     // (A cutscene's faded HUD isn't in the way; its bottom bar is: the box sits just over it.)
     const panels = HUD.map((sel) => document.querySelector(sel)).filter((e) => e && !e.closest('[data-cutscene-hidden]')).map((e) => e!.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
-    const floor = document.body.classList.contains('cutscene-on') ? CUTSCENE_BAR + MARGIN / 2 : MARGIN;
+    const floor = document.body.classList.contains('cutscene-on') ? cutsceneBar() + MARGIN / 2 : MARGIN;
     const clamp = (x: number) => Math.max(MARGIN, Math.min(innerWidth - MARGIN - width, x));
     const centre = (innerWidth - width) / 2;
     // Centred, or flush beside a panel on either side.
@@ -276,7 +287,7 @@ export function openNpcDialog(t: NpcTalk): void {
 /** The line's text size: the largest (up to TEXT_PX) at which it fits two rows of the box. */
 function fit(line: HTMLElement, text: string): void {
   line.textContent = text;
-  for (let px = TEXT_PX; px >= MIN_TEXT_PX; px--) {
+  for (let px = Math.round(TEXT_PX * textK); px >= MIN_TEXT_PX; px--) {
     line.style.fontSize = `${px}px`;
     if (line.scrollHeight <= line.clientHeight + 1) return;
   }

@@ -13,6 +13,7 @@ import { type WorldObjects, characterDepth } from './objects';
 import { BuildingLabel } from '../ui/labels';
 import { RARITY_COLOUR } from '../ui/item-art';
 import { LABEL_DEPTH } from './depth';
+import { floatNumber } from './damage-number';
 import { DEBUFF_MARKS, STUN_MARK, tintOf } from '../combat/utility-looks';
 
 // Mini bosses (classes/leveling.json; each zone's `miniBosses` spots in the map): their mob's art at miniBoss.scale (its
@@ -1328,18 +1329,8 @@ export class Mobs {
   private number(m: Mob, text: string, crit: boolean, colour?: string): void {
     const word = !/^\d+$/.test(text);
     const x = m.sprite.x + (m.radius ? Phaser.Math.Between(-24, 24) * (m.data?.scale ?? 1) : 0);
-    const t = this.scene.add
-      .text(Math.round(x), Math.round(this.top(m) - 4), text, {
-        fontFamily: '"Mk Numbers", "Pixelify Sans", monospace',
-        fontSize: `${crit ? 16 : word ? 10 : 12}px`,
-        color: colour ?? (crit ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF'),
-        stroke: '#1E1B3A',
-        strokeThickness: 3,
-        resolution: Math.max(2, this.zoom * 2),
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(LABEL_DEPTH);
-    this.scene.tweens.add({ targets: t, y: t.y - 14, alpha: { from: 1, to: 0 }, duration: 800, ease: 'Quad.easeOut', onComplete: () => t.destroy() });
+    const big = crit && !word; // (a crit lands with a slam: world/damage-number.ts)
+    floatNumber(this.scene, x, this.top(m) - 4, text, { size: big ? 22 : word ? 13 : 16, colour: colour ?? (big ? '#FCDA4A' : word ? '#CBD5E1' : '#FFFFFF'), crit: big, depth: LABEL_DEPTH, zoom: this.zoom });
   }
 
   private server = false;
