@@ -8,7 +8,7 @@ import type { Outfit } from '../characters/doll.ts';
 export const content = {
   head: {
     title: 'Mikazuki | twigo',
-    description: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
+    description: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums and the Old Market.',
     url: 'https://twigo.dev/',
     image: 'https://twigo.dev/play/mikazuki-og-1200x630.png',
     imageAlt: 'The Mikazuki logo over the night-time pixel town',
@@ -18,9 +18,8 @@ export const content = {
     brand: 'MIKAZUKI',
     links: [
       { href: '#classes', label: 'Classes' },
-      { href: '#slums', label: 'The Slums' },
-      { href: '#boss', label: 'Field boss' },
-      { href: '#warrens', label: 'Dungeon' },
+      { href: '#maps', label: 'The maps' },
+      { href: '#warrens', label: 'Dungeons' },
       { href: '#town', label: 'Town life' },
       { href: '#get', label: 'Get the game' },
     ],
@@ -31,7 +30,7 @@ export const content = {
     badge: 'Close beta',
     /** The logo's alt text (the hero shows the logo: render.ts). */
     title: 'Mikazuki',
-    tagline: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums.',
+    tagline: 'A cosy night-time pixel town. Hang out with friends, then grab a slingshot and clear the Slums and the Old Market.',
     apply: 'Apply to close beta',
     play: 'Play',
     madeBy: 'a game made by',
@@ -61,10 +60,10 @@ export const content = {
   about: {
     eyebrow: 'What is Mikazuki',
     title: 'A town that stays up late',
-    lede: 'Mikazuki is a multiplayer town you can play on your computer or your phone. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive.',
+    lede: 'Mikazuki is a multiplayer town you can play on your computer or your phone. Walk the plaza under the lamps, dress your character, play a round in the Arena, and when you are ready, head out to the Slums where the junk has come alive, then on to the Old Market, where the wares have too.',
     pillars: [
       { title: 'Hang out', text: 'Chat, wave and sit by the fountain. Dress up at the Parlor and build a house of your own.' },
-      { title: 'Fight the junk', text: 'Choose one of 6 classes, level to 20 with the Tanod’s quests, and hunt rare loot with blue and orange affixes.' },
+      { title: 'Fight the junk', text: 'Choose one of 6 classes, level to {levelCap} through two maps of quests, and hunt rare loot with blue and orange affixes.' },
       { title: 'Play the town', text: 'Jack en poy in the Arena, flip coins at Kara y Krus, and turn rogue and break into a neighbour’s house.' },
     ],
   },
@@ -143,58 +142,59 @@ export const content = {
     ] satisfies { id: string; role: string; line: string; skills: { name: string; note: string }[]; look: Outfit }[],
   },
 
-  slums: {
-    eyebrow: 'First map: the Slums',
+  /** Every map in one section: what they're like, a few of their mobs and field bosses as a taste (never the full list:
+   *  more keep coming), so the page doesn't grow with each one. `scale`: whole-number; sprites cropped to their art
+   *  (scripts/front-page.ts). */
+  maps: {
+    eyebrow: 'The maps',
     title: 'The junk came alive',
-    lede: 'The people of the Slums are friendly. Their rubbish is not. Six kinds of junk roam the alleys, each with its own fixed level and its own way of fighting.',
-    /** `variant`: which colour of it (manifest mobs.<id>.variants); `scale`: whole-number size on its card. */
+    lede: 'Step out of town and the trouble starts. Every map has its own kinds of mob, each at its own level with its own trick: packs that come for you together, shells that block, umbrellas that shield, tubs that hide in the floodwater. Lv 1 to {levelCap} so far.',
+    points: [
+      { title: 'Every mob has a trick', text: 'Learn when its guard drops, where its tears land and how far it throws, and the fight gets easier.' },
+      { title: 'Named mini bosses', text: '{miniBosses} of them roam the maps, bigger and tougher than their kind, with better loot.' },
+      { title: 'Field bosses', text: 'Each map has one that wakes every few hours for everyone there. Deal 5% of its HP and a drop is yours.' },
+    ],
     mobs: [
-      { id: 'tin-can', name: 'Tin Can', variant: '', scale: 3, text: 'Hops about minding its own business, until you hit it. Then it snaps its jagged lid.' },
-      { id: 'bottle-caps', name: 'Bottle Caps', variant: 'red', scale: 3, text: 'Roll in packs of 3 to 5. Hit one and the whole pack comes for you.' },
-      { id: 'tire-roller', name: 'Tire Roller', variant: 'yellow', scale: 2, text: 'Comes for you on sight and lunges in with a charge.' },
-      { id: 'plastic-bag-spook', name: 'Plastic Bag Spook', variant: 'white', scale: 2, text: 'Drifts close and wraps you in a slow.' },
-      { id: 'wire-tangle', name: 'Wire Tangle', variant: '', scale: 1, text: 'Spots you from 4 tiles away and zaps from a distance.' },
-      { id: 'scrap-crab', name: 'Scrap Crab', variant: 'rust', scale: 2, text: 'Its shell blocks every hit, except right after it swings. Time your attacks.' },
+      { id: 'tin-can', name: 'Tin Can', variant: '', scale: 3, text: 'Minds its own business, until you hit it. Then it snaps its jagged lid.' },
+      { id: 'scrap-crab', name: 'Scrap Crab', variant: 'rust', scale: 3, text: 'Its shell blocks every hit, except right after it swings.' },
+      { id: 'monobloc-stack', name: 'Monobloc Stack', variant: 'green', scale: 2, text: 'Throws plastic chairs from across the room. Keep moving and they miss.' },
+      { id: 'banyera-lurker', name: 'Banyera Lurker', variant: 'armour', scale: 2, text: 'Lies under the floodwater, unseen, until you wade too close.' },
     ],
+    bosses: [
+      { mob: 'scrapheap-golem', dir: 'se', scale: 3, caption: 'A golem of tires and roofing sheets, in the Slums' },
+      { mob: 'great-scale', dir: 'se', scale: 3, caption: 'A weighing scale the size of a stall, in the Old Market' },
+    ],
+    more: 'More maps are on the way.',
   },
 
-  boss: {
-    eyebrow: 'Field boss',
-    id: 'scrapheap-golem',
-    scale: 2,
-    facts: [
-      { term: 'Rises', text: 'In its pit in the Slums, {golemHours} hours after it was last beaten. The Slums get a warning {golemWarn} minutes before.' },
-      { term: 'Made of', text: 'Tire fists, a body of rusty roofing sheets, a tarp cape and a street lamp for a head.' },
-      { term: 'Loot', text: 'Everyone who deals 5% of its HP gets a drop of their own.' },
-    ],
-    moves: [
-      { name: 'Tire Slam' },
-      { name: 'Scrap Toss' },
-      { name: 'Lamp Glare' },
-      { name: 'Junk Drop' },
-      { name: 'Shockwave' },
-      { name: 'Call the Junk' },
-      { name: 'Enrage at 25%', enrage: true },
-    ],
-  },
 
+  /** Every dungeon in one section: what they're like, a couple of what's waiting at the bottom as a taste (never the
+   *  full list: more keep coming), so the page doesn't grow with each one. */
   dungeon: {
-    eyebrow: 'Dungeon',
-    title: 'The Scrap Warrens',
-    lede: 'Under the Slums is a maze for you and up to {partyFriends} friends. Each area is sealed until its mini boss falls, and at the very bottom something enormous is waiting.',
-    gate: 'Enter through the Warren Gate near the golem pit from <b>Lv {dungeonLevel}</b>, once you\'ve found Aling Nena\'s binoculars in a practice run. One Warren Ticket opens a {dungeonMinutes}-minute run for the whole party.',
-    titan: {
-      eyebrow: 'Last boss',
-      text: 'A shack-built giant rising out of a junk heap. It rains roof sheets, slams its fists and calls Scraplings to its side.',
-    },
+    eyebrow: 'Dungeons',
+    title: 'Go below',
+    lede: 'Under the maps are dungeons for you and up to {partyFriends} friends. A ticket or a key opens a timed run for the whole party: each area is sealed until its mini boss falls, and something enormous waits at the bottom.',
+    points: [
+      { title: 'Party up', text: 'Up to {partyMax} in a run, and the mobs grow tougher with every one of you.' },
+      { title: 'Sealed areas', text: 'Each area stays shut until its mini boss falls, and every boss has moves to read and dodge.' },
+      { title: 'Worth the trip', text: 'Better gear than up top, and loot rolled for the whole party.' },
+    ],
+    /** A taste of what waits at the bottom (scripts/front-page.ts crops their art; `scale`: whole-number, about the same size). */
+    bosses: [
+      { mob: 'barong-barong', dir: 's', scale: 1, caption: 'A shack-built giant, under the Slums' },
+      { mob: 'makinang-yelo', dir: 'sw', scale: 2, caption: 'A frozen machine, under the Old Market' },
+    ],
+    more: 'More dungeons are being dug.',
   },
+
+
 
   town: {
     eyebrow: 'Town life',
     title: 'More to do between fights',
     /** `live`: in the game now (a green tag); false: a grey "Coming soon". */
     features: [
-      { tag: 'Quests', title: 'The Tanod’s rounds', text: '{questCount} leveling quests from Lv 1 to {questTop}, and {miniBosses} named mini bosses to hunt.', live: true },
+      { tag: 'Quests', title: 'Two stories', text: 'The Tanod’s {questCount} quests take you to Lv {questTop}; the Old Market’s story, The Last Regular, carries on to {levelCap}. {miniBosses} named mini bosses to hunt.', live: true },
       { tag: 'Loot', title: 'Gear worth chasing', text: 'Blue and orange affixes, agimat slots, and enhancement up to +20 with weapon auras.', live: true },
       { tag: 'Party', title: 'Party up and trade', text: 'Parties of up to 6 share XP and Kusing. Trade gear and Kusing with other players.', live: true },
       { tag: 'Minigame', title: 'Jack en poy Arena', text: 'Bato, papel, gunting. First to two wins, against a bot or a real player, for Kowens.', live: true },
@@ -202,7 +202,13 @@ export const content = {
       { tag: 'Heist', title: 'Bakod heist', text: 'Turn rogue, sneak into a neighbour’s house and try to pocket a few percent of their Kowens. Get caught (it happens more often than not) and you pay them a fine and cool off in jail. Once you steal, other rogues can rob you back, and a house that’s been robbed is safe. A Bakod keeps rogues out: rust it with a Kalawang Potion, or gamble a Master Key on its lock.', live: true },
       { tag: 'Style', title: 'Dress up', text: 'Paper-doll outfits: {skins} skin tones, {hairs} hairstyles, hats, glasses, tops, bottoms and shoes. Restyle any time at the Parlor.', live: true },
       { tag: 'Housing', title: 'Houses and the Parlor', text: 'Build a house on your own street and give it a new look whenever you like. Wear your titles at the Parlor. Put up a Bakod, because rogues can break in.', live: true },
-    ],
+      { tag: 'Pets', title: 'A pet at your heels', text: '{petCount} pets to raise. Each one follows you everywhere, levels up as you fight and grows its own stat tree.', live: true },
+      { tag: 'Style', title: 'Costume sets', text: 'Five costume sets in the sari-sari store, from bat wings to imp horns, worn over your gear in town and in every combat pose.', live: true },
+      { tag: 'Food', title: 'Aling Conching’s cooking', text: 'Lugaw, pancit and more from the one stall still open. Each dish is a buff that lasts through every map.', live: true },
+      { tag: 'Travel', title: 'Lantern Posts', text: 'Light a Return Lantern at a post to cross between the town, the Slums and the Old Market in a flash.', live: true },
+      { tag: 'Friends', title: 'Friends and mail', text: 'Add friends, whisper, and choose who sees your balance. Letters in your mailbox can carry gifts.', live: true },
+      { tag: 'Event', title: 'Halloween in Mikazuki', text: 'Find Mikko Kalabasa hiding round town, beat the giant Biikko in the Slums and reunite the Manananggal, until {halloweenEnds}.', live: true, event: 'halloween' },
+    ] as { tag: string; title: string; text: string; live: boolean; event?: string }[],
     soon: 'Coming soon',
   },
 
