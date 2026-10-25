@@ -36,10 +36,10 @@ const map = loadMobMap('slums');
 const lcg = (seed: number) => () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
 const CHAIN = L.quests.map((q) => q.id);
 
-test('the chain: the 12 quests after the class quest, in order, main, kill or miniBoss, numbers from leveling.json, 10 HP + 10 MP Potions each', () => {
+test('the chain: the 12 quests after the class quest (then The Market Up North), in order, main, kill or miniBoss, numbers from leveling.json, 10 HP + 10 MP Potions each', () => {
   const order: string[] = [];
   for (let q = QUESTS.find((x) => x.autoStart); q; q = QUESTS.find((x) => x.id === q!.next)) order.push(q.id);
-  assert.deepEqual(order, ['main-01-class', ...CHAIN]);
+  assert.deepEqual(order, ['main-01-class', ...CHAIN, 'tanod-13'], "then The Market Up North, at Lv 21 (old-market-intro.test.ts)");
   for (const l of L.quests) {
     const q = QUESTS.find((x) => x.id === l.id)!;
     assert.equal(q.type, 'main');

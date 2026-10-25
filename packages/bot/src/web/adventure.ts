@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
 import { type ShopEvents, type PalengkeData, addToBag, markCutscene, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
-import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, wornItems, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
+import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, questVisit, areasBeen, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, wornItems, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import { type Attacker, fighterStats } from './town-mobs.js';
@@ -76,6 +76,8 @@ export function startQuests(s: AdventureState, now = Date.now()): QuestDef[] {
   }
   const daily = startDaily(s, QUESTS, PALENGKE, now);
   if (daily) started.push(daily);
+  // (A visit to a map they've been to since it was kept: made at once, ready to report.)
+  questVisit(s, QUESTS, areasBeen(s));
   return started;
 }
 
@@ -653,10 +655,15 @@ function progress(userId: string, f: (cls: string | null, p: SavedProgress) => L
  *  active quests if one did, else null. */
 export function enterAreaFor(userId: string, area: string): { active: AdventureState['quests']['active'] } | null {
   const s = load(userId);
+  // Kept that they've been here (a visit objective started later counts it), and a visit to it made now (the Tanod's
+  // The Market Up North: ready to report over his radio).
+  const been = QUESTS.some((q) => q.objectives.some((o) => o.type === 'visit' && o.area === area)) && flag(s, `been:${area}`);
+  const visited = questVisit(s, QUESTS, [area]);
   // (Today's daily order too, once its day has turned.)
-  if (!startInArea(s, QUESTS, area).length && !(area === 'palengke' && startDaily(s, QUESTS, PALENGKE, Date.now()))) return null;
+  const started = startInArea(s, QUESTS, area).length > 0 || (area === 'palengke' && !!startDaily(s, QUESTS, PALENGKE, Date.now()));
+  if (!been && !visited && !started) return null;
   save(userId, s);
-  return { active: s.quests.active };
+  return visited || started ? { active: s.quests.active } : null;
 }
 
 /** A dish bought from Aling Conching (CONTEXT.md Dish): unlocked for them and its Kusing in hand, spent and saved; null,

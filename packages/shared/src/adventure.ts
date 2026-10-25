@@ -37,8 +37,9 @@ export type QuestType = 'main' | 'side';
 
 /** An objective: talk (to `npc`), chooseClass, kill (`count` of `mob`; its mini bosses don't count), miniBoss (one
  *  of `mob`'s mini bosses), collect (`count` of `item` in the combat bag: done as it's there) or deliver (talk to `npc`
- *  with `count` of `item`: they take it), fieldBoss (earn its share of a field boss's kill) or bell (ring the bell that
- *  boss leaves where it fell). Kill and miniBoss are reported to the giver when reached (the tracker's Report). */
+ *  with `count` of `item`: they take it), fieldBoss (earn its share of a field boss's kill), bell (ring the bell that
+ *  boss leaves where it fell) or visit (walk into the map `area`). Kill, miniBoss and visit are reported to the giver
+ *  when reached (the tracker's Report). */
 export interface QuestObjectiveDef {
   id: string;
   type: string;
@@ -55,6 +56,8 @@ export interface QuestObjectiveDef {
   collect?: { item: string; count: number; label?: string };
   /** A fieldBoss objective counts only while this item is held (the Honest Weight). */
   needs?: string;
+  /** A visit objective's map (an area id: 'palengke'). */
+  area?: string;
 }
 
 export interface QuestDef {
@@ -73,8 +76,9 @@ export interface QuestDef {
   guided?: boolean;
   objectives: QuestObjectiveDef[];
   /** The giver's lines while it's on: talk (in order), remind, complete ({class} = the chosen class's name); give (as
-   *  it starts) and report (as it's reported over the radio): the leveling chain's. */
-  dialogue?: { talk?: string[]; remind?: string[]; complete?: string[]; give?: string[]; report?: string[] };
+   *  it starts) and report (as it's reported over the radio): the leveling chain's; wait (while it waits for its
+   *  unlockLevel: their own "come back at Lv {level}", in place of the Palengke's gapLine). */
+  dialogue?: { talk?: string[]; remind?: string[]; complete?: string[]; give?: string[]; report?: string[]; wait?: string[] };
   /** Given into the combat bag when it's completed (items/items.json kinds). */
   rewards?: QuestReward[];
   /** XP and Kusing given when it's completed (the leveling chain's: the same for everyone). */

@@ -67,6 +67,8 @@ import { type LootGot,
   mobName,
   palengkeQuests,
   startInArea,
+  questVisit,
+  areasBeen,
   unlockedAt,
   waitingQuests,
   advanceCollects,
@@ -556,15 +558,19 @@ export function waitingFor(npc: string): QuestDef | null {
 /** Every quest waiting for your level (the log's grey rows). */
 export const waitingNow = (): QuestDef[] => (state && data ? waitingQuests(state, data.quests) : []);
 
-/** The line a giver says while their next quest waits for a level (palengke-leveling.json gapLine). */
-export const gapLine = (q: QuestDef): string => (data?.palengke?.gapLine ?? 'Come back at Lv {level}.').replaceAll('{level}', String(q.unlockLevel ?? ''));
+/** The line a giver says while their next quest waits for a level: the quest's own (`dialogue.wait`: the Tanod's), else
+ *  palengke-leveling.json's gapLine. */
+export const gapLine = (q: QuestDef): string => (q.dialogue?.wait?.[0] ?? data?.palengke?.gapLine ?? 'Come back at Lv {level}.').replaceAll('{level}', String(q.unlockLevel ?? ''));
 
 /** You walked into a map: a chain that starts there opens (the Palengke's first quest, at its level). The bot does it as
  *  you join its room (the town's `quests`); in dev, here. */
 export function enterArea(area: string): void {
   if (!fakeLogin() || !state || !data) return;
   const s = structuredClone(state);
-  if (startInArea(s, data.quests, area).length) set(s);
+  // (Been here kept, and a visit to it made: the bot's enterAreaFor.)
+  const been = data.quests.some((q) => q.objectives.some((o) => o.type === 'visit' && o.area === area)) && !(s.quests.flags ?? []).includes(`been:${area}`);
+  if (been) (s.quests.flags ??= []).push(`been:${area}`);
+  if ([questVisit(s, data.quests, [area]), startInArea(s, data.quests, area).length > 0, been].some(Boolean)) set(s);
 }
 
 /** How many of an item kind are in your combat bag (a collect objective's count). */
@@ -695,6 +701,8 @@ function startQuests(s: AdventureState): void {
   }
   // Today's daily order, once the Palengke's chain is done (the bot's startDaily).
   if (data?.palengke) startDaily(s, data.quests, data.palengke, Date.now());
+  // (A visit to a map they've been to: made at once, the bot's startQuests.)
+  if (data) questVisit(s, data.quests, areasBeen(s));
 }
 
 /** Dev (?quest=tanod-05, ?quest=palengke-08): straight to that quest of its chain, every one before it done (a

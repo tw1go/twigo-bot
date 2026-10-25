@@ -308,6 +308,38 @@
         { "item": "low-hp-potion", "count": 10 },
         { "item": "low-mp-potion", "count": 10 }
       ],
+      "next": "tanod-13"
+    },
+    {
+      "id": "tanod-13",
+      "type": "main",
+      "giver": "tanod",
+      "guided": true,
+      "title": "The Market Up North",
+      "summary": "Go through the Slums' north gate into the Old Market and see who's there.",
+      "story": "The Golem Pit is quiet for now, and the Slums are safer than they've been in years. But the Tanod has seen a light at night past the Slums' north gate, in the old market that closed after the typhoon. Nobody has lived there since, and the junk out there is bigger and stranger. He wants his best watchman to go and see.",
+      "unlockLevel": 21,
+      "objectives": [
+        { "id": "visit", "type": "visit", "area": "palengke", "text": "Go to the Old Market, through the Slums' north gate" }
+      ],
+      "dialogue": {
+        "give": [
+          "One more job, watchman. There's a light at night in the old market past the Slums' north gate.",
+          "Nobody's lived there since the typhoon. Go up there and see who it is. Take the road north through the Slums."
+        ],
+        "report": [
+          "So someone's still up there after all these years. Help them, watchman. That market needs a guard again."
+        ],
+        "wait": [
+          "Train up, watchman. Come back at Lv {level}: I'll have a job for you past the Slums' north gate."
+        ]
+      },
+      "rewardXP": 3000,
+      "rewardKusing": 500000,
+      "rewards": [
+        { "item": "mid-hp-potion", "count": 10 },
+        { "item": "mid-mp-potion", "count": 10 }
+      ],
       "next": null
     },
     {

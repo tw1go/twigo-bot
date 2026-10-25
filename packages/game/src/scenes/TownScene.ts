@@ -4867,19 +4867,25 @@ export class TownScene extends Phaser.Scene {
   }
 
   /** Where the quest trail leads now: a guided quest's hunt (a kill or mini boss objective not yet reached), in town to
-   *  the Slums gate, in the Slums to its mob's zone (its tile nearest you) or the nearest of its mini boss spots; null
-   *  once you're there (inside the zone, within MINI_NEAR of the spot), elsewhere, with no such quest or the trail off. */
+   *  the Slums gate, in the Slums to its mob's zone (its tile nearest you) or the nearest of its mini boss spots; a guided
+   *  visit (the Tanod's The Market Up North), to this map's gate to its area (from town the Slums gate first); null once
+   *  you're there (inside the zone, within MINI_NEAR of the spot), elsewhere, with no such quest or the trail off. */
   private trailGoal(): { tile: Tile; type: 'main' | 'side' } | null {
     if (!trailOn() || (this.area !== 'town' && this.area !== 'slums')) return null;
     const s = adventure();
     const hunt = (s?.quests.active ?? [])
       .map((p) => ({ p, q: questDef(p.id) }))
       .map(({ p, q }) => ({ q, o: q?.objectives[p.step], ready: readyToReport(q, p) }))
-      .filter((x) => x.q?.guided && !x.ready && (x.o?.type === 'kill' || x.o?.type === 'miniBoss'))
+      .filter((x) => x.q?.guided && !x.ready && (x.o?.type === 'kill' || x.o?.type === 'miniBoss' || x.o?.type === 'visit'))
       .sort((a, b) => (a.q!.type === b.q!.type ? 0 : a.q!.type === 'main' ? -1 : 1))[0];
     if (!hunt) return null;
     const type = hunt.q!.type;
     const me = this.player.tile;
+    const gateTile = (to: string): { tile: Tile; type: 'main' | 'side' } | null => {
+      const gate = this.map.gates?.[to as Gate];
+      return gate?.length ? { tile: { col: gate[Math.floor(gate.length / 2)][0], row: gate[Math.floor(gate.length / 2)][1] }, type } : null;
+    };
+    if (hunt.o!.type === 'visit') return gateTile(hunt.o!.area ?? '') ?? (this.area === 'town' ? gateTile('slums') : null);
     if (this.area === 'town') {
       const gate = this.map.gates?.slums;
       return gate?.length ? { tile: { col: gate[Math.floor(gate.length / 2)][0], row: gate[Math.floor(gate.length / 2)][1] }, type } : null;
