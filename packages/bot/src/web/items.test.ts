@@ -570,32 +570,58 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
       ws.on('open', () => ok({ ws, got }));
     });
   const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  /** Waits until `find` has something (at most `ms`; a slow machine, as CI's, takes longer than a fixed wait). */
+  const until = async <T>(find: () => T | undefined, what: string, ms = 5000): Promise<T> => {
+    for (const end = Date.now() + ms; Date.now() < end; await wait(25)) {
+      const x = find();
+      if (x !== undefined) return x;
+    }
+    throw new Error(`no ${what} within ${ms} ms`);
+  };
+  const conns: { ws: WebSocket; got: TownServerMessage[] }[] = [];
+  // (Whatever happens, the sockets and the server close: left open, a failure here hung the whole run.)
+  try {
   const [mara, bob, cy, dee] = [await open('Mara'), await open('Bob'), await open('Cy'), await open('Dee')];
-  await wait(100);
+  conns.push(mara, bob, cy, dee);
+  for (const c of conns) await until(() => c.got.find((m) => m.t === 'welcome'), 'welcome');
   const idOf = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).you;
   // Mara, Bob and Cy in one party; Dee on her own.
   for (const c of [bob, cy]) {
     mara.ws.send(JSON.stringify({ t: 'party-invite', to: idOf(c) }));
     await wait(1100); // (one invite a second)
-    const inv = c.got.find((m) => m.t === 'party-invited') as Extract<TownServerMessage, { t: 'party-invited' }>;
+    const inv = (await until(() => c.got.find((m) => m.t === 'party-invited'), 'party invite')) as Extract<TownServerMessage, { t: 'party-invited' }>;
     c.ws.send(JSON.stringify({ t: 'party-answer', invite: inv.invite, accept: true }));
-    await wait(100);
+    await until(() => mara.got.find((m) => m.t === 'party' && m.party?.members.length === (c === bob ? 2 : 3)), 'party');
   }
   mara.ws.send(JSON.stringify({ t: 'attack', mob: can.id, skill: 0 }));
-  await wait(200);
-  const coin = (mara.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>).loot.find((l) => l.kusing)!;
+  const coin = (await until(() => (mara.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }> | undefined)?.loot.find((l) => l.kusing), 'Kusing dropped'))!;
   // Mara walks onto it and picks it up.
   const [sc, sr] = (mara.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
-  let [col, row] = [sc, sr];
-  while (col !== coin.col || row !== coin.row) {
-    col += Math.sign(coin.col - col);
-    row += Math.sign(coin.row - row);
+  // (A path round blocked tiles, on her own level: a straight line can cross one, and the server refuses that step.)
+  const level = (c: number, r: number) => map.height?.[r]?.[c] ?? 0;
+  const open_ = (c: number, r: number) => r >= 0 && c >= 0 && r < map.size[1] && c < map.size[0] && !map.blocked[r]?.[c] && level(c, r) === level(sc, sr);
+  const from = new Map<string, string>([[`${sc},${sr}`, '']]);
+  const queue: [number, number][] = [[sc, sr]];
+  for (let i = 0; i < queue.length && !from.has(`${coin.col},${coin.row}`); i++) {
+    const [c, r] = queue[i];
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const k = `${c + dc},${r + dr}`;
+      if (from.has(k) || !open_(c + dc, r + dr)) continue;
+      from.set(k, `${c},${r}`);
+      queue.push([c + dc, r + dr]);
+    }
+  }
+  const path: [number, number][] = [];
+  for (let k = `${coin.col},${coin.row}`; k && k !== `${sc},${sr}`; k = from.get(k)!) path.unshift(k.split(',').map(Number) as [number, number]);
+  assert.ok(from.has(`${coin.col},${coin.row}`), `the coin at ${coin.col},${coin.row} can be walked to`);
+  for (const [col, row] of path) {
     mara.ws.send(JSON.stringify({ t: 'step', col, row }));
     await wait(180);
   }
   mara.ws.send(JSON.stringify({ t: 'pick', id: coin.id }));
-  await wait(150);
   const got = (c: { got: TownServerMessage[] }) => (c.got.find((m) => m.t === 'items' && m.got?.kusing) as Extract<TownServerMessage, { t: 'items' }> | undefined)?.got?.kusing ?? 0;
+  for (const c of [mara, bob, cy]) await until(() => got(c) || undefined, 'a share');
+  await wait(150); // (and nothing for Dee)
   const parts = [got(mara), got(bob), got(cy)];
   const share = Math.floor(coin.kusing! / 3);
   assert.deepEqual(parts, [coin.kusing! - 2 * share, share, share], `${coin.kusing} split three ways`);
@@ -605,8 +631,10 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
   for (const c of [bob, cy]) assert.deepEqual(c.got.filter((m) => m.t === 'party-loot'), [{ t: 'party-loot', name: 'Mara', got: { kusing: coin.kusing }, share }]);
   for (const c of [mara, dee]) assert.ok(!c.got.some((m) => m.t === 'party-loot'));
   assert.equal(bags.get('Dee')?.kusing ?? 0, 0);
-  for (const c of [mara, bob, cy, dee]) c.ws.close();
-  await new Promise((ok) => server.close(ok));
+  } finally {
+    for (const c of conns) c.ws.close();
+    await new Promise((ok) => server.close(ok));
+  }
 });
 
 test('over the town\'s socket: items shown in chat are the speaker\'s own (worn or in the bag) and named in the text; anything else is plain text', async () => {
