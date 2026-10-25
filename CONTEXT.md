@@ -38,6 +38,11 @@ the Great Scale and the "The Last Regular" quest chain. Its parts (Tarp Row, Veg
 Row, the Fish Market, the Market Hall…) are sections. (`palengke` in code: its first name was the Lumang Palengke.)
 _Avoid_: Lumang Palengke, Palengke (the old names), market (alone)
 
+**Opening time**:
+When a new map opens to everyone. Before it, its gate says when it opens, and nobody walks in, teleports in or
+follows a link in, except Game Masters (to check it).
+_Avoid_: launch, release (those are a whole game's), unlock (a skill or a dish unlocks)
+
 **Lantern Post**:
 A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
 teleport to another map's Lantern Post.

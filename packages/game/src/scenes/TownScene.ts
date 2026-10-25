@@ -95,7 +95,7 @@ import { HalloweenDecor } from '../world/halloween-deco';
 import { serverNow, setServerNow } from '../net/server-clock';
 import { mikkoIcon16, setHalloweenArt, setHalloweenBadge, showHalloweenReward } from '../ui/halloween';
 import { BossBar } from '../ui/boss-bar';
-import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, effectOf, mobName, moveSpeedOf, skillEffects, skillHits, withCosmetics } from '@mikazuki/shared';
+import { HALLOWEEN_MOBS, type HalloweenData, cosmeticHatOf, cosmeticTopOf, effectOf, mobName, moveSpeedOf, opensLine, skillEffects, skillHits, withCosmetics } from '@mikazuki/shared';
 import { openDishMenu } from '../ui/dish-menu';
 import { lootRolls, rollEndLine } from '../ui/loot-roll';
 import type { DungeonsData, SilongFloor, TownSilongRun, TownWarrensRun } from '@mikazuki/shared';
@@ -886,6 +886,7 @@ export class TownScene extends Phaser.Scene {
     this.settleFrom = this.time.now;
     this.afterReveal(1800, () => this.announceRewards()); // once the arrival has settled
     this.afterReveal(2200, tellTicketBack); // (out of a Warrens run that ended before a boss fell)
+    this.afterReveal(2200, tellClosed); // (sent back from a map that isn't open yet)
     this.afterReveal(2200, tellKeyBack); // (out of an Ang Silong run that ended before a mini boss fell)
     exposeDebug(this);
     // Dev: ?arena=bot goes straight into a match against the bot (with &rounds=win,lose,draw… deciding the rounds);
@@ -2767,6 +2768,16 @@ export class TownScene extends Phaser.Scene {
         this.fxLayers.play(this.M.fx['fx-lantern-teleport'], { x: top.x, y: top.y + 8 - this.objects.heights.at(m.col, m.row) * LEVEL_PX });
         return;
       }
+      if (m.t === 'area-closed') {
+        // Came to a map that isn't open yet (a link, a stale tab): back to the Slums, told when it opens.
+        this.closedAreas[m.area] = m.opensAt;
+        try {
+          sessionStorage.setItem(CLOSED_NOTE, m.message); // (said once the Slums are up: tellClosed)
+        } catch {
+          toast(m.message, 5000, 'bad');
+        }
+        return this.travel('slums');
+      }
       if (m.t === 'warrens-out') {
         if (m.ticketBack) noteTicketBack(m.ticketBack === 'practice');
         if (m.reason === 'closed') toast('The Scrap Warrens closed.', 2600);
@@ -3238,6 +3249,7 @@ export class TownScene extends Phaser.Scene {
         myId = m.you;
         this.myId = m.you;
         setServerNow(m.now); // (the server's clock: the Kapre's tree)
+        this.closedAreas = m.closed ?? {}; // (maps not open yet: their gates say when)
         this.gotWelcome = true;
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
@@ -5151,6 +5163,16 @@ export class TownScene extends Phaser.Scene {
    *  Palengke need a login. A Lantern Post's teleport says which post (`post`; this map again for another of its own). */
   private travel(to: Gate, via?: 'lantern', post = 0): void {
     if ((to === 'slums' || to === 'warrens' || to === 'palengke' || floorOfArea(to)) && this.me?.status !== 'ok' && !fakeLogin()) return void toast(`Log in to go into ${to === 'palengke' ? 'the Old Market' : 'the Slums'}.`, 2800);
+    // A map not open yet (CONTEXT.md Opening time; the server's welcome says which): its gate says when.
+    const opens = this.closedAreas[to];
+    if (opens && serverNow() < opens) {
+      if (this.time.now >= this.closedToldAt) {
+        this.closedToldAt = this.time.now + 3000;
+        playSound('error');
+        toast(opensLine(to === 'palengke' ? 'The Old Market' : 'This map', opens), 4000);
+      }
+      return;
+    }
     if (this.travelling) return;
     this.travelling = true;
     // Through the Warren Gate (in or out): its warp with the fade, which waits for it (the page changes after); a
@@ -5176,6 +5198,9 @@ export class TownScene extends Phaser.Scene {
     this.time.delayedCall(warp ? WARP_MS : 420, () => location.assign(areaUrl(to, via, post)));
   }
   private travelling = false;
+  /** Maps not open to you yet (the welcome's `closed`): each one's opening (server ms). */
+  private closedAreas: Record<string, number> = {};
+  private closedToldAt = 0;
 
   // ── Lantern Posts: the Map menu, and teleporting (a Return Lantern) ──
 
@@ -5888,6 +5913,20 @@ function showWelcomeGift(amount: number): void {
   void showReward({ title: 'Welcome gift!', graphic: { kind: 'kowens', amount }, message: `Welcome to Mikazuki town! Every player gets ${amount} Kowens to start with. Enjoy!` }).then(() =>
     fakeLogin() ? null : api('/welcome/seen', { method: 'POST', credentials: 'same-origin' }).catch(() => null),
   );
+}
+
+/** Where a map not open yet says when it opens, across the trip back (the page load): CONTEXT.md Opening time. */
+const CLOSED_NOTE = 'mk_closed_note';
+/** On arrival: why you were sent back, once. */
+function tellClosed(): void {
+  let note: string | null = null;
+  try {
+    note = sessionStorage.getItem(CLOSED_NOTE);
+    sessionStorage.removeItem(CLOSED_NOTE);
+  } catch {
+    // (no storage: said before the trip)
+  }
+  if (note) toast(note, 5000);
 }
 
 /** The same look, whatever order its fields are in. */

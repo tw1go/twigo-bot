@@ -168,7 +168,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   layout), the Ice Machine's body on the Ice Plant's north wall (the layout's K, cols 40-49; `bossTile` and
   `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7); the B3 door opens as the
   closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
-  `maps/palengke.json` the Entrance plaza's 85 more props (24 Oct 2026, the owner: two baletes, carts, umbrellas, Aling
+  `maps/palengke.json` its `opensAt` (+ `opensAtNote`; 25 Oct 2026, the owner: the Old Market opens 26 Oct 2026 9:00 AM
+  Manila, see the Lumang Palengke below), the Entrance plaza's 85 more props (24 Oct 2026, the owner: two baletes, carts, umbrellas, Aling
   Conching's tables and chairs, a vegetable and a fish seller, crates and sacks; the road, the NPCs, the Lantern Post and the
   arrival kept clear, their tiles in `blocked`) and its front gate mirrored (`flip`, row 104: its arch along the map's
   east edge, centred on the gate; it faced south across the road), the three zones' `miniBosses` spots, and Mang Pido's guard post drawn 2x (its object `scale` 2,
@@ -935,7 +936,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
   bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the
-  Great Scale, below). The Slums' north gate (row 0, cols
+  Great Scale, below). Its opening time (CONTEXT.md Opening time; palengke.json `opensAt`, shared travel.ts `mapOpensAt` /
+  `opensLine`; bot `TownOptions.opening`, tested in `web/opening.test.ts`): before it only Game Masters (`gm`) come in;
+  anyone else's join is answered `area-closed` and closed 4002 (the page goes back to the Slums and says when, kept over
+  the reload: TownScene `tellClosed`), a Lantern Post teleport there (the Cellar Hatch's too) is refused with the same
+  line, and the welcome's `closed` lists it, so the gate says when instead of loading (TownScene `travel`); at the time
+  it opens for everyone, no restart. Dev: off unless the dev server starts with `DEV_OPENING=1` (the map's time) or an
+  ISO time. The Slums' north gate (row 0, cols
   121-123, between Wire Ridge and Bag Flats on the canal's west bank, "↑ Old Market"; the west edge's gate until 23 Oct
   2026) ↔ its east gate (`gates.slums`, "Back to the Slums →"). Flat (`height` 1 everywhere): the big-map
   renderer (`world/terrain.ts`) takes the map's `tileset` (tiles.palengke: no cliffs, rims or ramps), each family's plain
