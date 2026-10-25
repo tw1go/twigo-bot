@@ -1623,6 +1623,15 @@
         "moonlit-sylph-body": "sylph",
         "witch-robe": "witchrobe"
       },
+      "cosmeticWeapons": {
+        "moonlight-slingshot": { "class": "slingshot", "skin": "moonlight" },
+        "moonlight-stick": { "class": "stick", "skin": "moonlight" },
+        "moonlight-greatstick": { "class": "greatstick", "skin": "moonlight" },
+        "moonlight-broom": { "class": "broom", "skin": "moonlight" },
+        "moonlight-potlid": { "class": "potlid", "skin": "moonlight" },
+        "moonlight-hilot": { "class": "hilot", "skin": "moonlight" }
+      },
+      "cosmeticWeaponsNote": "A worn weapon cosmetic (items.json cosmeticPlace weapon) by item id: its class and the skin every one of that class's weapon sheets has a twin in (char-weapon-<key>-<skin>…: the poses, the resting -rest sheets, the balm-float; shared cosmetics.ts weaponSkinFile). Mac, 24 Oct 2026: the Moonlight weapons.",
       "cosmeticHidesBottom": [
         "witchrobe",
         "nightwing",

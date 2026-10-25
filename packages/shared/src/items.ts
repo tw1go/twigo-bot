@@ -75,10 +75,14 @@ export interface CombatItemDef {
   stat?: AgimatStat;
   /** What it's for (the tooltip). */
   about?: string;
-  /** A cosmetic (worn for looks from the Costume tab, never stats). */
+  /** A cosmetic (worn for looks from the Costume tab; stats only where it has `stats`: the Moonlight weapons). */
   cosmetic?: boolean;
   /** Where a cosmetic is worn (none yet: it can't be worn). */
   cosmeticPlace?: CosmeticPlace;
+  /** A weapon cosmetic's class (CONTEXT.md Weapon skin): its look and stats only while the wearer is of it. */
+  forClass?: string;
+  /** What a cosmetic gives while worn and fitting its `forClass` (itemTotals' keys: atk, critDmg as a fraction…). */
+  stats?: Record<string, number>;
   /** A timed cosmetic: how many days it lasts from when it first enters a bag (bound from then on). */
   lastsDays?: number;
   /** Sold at the sari-sari store: priced as a potion (its tier's Kusing), a whetstone or a Repair Kit (Kowens), a dungeon
@@ -116,6 +120,13 @@ export interface CombatItemsFile {
 
 export type AnyItemDef = EquipmentDef | CombatItemDef;
 export const isGearDef = (d: AnyItemDef | undefined): d is EquipmentDef => !!d && 'slot' in d;
+
+/** Whether a cosmetic fits the wearer's class: one for a class (`forClass`) only for that class, any other always. */
+export const cosmeticFits = (def: Pick<CombatItemDef, 'forClass'>, cls: string | null | undefined): boolean => !def.forClass || def.forClass === cls;
+
+/** Everything worn that may count in their stats (itemTotals): the gear, then the cosmetics (only those with stats count). */
+export const wornItems = (s: { equipped: Partial<Record<string, Item>>; cosmetics?: Partial<Record<string, Item>> }): Item[] =>
+  [...Object.values(s.equipped), ...Object.values(s.cosmetics ?? {})].filter((i): i is Item => !!i);
 
 /** Every item kind by id (gear and the rest) with the stats rules' numbers: what items need. */
 export interface ItemData {
@@ -400,7 +411,7 @@ export function agimatValue(data: StatsData, stat: AgimatStat, level: number): n
 
 /** What worn items add up to (broken ones give nothing): each one's base with its plus, its lines (a `stat` line to the
  *  wearer's main stat) and its agimats. Rates as fractions. */
-export function itemTotals(data: ItemData, items: Item[], mainStat: StatName | null): GearTotals {
+export function itemTotals(data: ItemData, items: Item[], mainStat: StatName | null, cls: string | null = null): GearTotals {
   const t: Required<GearTotals> = { atk: 0, def: 0, hp: 0, mp: 0, STR: 0, DEX: 0, INT: 0, critRate: 0, critDamage: 0, amp: 0, hpRegen: 0, atkRate: 0, defRate: 0, lifesteal: 0, manasteal: 0, dropRate: 0 };
   const add = (stat: string, v: number) => {
     const key = stat === 'critDmg' ? 'critDamage' : stat === 'stat' ? mainStat : stat;
@@ -411,6 +422,8 @@ export function itemTotals(data: ItemData, items: Item[], mainStat: StatName | n
     // A pet out: its pet tree and its kind's bonus (shared pets.ts), added like lines.
     const R = def && !isGearDef(def) && def.kind === 'pet' ? petRules(data.stats) : null;
     if (R) for (const [k, v] of Object.entries(petTotals(R, item, def && !isGearDef(def) ? (def.pet ?? null) : null))) t[k as keyof GearTotals] += v ?? 0;
+    // A worn cosmetic with stats (a Moonlight weapon): only while it fits the wearer's class (`cls`).
+    if (def && !isGearDef(def) && def.kind === 'cosmetic' && def.stats && cosmeticFits(def, cls)) for (const [k, v] of Object.entries(def.stats)) add(k, v);
     if (!isGearDef(def) || item.broken) continue;
     const b = enhancedBase(data.stats, def, item);
     if (b.atk) t.atk += b.atk;

@@ -357,8 +357,15 @@ One part of the combat bag with its own slots: the bag's (everything but agimats
 cosmetics' (Costume).
 
 **Cosmetic**:
-An item worn for looks only, never for stats: the Lamp-head Hat, the store's Sets. Bound once worn or bought.
-_Avoid_: skin, costume item
+An item worn for looks: the Lamp-head Hat, the store's Sets, the Moonlight weapons. Only a Weapon skin gives stats too.
+Bound once worn or bought.
+_Avoid_: costume item
+
+**Weapon skin**:
+A weapon cosmetic for one class (the Moonlight weapons, one for each): worn in the Costume tab's Weapon place, it draws
+that class's weapon in its own art everywhere (in hand, resting in town, the Hilot's balm) and adds its stats (+10 ATK,
++3% crit damage), but only while the wearer is of that class. On another class it stays worn, greyed, and does
+nothing.
 
 **Costume**:
 The bag's pocket for cosmetics, and the equipment panel's tab with the three places they're worn in (Weapon, Head,

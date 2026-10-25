@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir, Manifest, Vec2 } from '../assets/types';
 import { type Outfit, drawStill, outfitKey } from './doll';
-import { drawPose } from './kit-art';
+import { artFor, drawPose } from './kit-art';
 import { loadImages } from './loading';
 import { lagMark } from '../net/lag';
 
@@ -355,7 +355,7 @@ const order: string[] = [];
 let running = false;
 
 /** A look's id for its faint: its class (on a battle map) and its look. */
-export const faintId = (o: Outfit, cls: string | null) => `faint:${cls ?? '-'}:${outfitKey(o)}`;
+export const faintId = (o: Outfit, cls: string | null) => `faint:${cls ?? '-'}:${o.weaponCosmetic ?? '-'}:${outfitKey(o)}`; // (a weapon skin too: kit-art.ts artFor)
 
 /** A look's faint if it's built (else null). */
 export function faintOf(o: Outfit, cls: string | null): Faint | null {
@@ -437,7 +437,7 @@ function dizzyFiles(M: Manifest): string[] {
 function* buildFaint(scene: Phaser.Scene, M: Manifest, o: Outfit, cls: string | null, id: string): Generator<void, Faint | null> {
   const C = M.characters;
   const K = M.classes;
-  const art = cls && K ? (K.list[cls] as ClassArt | undefined) : undefined;
+  const art = cls && K ? artFor(C, K, cls, o) : undefined; // (in a worn weapon cosmetic's skin)
   if (cls && (!art || !K)) return null;
   const anim = art ? (art.anims['idle-ready'] ? 'idle-ready' : 'walk-ready') : 'idle';
   const dirs = art ? (Object.keys(art.anims[anim]?.dirs ?? {}) as Dir[]) : (C.animations.idle?.directions ?? C.directions);

@@ -226,6 +226,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `maps/slums.json` (128,96 → 129,97), and `ui/map/map-layout.json` `maps[id].label` (where the Map menu writes each
   map's name). Copying either map over again from the art folder loses the post.
 - `classes/leveling.json`: `miniBoss.questDrop`.
+- The Moonlight weapons (24 Oct 2026, Mac; CONTEXT.md Weapon skin): `items/items.json` `moonlight-<class>` (six weapon
+  cosmetics: `forClass`, `stats` { atk 10, critDmg 0.03 }), `classes/stats.json` `cosmeticShop.weaponPrice` 250 (+
+  `weaponPriceNote`), the manifest's `characters.wardrobe.cosmeticWeapons` (id → class and skin). The art is the art
+  folder's cosmetics/moonlight/moonlight-weapons-v4.zip as it is (characters/ and items/: every class weapon sheet's
+  `-moonlight` twin, the resting and balm-float ones too).
 - The store's Cosmetics (19 Oct 2026, Mac): `classes/stats.json` `cosmeticShop` (headPrice 50, bodyPrice 100, setPrice 130);
   `items/items.json` the five Sets' ten pieces (`<set>-head` / `<set>-body`, `shop: "cosmetic"`, `set`) and the store's
   permanent `witch-hat` / `witch-robe` (`shop`, `event: "halloween"`, `set: "witch"`, no `lastsDays`; Biikko still drops
@@ -1509,6 +1514,18 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `tintables`. A worn or removed cosmetic rebuilds your battle poses on a battle map (TownScene `setOutfit` →
   `applyBattle`: they're baked per look). The Info window shows a Costume tab (the `inspect` message's
   `cosmetics`). Tested (items.test.ts, adventure.test.ts).
+  Weapon skins (CONTEXT.md Weapon skin: the Moonlight weapons, `moonlight-<class>`): worn in the Costume tab's Weapon place,
+  their stats (items.json `stats`) count only while `forClass` is the wearer's class (shared `cosmeticFits`; `itemTotals`'
+  `cls`, `wornItems` = gear and cosmetics: fighterOf, the stats box, tooltips, the dev town), and the look carries the
+  worn one's id only then (`weaponCosmetic`, shared `cosmeticWeaponOf` in `withCosmetics`: the server's `withWorn` with
+  their class, re-sent on a class change; the game's `lookWithCosmetics`; a saved look never has it). Drawing: kit-art
+  `artFor` (the class's art with every weapon layer's file swapped to its `-<skin>` twin by shared `weaponSkinFile`, cached
+  per art and skin: `skinnedArt`) wherever a class weapon is drawn for a look (battle-art, the faint, the resting weapon in
+  town and Info, the class choice, the Skills preview, the aura's battle trace, the store's preview: `drawRestedStill`);
+  a layer matched by name (the preview's hidden lid) still matches. Another class's piece stays worn, greyed (`eq-off`),
+  its tooltip "Only for the Stick". The store lists all six for `weaponPrice` in the Weapon sub-tab, the buyer's class
+  first, never in a Set. Packs: a skin's class sheets apart (`class-<class>-skin-<skin>`), so only wearers load them.
+  Tested in the bot's `web/moonlight.test.ts` (every class weapon sheet has a same-size twin).
   The store's **Cosmetics** tab (CONTEXT.md Set; shared `cosmetic-shop.ts`, tested in the bot's `web/cosmetic-shop.test.ts`):
   every items.json kind with `shop: "cosmetic"` (the five Sets' ten pieces, 19 Oct 2026: Velvet Nightwing, Ember Imp, Lilac
   Gremlin, Gravecaller, Moonlit Sylph, art from the art folder's cosmetics/custom) for stats.json `cosmeticShop`

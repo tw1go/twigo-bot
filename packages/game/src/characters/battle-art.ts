@@ -2,7 +2,7 @@ import type Phaser from 'phaser';
 import { settleOn } from '../world/settle';
 import type { CharacterDefs, ClassArt, ClassesDefs, Dir } from '../assets/types';
 import { type Outfit, litHat, sheetKey } from './doll';
-import { CELL, cosmeticPoseFiles, drawLitHead, drawPose, lookImages, poseFiles } from './kit-art';
+import { CELL, artFor, cosmeticPoseFiles, drawLitHead, drawPose, lookImages, poseFiles, skinKey } from './kit-art';
 import { loadImages } from './loading';
 import { lagMark } from '../net/lag';
 
@@ -31,9 +31,10 @@ let queue: Promise<unknown> = Promise.resolve();
 
 /** A class's battle sheets for a look (loads the poses the first time; then the same promise). */
 export function battleSheets(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, cls: string, o: Outfit): Promise<BattleSheets | null> {
-  const art = K.list[cls] as ClassArt | undefined;
+  const art = artFor(C, K, cls, o); // (in a worn weapon cosmetic's skin: kit-art.ts)
   if (!art) return Promise.resolve(null);
-  const id = `${cls}|${sheetKey(o, 'idle', 's')}`;
+  const skin = skinKey(C, o);
+  const id = `${cls}${skin ? `-${skin}` : ''}|${sheetKey(o, 'idle', 's')}`;
   let p = built.get(id);
   if (!p) {
     const files = loadImages(scene, [...poseFiles(art), ...lookImages(C, o, C.directions), ...cosmeticPoseFiles(C, K, o, art)]);

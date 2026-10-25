@@ -56,6 +56,7 @@ import { type LootGot,
   type CosmeticPlace,
   cosmeticHatOf, cosmeticTopOf,
   withCosmetics,
+  cosmeticWeaponOf,
   wearCosmetic,
   unwearCosmetic,
   type WarrensData,
@@ -460,10 +461,10 @@ export const unequipPlace = (place: EquipPlace) => act('/town/equip', { action: 
 export const wearCosmeticItem = (uid: string, place?: CosmeticPlace) => act('/town/equip', { action: 'wear-cosmetic', item: uid, ...(place ? { place } : {}) });
 export const takeOffCosmetic = (place: CosmeticPlace) => act('/town/equip', { action: 'take-off-cosmetic', place });
 
-/** The look you show, from your saved one: a worn head cosmetic's hat on it (shared cosmetics.ts; the manifest's
- *  cosmeticHats). */
-export function lookWithCosmetics<O extends { hat?: string; hatColour?: string; top: string }>(outfit: O, hats: Record<string, string>, tops?: Record<string, string>): O {
-  return withCosmetics(outfit, cosmeticHatOf(hats, state?.cosmetics), cosmeticTopOf(tops, state?.cosmetics));
+/** The look you show, from your saved one: a worn head cosmetic's hat on it, a body cosmetic's top, and a weapon
+ *  cosmetic that fits your class (shared cosmetics.ts; the manifest's cosmeticHats, cosmeticTops; items.json forClass). */
+export function lookWithCosmetics<O extends { hat?: string; hatColour?: string; top: string; weaponCosmetic?: string }>(outfit: O, hats: Record<string, string>, tops?: Record<string, string>): O {
+  return withCosmetics(outfit, cosmeticHatOf(hats, state?.cosmetics), cosmeticTopOf(tops, state?.cosmetics), data ? cosmeticWeaponOf(data, state?.cosmetics, state?.cls) : null);
 }
 
 /** The name of the head cosmetic worn (the Parlor's Hat row says so), or null. */

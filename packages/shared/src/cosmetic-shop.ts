@@ -4,17 +4,22 @@ import { eventEndDay, type EventWindow } from './events.js';
 import { type CombatItemDef, type Item, type ItemData, addToBag, isExpired, isGearDef, newItem, pocketOf, pocketSlots, pocketUsed } from './items.js';
 
 // 👘 The sari-sari store's Cosmetics tab (CONTEXT.md Cosmetic, Set): every cosmetic kind with `shop: "cosmetic"`
-// (items.json), a Head for stats.json cosmeticShop.headPrice and a Body for bodyPrice in Kowens, and each Set (the Head and
-// Body sharing a `set`) for setPrice. One with an `event` is sold only while that event is on (the Witch Hat and Robe:
+// (items.json), a Head for stats.json cosmeticShop.headPrice, a Body for bodyPrice and a Weapon for weaponPrice in Kowens
+// (the Moonlight weapons: every class's, the buyer's own first; never in a Set), and each Set (the Head and Body sharing
+// a `set`) for setPrice. One with an `event` is sold only while that event is on (the Witch Hat and Robe:
 // Halloween; the store's are permanent kinds of their own, Biikko's drops the 5-day ones). Bought one at a time, into the
 // Costume pocket, bound; never one you already have (in the Costume tab or worn; a timed one only until it runs out).
 
-/** stats.json cosmeticShop: Kowens for a Head, a Body, or both as a Set. */
+/** stats.json cosmeticShop: Kowens for a Head, a Body, a Weapon, or a Head and Body as a Set. */
 export interface CosmeticShopRules {
   headPrice: number;
   bodyPrice: number;
+  weaponPrice?: number;
   setPrice: number;
 }
+
+/** A piece's price by where it's worn. */
+const priceOf = (R: CosmeticShopRules, place: CosmeticPlace) => (place === 'head' ? R.headPrice : place === 'weapon' ? (R.weaponPrice ?? R.bodyPrice) : R.bodyPrice);
 
 export const cosmeticShopRules = (stats: ItemData['stats']): CosmeticShopRules | null =>
   ((stats as { cosmeticShop?: CosmeticShopRules }).cosmeticShop ?? null);
@@ -36,6 +41,8 @@ export interface CosmeticWare {
   about: string;
   /** Sold only during an event: "Halloween only, until Nov 4". */
   limited?: string;
+  /** A weapon piece's class (its look and stats only for that class). */
+  forClass?: string;
   /** A piece they already have (a Set they have a piece of isn't listed). */
   owned?: boolean;
 }
@@ -65,12 +72,14 @@ function onSale(data: ItemData, events: ShopEvents): (CombatItemDef & { cosmetic
   return out;
 }
 
-/** What the Cosmetics tab sells them now: each piece (owned ones marked), then a Set for every Set with both pieces on
- *  sale and neither owned. Empty without stats.json cosmeticShop. */
-export function cosmeticWares(data: ItemData, s: Pick<AdventureState, 'bag' | 'cosmetics'>, events: ShopEvents, now: number): CosmeticWare[] {
+/** What the Cosmetics tab sells them now: each piece (owned ones marked; weapon pieces for their own class first), then a
+ *  Set for every Set with both pieces on sale and neither owned. Empty without stats.json cosmeticShop. */
+export function cosmeticWares(data: ItemData, s: Pick<AdventureState, 'bag' | 'cosmetics'> & { cls?: string | null }, events: ShopEvents, now: number): CosmeticWare[] {
   const R = cosmeticShopRules(data.stats);
   if (!R) return [];
-  const defs = onSale(data, events);
+  // (A weapon piece for their class before the others, each group in items.json's order: a stable sort.)
+  const mineFirst = (d: CombatItemDef) => (d.cosmeticPlace === 'weapon' && s.cls && d.forClass !== s.cls ? 1 : 0);
+  const defs = onSale(data, events).sort((a, b) => mineFirst(a) - mineFirst(b));
   const limited = (def: CombatItemDef) => {
     const e = def.event ? events[def.event] : undefined;
     return e ? { limited: `${eventName(def.event!)} only, until ${eventEndDay(e.window)}` } : {};
@@ -78,15 +87,16 @@ export function cosmeticWares(data: ItemData, s: Pick<AdventureState, 'bag' | 'c
   const pieces: CosmeticWare[] = defs.map((def) => ({
     id: def.id,
     name: def.name,
-    cost: def.cosmeticPlace === 'head' ? R.headPrice : R.bodyPrice,
+    cost: priceOf(R, def.cosmeticPlace),
     place: def.cosmeticPlace,
-    ...(def.set ? { set: def.set } : {}),
+    ...(def.set && def.cosmeticPlace !== 'weapon' ? { set: def.set } : {}),
+    ...(def.forClass ? { forClass: def.forClass } : {}),
     about: def.about ?? '',
     ...limited(def),
     ...(hasCosmetic(s, def.id, now) ? { owned: true } : {}),
   }));
   const sets: CosmeticWare[] = [];
-  for (const set of new Set(defs.flatMap((d) => (d.set ? [d.set] : [])))) {
+  for (const set of new Set(defs.flatMap((d) => (d.set && d.cosmeticPlace !== 'weapon' ? [d.set] : [])))) {
     const head = defs.find((d) => d.set === set && d.cosmeticPlace === 'head');
     const body = defs.find((d) => d.set === set && d.cosmeticPlace === 'body');
     if (!head || !body || hasCosmetic(s, head.id, now) || hasCosmetic(s, body.id, now)) continue;
@@ -108,6 +118,7 @@ export const cosmeticShopItem = (w: CosmeticWare): TownShopItem => ({
   ...(w.set ? { set: w.set } : {}),
   ...(w.pieces ? { pieces: w.pieces } : {}),
   ...(w.limited ? { limited: w.limited } : {}),
+  ...(w.forClass ? { forClass: w.forClass } : {}),
 });
 
 const plural = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'Kowen' : 'Kowens'}`;
