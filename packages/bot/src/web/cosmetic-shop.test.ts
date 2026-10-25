@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { type AdventureState, type Item, type ShopEvents, buyCosmetic, cosmeticWares, isGearDef, newItem, pocketSlots } from '@mikazuki/shared';
+import { type AdventureState, type Item, type ShopEvents, buyCosmetic, cosmeticWares, giftableCosmetics, giveCosmetic, isGearDef, newItem, pocketSlots } from '@mikazuki/shared';
 import { loadHalloween } from './halloween.js';
 import { loadItemData } from './stats-data.js';
 
@@ -183,4 +183,37 @@ test('a Set: setPrice for both pieces at once, two free slots; refused (and not 
   const tight = fresh();
   for (let i = 0; i < pocketSlots(D, 'costume') - 1; i++) tight.bag.push(item('lamp-hat'));
   assert.equal(buyCosmetic(D, tight, 'set:gravecaller', OFF, wallet(1000), uid, NOW).message, 'A Set needs 2 free slots in your Costume tab.');
+});
+
+test("the CMS gives cosmetics: every piece and every Set listed (the Moonlight weapons and Biikko's timed ones too); given unbound into the Costume tab, a Set's two pieces; never one they have; room needed", () => {
+  const list = giftableCosmetics(D);
+  const ids = list.map((c) => c.id);
+  for (const id of ['lamp-hat', 'witch-hat', 'witch-hat-5d', 'moonlight-potlid', 'midnight-agent-head', 'set:midnight-agent', 'set:witch']) assert.ok(ids.includes(id), id);
+  assert.equal(list.find((c) => c.id === 'moonlight-stick')?.forClass, 'stick');
+  assert.equal(list.find((c) => c.id === 'witch-hat-5d')?.name, 'Witch Hat (5 days)');
+  assert.deepEqual([...new Set(list.map((c) => c.place))], ['head', 'body', 'weapon', 'set'], 'by place, Sets last');
+  // A piece: into the Costume tab, unbound (it binds as it's worn).
+  const s = fresh();
+  const r = giveCosmetic(D, s, 'moonlight-broom', uid, NOW);
+  assert.deepEqual([r.ok, r.message, r.names], [true, 'Gave the Moonlight Broom.', ['Moonlight Broom']]);
+  assert.equal(s.bag.length, 1);
+  assert.equal(s.bag[0].bound, false);
+  // Not again, and not while worn.
+  assert.deepEqual(giveCosmetic(D, s, 'moonlight-broom', uid, NOW), { ok: false, message: 'They already have the Moonlight Broom.', names: [] });
+  const worn = { bag: [], cosmetics: { head: item('midnight-agent-head') } };
+  assert.equal(giveCosmetic(D, worn, 'set:midnight-agent', uid, NOW).message, 'They already have the Midnight Agent Shades.');
+  // A Set: both pieces.
+  const t = fresh();
+  assert.equal(giveCosmetic(D, t, 'set:little-visitor', uid, NOW).message, 'Gave the Little Visitor Set.');
+  assert.deepEqual(t.bag.map((i) => [i.defId, i.bound]), [['little-visitor-head', false], ['little-visitor-body', false]]);
+  // Room: a full Costume tab takes nothing; one free slot takes a piece but not a Set.
+  const slots = pocketSlots(D, 'costume');
+  const full = { bag: Array.from({ length: slots }, () => item('lamp-hat')), cosmetics: {} };
+  assert.equal(giveCosmetic(D, full, 'moonlight-hilot', uid, NOW).message, 'Their Costume tab is full.');
+  const one = { bag: Array.from({ length: slots - 1 }, () => item('lamp-hat')), cosmetics: {} };
+  assert.equal(giveCosmetic(D, one, 'set:gravecaller', uid, NOW).message, 'Their Costume tab needs 2 free slots.');
+  assert.equal(one.bag.length, slots - 1, 'nothing given');
+  // Not a cosmetic, or no such thing.
+  assert.equal(giveCosmetic(D, fresh(), 'rough-whetstone', uid, NOW).message, 'No such cosmetic.');
+  assert.equal(giveCosmetic(D, fresh(), 'set:nothing', uid, NOW).message, 'No such cosmetic.');
 });

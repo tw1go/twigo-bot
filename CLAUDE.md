@@ -110,7 +110,7 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
   item), Rewards (Mine Wars attend/top 3 pay, daily Kowens, welcome gift, stay minutes and daily cap, the lucky dig's Soonest / Latest; `games/settings.ts`, kv
   `settings`, min/max per setting, Reset = the default) (kv `town-posts`, `titles`, `shop`, `dig-items`, `settings` over the
   code's defaults), the Mine Wars payout (pick Discord members found by name or ID as attended / Top 10, see who gets what, pay:
-  `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles and class (shown with quests, gear, Rename Cards; Reset class), and the Field boss (the
+  `payMineWars` in `minewars/payout.ts`, shared with `/gift minewars`, same ledger and games channel post) players' Kowens, titles, cosmetics and class (shown with quests, gear, cosmetics, Rename Cards; Reset class; Give cosmetic: any cosmetic or a Set's two pieces into their Costume tab, unbound until worn, never one they have, room needed: shared `giftableCosmetics` / `giveCosmetic`, POST /api/player/cosmetic { id, item }, the gift pop-up in town), and the Field boss (the
   Scrapheap Golem and the Great Scale: up or not, HP, next rise; Spawn now = `MobRoom.riseGolem` / `GreatScale.wakeNow`, only
   when it isn't up, its schedule carries on; `CmsDeps.slums` / `greatScale`, GET /api/boss, POST /api/boss/spawn { id }), and Maintenance (`web/maintenance.ts`, kv 'maintenance', tested:
   on with a note (≤ 200, `DEFAULT_NOTE` when empty) = everyone but the CMS's users is closed out of the town with code

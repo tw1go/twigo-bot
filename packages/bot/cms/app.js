@@ -502,9 +502,13 @@ async function players(selected) {
   async function open(id) {
     current = id;
     for (const row of list.children) row.classList?.toggle('on', row.lastChild?.textContent?.endsWith(id));
-    const { player: p, titles: all } = await act(null, () => api(`player?id=${encodeURIComponent(id)}`)) ?? {};
+    const { player: p, titles: all, cosmetics } = await act(null, () => api(`player?id=${encodeURIComponent(id)}`)) ?? {};
+    giftable = cosmetics ?? [];
     if (p) draw(p, all);
   }
+  /** Every cosmetic (and Set) the CMS can give, from the player's lookup. */
+  let giftable = [];
+  const PLACE = { head: 'Head', body: 'Body', weapon: 'Weapon (counts only for its class)', set: 'Sets (head and body)' };
 
   function draw(p, all) {
     const title = all.find((t) => t.id === p.title) ?? { name: 'Townfolk', color: '#B794F6' };
@@ -513,6 +517,9 @@ async function players(selected) {
     const reason = h('input', { maxlength: 100, placeholder: 'Reason (optional, for the log)' });
     const pick = h('select', null, ...all.filter((t) => !t.auto).map((t) => h('option', { value: t.id }, t.name)));
     pick.value = p.title;
+    const byPlace = new Map();
+    for (const c of giftable) (byPlace.get(c.place) ?? byPlace.set(c.place, []).get(c.place)).push(c);
+    const cosmetic = h('select', null, h('option', { value: '' }, 'Pick a cosmetic…'), ...[...byPlace].map(([place, list]) => h('optgroup', { label: PLACE[place] ?? place }, ...list.map((c) => h('option', { value: c.id }, c.name)))));
 
     detail.replaceChildren(
       h('h2', null, p.nickname ?? p.discordName), h('div', null, chip(title)),
@@ -530,6 +537,7 @@ async function players(selected) {
         h('dt', null, 'Quests'), h('dd', null, [...p.questsActive, ...p.questsDone.map((q) => `${q} ✓`)].join(' · ') || '—'),
         h('dt', null, 'Wearing'), h('dd', null, p.equipped.join(' · ') || 'nothing'),
         h('dt', null, 'Combat bag'), h('dd', null, p.gear.join(' · ') || 'empty'),
+        h('dt', null, 'Cosmetics'), h('dd', null, p.cosmetics?.join(' · ') || 'none'),
         h('dt', null, 'Kusing'), h('dd', null, fmt(p.kusing ?? 0)),
         h('dt', null, 'Rename Cards'), h('dd', null, fmt(p.renameCards)),
       ),
@@ -549,6 +557,16 @@ async function players(selected) {
         toast('Title given. They see it from their next visit to town.');
         draw(next, all);
       }) }, 'Give title')),
+      h('label', null, 'Give a cosmetic'), cosmetic,
+      h('p', { class: 'hint' }, 'Straight into their Costume tab, free and unbound until they first wear it (a timed one\u2019s days start now). Not one they already have; their Costume tab needs room.'),
+      h('div', { class: 'actions' }, h('button', { class: 'btn', onclick: (e) => act(e.currentTarget, async () => {
+        const c = giftable.find((x) => x.id === cosmetic.value);
+        if (!c) throw new Error('Pick a cosmetic first.');
+        if (!confirm(`Give ${p.nickname ?? p.discordName} the ${c.name}?`)) return;
+        const { player: next, message } = await api('player/cosmetic', { id: p.id, item: c.id });
+        toast(`${message} ${next.inTown ? 'It pops up in their game now.' : 'It’s in their Costume tab on their next visit.'}`);
+        draw(next, all);
+      }) }, 'Give cosmetic')),
       h('label', null, 'Class'),
       h('p', { class: 'hint' }, 'Starts their class, quests and equipment over: no class, nothing worn or carried, and the Tanod’s quest again on their next visit. Their level and XP stay; their stat and skill points come back.'),
       h('div', { class: 'actions' }, h('button', { class: 'btn', disabled: !p.cls && !p.questsDone.length, onclick: (e) => act(e.currentTarget, async () => {

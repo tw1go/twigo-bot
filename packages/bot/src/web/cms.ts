@@ -13,7 +13,7 @@ import { kowen } from '../kowens.js';
 import { isCmsUser, sessionUser } from './auth.js';
 import { getNickname } from './nickname.js';
 import { DEFAULT_TITLE, DESCRIPTION_MAX, TITLES, autoHolder, giveTitle, isTitleColor, removeTitle, setTitle, titleHolders, titleIdOf } from './titles.js';
-import { townGift } from './town-feed.js';
+import { townGift, townGiftItem, townItems } from './town-feed.js';
 import { kickedUntil, mutedUntil } from './town-mod.js';
 import { forgetNews } from './town-news.js';
 import { BODY_MAX, TITLE_MAX, deletePost, savePost, townPosts } from './town-posts.js';
@@ -21,8 +21,8 @@ import type { Town } from './town.js';
 import type { GreatScale } from './town-great-scale.js';
 import type { MobRoom } from './town-mobs.js';
 import { isSettingKey, setSetting, setting, settingList, SETTINGS } from '../games/settings.js';
-import { CLASSES, QUESTS, adventureOf, resetAdventure } from './adventure.js';
-import { itemName } from '@mikazuki/shared';
+import { CLASSES, QUESTS, adventureOf, newUid, resetAdventure, withItems } from './adventure.js';
+import { giftableCosmetics, giveCosmetic, itemName, pocketOf } from '@mikazuki/shared';
 import { loadItemData } from './stats-data.js';
 import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
@@ -48,6 +48,8 @@ import { MAIL_RULES } from '@mikazuki/shared';
 //   GET  <path>/api/players?q=   nickname or Discord ID; empty = the richest
 //   GET  <path>/api/player?id=   POST /api/player/kowens { id, amount, reason? } · POST /api/player/title { id, title }
 //                                POST /api/player/reset-class { id } (class, quests and equipment start over)
+//                                POST /api/player/cosmetic { id, item } a cosmetic (or `set:<set>`) into their Costume
+//                                tab, unbound until worn (shared giveCosmetic: never one they have; room needed)
 //   GET  <path>/api/members?q=   Discord members by name (or one ID), for Mine Wars, who may have no town nickname
 //   GET  <path>/api/maintenance  maintenance mode (web/maintenance.ts): on or off, its note, who's in town
 //                                POST /api/maintenance { on, note? } on: everyone but the CMS's users is sent out of the
@@ -195,7 +197,12 @@ function adventureView(id: string) {
     questsActive: s.quests.active.map((p) => `${quest(p.id)} (${QUESTS.find((x) => x.id === p.id)?.objectives[p.step]?.text ?? 'done'})`),
     questsDone: s.quests.done.map(quest),
     equipped: Object.entries(s.equipped).map(([place, item]) => `${place}: ${itemName(loadItemData(), item!)}`),
-    gear: s.bag.map((item) => `${itemName(loadItemData(), item)}${item.count > 1 ? ` ×${item.count}` : ''}`),
+    gear: s.bag.filter((item) => pocketOf(loadItemData(), item) !== 'costume').map((item) => `${itemName(loadItemData(), item)}${item.count > 1 ? ` ×${item.count}` : ''}`),
+    // Their cosmetics: worn (by place), then the Costume tab's.
+    cosmetics: [
+      ...Object.entries(s.cosmetics).map(([place, item]) => `${itemName(loadItemData(), item!)} (worn: ${place})`),
+      ...s.bag.filter((item) => pocketOf(loadItemData(), item) === 'costume').map((item) => itemName(loadItemData(), item)),
+    ],
     kusing: s.kusing,
   };
 }
@@ -477,7 +484,7 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
     case 'GET /api/player': {
       const id = str(url.searchParams.get('id'));
       if (!known(id)) return send(res, 404, '{"error":"No such player."}');
-      return send(res, 200, { player: await player(id, deps), titles: titleList() });
+      return send(res, 200, { player: await player(id, deps), titles: titleList(), cosmetics: giftableCosmetics(loadItemData()) });
     }
     case 'POST /api/player/kowens': {
       const id = str(body!.id);
@@ -495,6 +502,18 @@ export async function cms(client: Client, req: IncomingMessage, res: ServerRespo
         await log(client, who, `took ${taken.toLocaleString('en-US')} ${kowen(taken)} from **${name}**${reason ? ` (${reason})` : ''}`);
       }
       return send(res, 200, { player: await player(id, deps) });
+    }
+    case 'POST /api/player/cosmetic': {
+      const id = str(body!.id);
+      const item = str(body!.item);
+      if (!known(id)) return send(res, 404, '{"error":"No such player."}');
+      const D = loadItemData();
+      const r = withItems(id, (s) => giveCosmetic(D, s, item, newUid), (x) => x.ok);
+      if (!r.ok) return bad(r.message);
+      townItems(id); // their bag in town shows it
+      townGiftItem(id, 'The gifter', { id: item, name: r.names.join(' and '), rarity: 'common' }, 1); // the gift pop-up, if they're in town
+      await log(client, who, `gave **${getNickname(id) ?? (await deps.discordName(id))}** the cosmetic **${r.names.join('** and **')}** (unbound until worn)`);
+      return send(res, 200, { player: await player(id, deps), message: r.message });
     }
     case 'POST /api/player/title': {
       const id = str(body!.id);
