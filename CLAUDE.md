@@ -230,7 +230,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Moonlight weapons (24 Oct 2026, Mac; CONTEXT.md Weapon skin): `items/items.json` `moonlight-<class>` (six weapon
   cosmetics: `forClass`, `stats` { atk 10, critDmg 0.03 }), `classes/stats.json` `cosmeticShop.weaponPrice` 250 (+
   `weaponPriceNote`), the manifest's `characters.wardrobe.cosmeticWeapons` (id → class and skin). The art is the art
-  folder's cosmetics/moonlight/moonlight-weapons-v4.zip as it is (characters/ and items/: every class weapon sheet's
+  folder's cosmetics/moonlight/moonlight-weapons-v6.zip as it is (v6, 25 Oct 2026: the Pot lid's lid facing n / ne / nw redrawn) (characters/ and items/: every class weapon sheet's
   `-moonlight` twin, the resting and balm-float ones too).
 - The store's Cosmetics (19 Oct 2026, Mac): `classes/stats.json` `cosmeticShop` (headPrice 50, bodyPrice 100, setPrice 130);
   `items/items.json` the five Sets' ten pieces (`<set>-head` / `<set>-body`, `shop: "cosmetic"`, `set`) and the store's
