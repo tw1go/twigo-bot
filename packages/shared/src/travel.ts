@@ -143,3 +143,18 @@ export function lanternRefusal(o: {
   if (o.lanterns < 1) return 'You need a Return Lantern.';
   return null;
 }
+
+/** When a map opens (ms; its json's `opensAt`, an ISO time with its offset), or null when it's open already or always
+ *  was (CONTEXT.md Opening time): before then only Game Masters go in. */
+export function mapOpensAt(map: { opensAt?: string | null }, now: number): number | null {
+  const at = map.opensAt ? Date.parse(map.opensAt) : NaN;
+  return Number.isFinite(at) && at > now ? at : null;
+}
+
+/** "The Old Market opens Oct 26 at 9:00 AM (Philippine time)." */
+export function opensLine(name: string, at: number): string {
+  const when = new Date(at);
+  const day = when.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Manila' });
+  const time = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Manila' });
+  return `${name} opens ${day} at ${time} (Philippine time).`;
+}

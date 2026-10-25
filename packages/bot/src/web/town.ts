@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, TestingSettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -123,6 +123,8 @@ export interface TownMap {
   avoid?: [number, number][];
   /** Its Lantern Posts (shared travel.ts): none, one, or the Palengke's four. */
   lanterns?: LanternPost[];
+  /** When it opens to everyone (CONTEXT.md Opening time; its json's `opensAt`), if it isn't open yet. */
+  opensAt?: string | null;
 }
 
 export interface TownProfile {
@@ -222,6 +224,10 @@ export interface TownOptions {
   /** Maintenance mode (web/maintenance.ts, the CMS): while `on`, only members `allowed` (the CMS's users) may be in
    *  the town; the rest are closed with MAINTENANCE and the note as the reason. Without it, never. */
   maintenance?: { on(): boolean; allowed(userId: string): boolean; note(): string };
+  /** Maps not open yet (CONTEXT.md Opening time), by room: their name and opening (an ISO time, their json's
+   *  `opensAt`). Before it only Game Masters (`gm`) come in: anyone else is sent back (`area-closed`, 4002) and their
+   *  Lantern Post teleport there refused; each welcome lists what's still closed to them. */
+  opening?: Record<string, { name: string; opensAt?: string | null }>;
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
@@ -403,7 +409,7 @@ export function loadTownMap(name = 'town'): TownMap {
     teleporters?: { id: string; name: string; tile: [number, number] }[];
   };
   const blocked = blockedWithPosts(json.blocked, json.teleporters);
-  return { size: json.size, spawn: json.spawn, blocked, avoid: Object.values(json.gates ?? {}).flat(), lanterns: lanternPostsOf({ ...json, blocked }) };
+  return { size: json.size, spawn: json.spawn, blocked, avoid: Object.values(json.gates ?? {}).flat(), lanterns: lanternPostsOf({ ...json, blocked }), ...(json.opensAt ? { opensAt: json.opensAt } : {}) };
 }
 
 /** Facing for one grid step (as the game's dirForStep: col runs screen right-down, row runs screen left-down). */
@@ -1940,12 +1946,34 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     return pool[Math.floor(Math.random() * pool.length)];
   };
 
+  /** A room not open to this member yet (CONTEXT.md Opening time): its name and opening (ms); null when it's open or
+   *  they're a Game Master. */
+  const closedFor = (room: string, userId: string, now: number): { name: string; at: number } | null => {
+    const o = opts.opening?.[room];
+    const at = o ? mapOpensAt(o, now) : null;
+    return o && at !== null && !opts.gm?.(userId) ? { name: o.name, at } : null;
+  };
+  /** Every room still closed to them, for their welcome. */
+  const closedRooms = (userId: string, now: number): Record<string, number> | undefined => {
+    const out = Object.fromEntries(Object.keys(opts.opening ?? {}).flatMap((room) => {
+      const shut = closedFor(room, userId, now);
+      return shut ? [[room, shut.at]] : [];
+    }));
+    return Object.keys(out).length ? out : undefined;
+  };
+
   const join = (ws: WebSocket, userId: string, profile: TownProfile, room: string) => {
     // Kicked by a moderator: told when they may come back, and closed.
     const kicked = opts.moderation?.kickedUntil(userId);
     if (kicked) return ws.close(KICKED, String(kicked));
     // Maintenance: only the CMS's users come in.
     if (opts.maintenance?.on() && !opts.maintenance.allowed(userId)) return ws.close(MAINTENANCE, opts.maintenance.note().slice(0, 120));
+    // A map not open yet: back where they came from (a link, a stale tab), unless a Game Master.
+    const shut = closedFor(room, userId, Date.now());
+    if (shut) {
+      ws.send(JSON.stringify({ t: 'area-closed', area: room, opensAt: shut.at, message: opensLine(shut.name, shut.at) } satisfies TownServerMessage));
+      return ws.close(4002, 'not open yet');
+    }
     // The Warrens: the run they may be in (their party's, or their own); none (closed, or not theirs) → back out.
     if (room === 'warrens') {
       const run = W?.runOf(userId);
@@ -1996,7 +2024,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       const loot = loots.get(room);
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
     });
-    send(c, { t: 'welcome', now: Date.now(), you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}), ...(player.jailed ? { jailed: true } : {}) });
+    const closed = closedRooms(userId, Date.now());
+    send(c, { t: 'welcome', now: Date.now(), you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}), ...(player.jailed ? { jailed: true } : {}), ...(closed ? { closed } : {}) });
     conns.set(userId, c);
     others(c, { t: 'join', player });
     known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls, level: player.level });
@@ -2341,6 +2370,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       lanterns: opts.lanterns.count(c.userId),
     });
     if (why || !isLanternMap(to)) return refuse(why ?? "There's no Lantern Post there.");
+    const shut = closedFor(to, c.userId, now);
+    if (shut) return refuse(opensLine(shut.name, shut.at));
     if (!opts.lanterns.use(c.userId)) return refuse('You need a Return Lantern.');
     tellItems(c); // (one fewer)
     const post = typeof toPost === 'number' ? toPost : 0;

@@ -447,6 +447,9 @@ export function devTown(): Plugin {
           slums: slumsMap,
           palengke: palengkeMap,
         },
+        // The Old Market's opening time (CONTEXT.md Opening time) only when asked: DEV_OPENING=1 (its map's `opensAt`) or an
+        // ISO time when starting the dev server; Game Masters (?as=GM…) still go in.
+        ...(process.env.DEV_OPENING ? { opening: { palengke: { name: 'The Old Market', opensAt: process.env.DEV_OPENING === '1' ? palengkeJson.opensAt : process.env.DEV_OPENING } } } : {}),
         mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom(palengkeJson, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', ...(greatScale ? { director: greatScale } : {}) })) },
         ...(greatScale ? { greatScale: { boss: greatScale, room: 'palengke' } } : {}),
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),

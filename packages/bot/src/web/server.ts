@@ -1216,6 +1216,8 @@ export function startWebServer(client: Client): void {
       memory: townMemory(),
       map: loadTownMap(),
       rooms: { hood: hoodTownMap, slums: () => slumsMap, palengke: () => palengkeMap },
+      // The Old Market opens at its map's `opensAt` (CONTEXT.md Opening time): Game Masters before it.
+      opening: { palengke: { name: 'The Old Market', opensAt: palengkeMap.opensAt } },
       // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
       mobs: {
         slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
