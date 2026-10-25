@@ -238,6 +238,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `fixedColourHats`, `hatClips`, `hatCanvas`, `cosmeticTops`, `cosmeticHidesBottom`) and the new `cosmeticHidesShoes`,
   `topCanvas`, `topOverPattern`, `cosmeticBodyClip`, `bodyClipPattern`, `cosmeticPoseTops` (its `witchrobe` since 21 Oct 2026),
   `cosmeticPosePattern`. The art is the art folder's cosmetics/custom (and its poses/ zips: witch-robe-poses-v1 too) as it is.
+  Two more Sets (24 Oct 2026, Mac): Midnight Agent (`midnight-agent-head` / `-body`, art key `agent`: the shades follow the
+  face, the suit draws its own trousers and shoes) and Little Visitor (`little-visitor-head` / `-body`, `visitor`: the dome
+  clips the hair, `hatClips` true with its char-hatclip-visitor masks; the suit's shock gauntlets ride with the hands, in
+  town and on every combat pose); their items.json pieces and wardrobe entries as the five's. The art is the art folder's
+  cosmetics/new-outfits/new-outfits-v5.zip `repo/` as it is (its src/ and build/ stay there).
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
