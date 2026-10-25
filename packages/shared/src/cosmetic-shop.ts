@@ -160,3 +160,33 @@ export function buyCosmetic(
   }
   return { ok: true, message: `Bought the ${ware.name}!`, ware };
 }
+
+/** What a Game Master can give from the CMS: every cosmetic kind (on sale or not, an event's any time), and each Set
+ *  as `set:<set>` for both its pieces; by place, then name. */
+export function giftableCosmetics(data: ItemData): { id: string; name: string; place: CosmeticPlace | 'set'; forClass?: string; lastsDays?: number }[] {
+  const pieces: { id: string; name: string; place: CosmeticPlace; set?: string; forClass?: string; lastsDays?: number }[] = [];
+  for (const def of data.defs.values()) {
+    if (isGearDef(def) || def.kind !== 'cosmetic' || !def.cosmeticPlace) continue;
+    pieces.push({ id: def.id, name: def.lastsDays ? `${def.name} (${def.lastsDays} days)` : def.name, place: def.cosmeticPlace, ...(def.set ? { set: def.set } : {}), ...(def.forClass ? { forClass: def.forClass } : {}), ...(def.lastsDays ? { lastsDays: def.lastsDays } : {}) });
+  }
+  const order: (CosmeticPlace | 'set')[] = ['head', 'body', 'weapon', 'set'];
+  const sets = [...new Set(pieces.flatMap((p) => (p.set && !p.lastsDays ? [p.set] : [])))].filter((set) => pieces.filter((p) => p.set === set && !p.lastsDays).length === 2);
+  return [
+    ...pieces.map(({ set: _set, ...p }) => p),
+    ...sets.map((set) => ({ id: setWareId(set), name: setName(set), place: 'set' as const })),
+  ].sort((a, b) => order.indexOf(a.place) - order.indexOf(b.place) || a.name.localeCompare(b.name));
+}
+
+/** Gives a cosmetic (or a Set: `set:<set>`, both pieces) into the Costume tab, unbound (it binds as it's first worn; a
+ *  timed one's days start now): never one they already have, and only with room. */
+export function giveCosmetic(data: ItemData, s: Pick<AdventureState, 'bag' | 'cosmetics'>, id: string, uid: () => string, now = Date.now()): { ok: boolean; message: string; names: string[] } {
+  const set = id.startsWith('set:') ? id.slice(4) : null;
+  const defs = [...data.defs.values()].filter((d): d is CombatItemDef => !isGearDef(d) && d.kind === 'cosmetic' && !!d.cosmeticPlace && (set ? d.set === set && !d.lastsDays : d.id === id));
+  if (!defs.length || (set && defs.length !== 2)) return { ok: false, message: 'No such cosmetic.', names: [] };
+  const have = defs.find((d) => hasCosmetic(s, d.id, now));
+  if (have) return { ok: false, message: `They already have the ${have.name}.`, names: [] };
+  const pocket = pocketOf(data, { defId: defs[0].id });
+  if (pocketSlots(data, pocket) - pocketUsed(data, s.bag, pocket) < defs.length) return { ok: false, message: defs.length > 1 ? 'Their Costume tab needs 2 free slots.' : 'Their Costume tab is full.', names: [] };
+  for (const def of defs) addToBag(data, s.bag, { ...newItem(data.stats, def, uid()), bound: false }, uid, now);
+  return { ok: true, message: set ? `Gave the ${setName(set)}.` : `Gave the ${defs[0].name}.`, names: defs.map((d) => d.name) };
+}
