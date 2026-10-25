@@ -1709,7 +1709,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   its rules in words: data/leveling-plan.md; shared `leveling.ts`: `withLeveling` fills quests.json's `leveling` entries
   (title, goal, count, rewardXP/rewardKusing, the Tanod's give/report lines) from it, `questKill`, `readyToReport`,
   `miniBossRules` (numbers read from its sentences), `miniMobId`, `nearestGearLevel`): the Tanod's 12 main quests after the
-  class quest (`next`; anyone who finished it before gets tanod-01 on /me: `startQuests` starts a done quest's missing
+  class quest, then (25 Oct 2026, quests.json `tanod-13`, The Market Up North, guided, unlockLevel 21: his grey "!" and
+  his own `dialogue.wait` line from Lv 15 (`gapLine` prefers it over the Palengke's)) a `visit` objective (`area`
+  'palengke': shared leveling.ts `questVisit`, made as they walk into the Old Market (web/adventure.ts `enterAreaFor`; dev:
+  net/adventure.ts `enterArea`) or at once if they've been (`been:<area>` in `quests.flags`, kept only for an area a visit
+  asks for: `areasBeen`), `readyToReport` then: his radio's Report, 3,000 XP, 500,000 Kusing, 10 Medium HP + 10 MP
+  Potions); the quest trail leads a guided visit to the map's gate to its area (from town the Slums gate first:
+  TownScene `trailGoal`); tested in `web/old-market-intro.test.ts`; the Guide's Old Market tab (`next`; anyone who finished it before gets tanod-01 on /me: `startQuests` starts a done quest's missing
   next), objectives kill (count of a kind, never its mini bosses) and miniBoss (one of its mini bosses); the count in
   `QuestProgress.count`, saved in the quests JSON (no schema change); kills count for the killer (a mini boss: everyone
   credited) and their party in the same room (town.ts `withParty`, `TownOptions.quests.kill` = `questKillFor`, `quests`

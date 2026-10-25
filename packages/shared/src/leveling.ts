@@ -82,12 +82,28 @@ function objectiveOf(q: LevelingQuest): QuestObjectiveDef {
 /** How many an objective needs (1 for talk / chooseClass). */
 export const objectiveCount = (o: QuestObjectiveDef | undefined) => Math.max(1, o?.count ?? 1);
 
-/** An active quest's current objective is a count (kill / miniBoss) that's reached: ready to report. */
+/** An active quest's current objective is a count (kill / miniBoss) that's reached, or a visit made: ready to report. */
 export function readyToReport(def: QuestDef | undefined, p: { step: number; count?: number } | undefined): boolean {
   const o = def && p ? def.objectives[p.step] : undefined;
   // (A hand-in quest, the Palengke's, is reported at its NPC instead.)
-  return !!o && !def!.handIn && (o.type === 'kill' || o.type === 'miniBoss') && (p!.count ?? 0) >= objectiveCount(o);
+  return !!o && !def!.handIn && (o.type === 'kill' || o.type === 'miniBoss' || o.type === 'visit') && (p!.count ?? 0) >= objectiveCount(o);
 }
+
+/** They're in (or have been to) one of `areas`: each active quest's current visit objective of one of them is made, ready
+ *  to report. Returns whether anything moved. */
+export function questVisit(s: Pick<AdventureState, 'quests'>, quests: QuestDef[], areas: string[]): boolean {
+  let moved = false;
+  for (const p of s.quests.active) {
+    const o = quests.find((q) => q.id === p.id)?.objectives[p.step];
+    if (o?.type !== 'visit' || !o.area || !areas.includes(o.area) || (p.count ?? 0) >= 1) continue;
+    p.count = 1;
+    moved = true;
+  }
+  return moved;
+}
+
+/** The areas a member has walked into (kept with their quests as `been:<area>` flags), for visits started after. */
+export const areasBeen = (s: Pick<AdventureState, 'quests'>): string[] => (s.quests.flags ?? []).filter((f) => f.startsWith('been:')).map((f) => f.slice(5));
 
 /** A kill counts toward their active quests: `kill` objectives of its kind (not its mini bosses), `miniBoss` ones of its
  *  kind's mini bosses. Returns whether anything moved. */
