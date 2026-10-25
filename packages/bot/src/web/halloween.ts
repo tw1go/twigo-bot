@@ -13,18 +13,19 @@ import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facing
 //   never on the plaza, a path or road, a door, a gate, the camp or the golem pit, nor within 6 tiles of a player as it
 //   hides); the first click within reach finds it (the server's word on who was first), then the next one hides
 //   respawnMinutes later.
-// • Biikko Kalabasa: an event mob in the Slums run by `director` on its MobRoom: still to the room (this moves it: a
-//   walk to a spot 4-10 tiles away on height 1, a pause, again), silent (it never attacks), full again after
-//   healAfterSecondsUnhit without a hit. Its kill (web/town.ts) drops one set (biikkoLoot) held for the last hitter's party;
-//   back respawnMinutes after.
+// • Biikko Kalabasa: an event mob in each of its maps (the Slums and the Old Market), each run by that map's
+//   `directorFor` on its MobRoom and on its own schedule: still to the room (this moves it: a walk to a spot 4-10 tiles
+//   away on height 1, a pause, again), silent (it never attacks), full again after healAfterSecondsUnhit without a hit.
+//   Its kill (web/town.ts) drops one set (biikkoLoot, with its map's own items: `itemsIn`) held for the last hitter's
+//   party; that map's back respawnMinutes after.
 // • The Manananggal: a round every everyMinutes: its lower half stands at one of lowerSpots in town for lowerStaysMinutes,
 //   its upper half flies in the Slums (the director: passive until hit, then after its foe over anything, Claw Swipe
 //   every attackMs; leash and reset like a mob). Beaten, it's dazed behind whoever landed the last hit (anywhere: a town
 //   view's `dazed`); they reunite it at the legs (within reach) for its reward. Gone too long, or the legs' time up: it
 //   flies away, no reward. The next round's wait starts as one ends.
 //
-// What's kept (the bot's kv: `save`): where Mikko hides and when the next one does, Biikko's next spawn (null while it's
-// up: a restart brings it straight back), the round (the legs, until when, who carries it) and when the next one starts.
+// What's kept (the bot's kv: `save`): where Mikko hides and when the next one does, each map's Biikko's next spawn (null
+// while it's up: a restart brings it straight back), the round (the legs, until when, who carries it) and when the next one starts.
 // Pure apart from its clock and `random`: web/town.ts sends the messages and gives the rewards.
 
 export const EVENT_ZONE = 'halloween';
@@ -53,12 +54,23 @@ export interface HalloweenMap {
 export interface HalloweenSaved {
   mikko: { map: string; col: number; row: number } | null;
   mikkoAt: number | null;
-  biikkoAt: number | null;
+  /** Each map's Biikko's next spawn (ms), null while it's up. */
+  biikkoAt: Record<string, number | null>;
   round: { lower: [number, number]; until: number; carrier: string | null } | null;
   roundAt: number | null;
 }
 
-const fresh = (): HalloweenSaved => ({ mikko: null, mikkoAt: null, biikkoAt: null, round: null, roundAt: null });
+const fresh = (): HalloweenSaved => ({ mikko: null, mikkoAt: null, biikkoAt: {}, round: null, roundAt: null });
+
+/** One map's Biikko: its mob room (once attached), the tiles it walks, its last hit, when its walk ends and it may set off
+ *  again, and (dev) where it comes out next. */
+interface BiikkoSpot {
+  room: MobRoom | null;
+  tiles: [number, number][];
+  hitAt: number;
+  next: number;
+  devNear: [number, number] | null;
+}
 
 /** Cover Mikko hides beside: the Town's trees, bushes, ferns and rocks; the Slums' junk, dead trees and rubble. */
 const COVER = /^(tree-|bush-|fern|rock|rocks-|slums-(junk-|tire-|scrap-|oil-|cinder-|sacks|crates|trash-|cardboard|mattress|fridge|pushcart|dead-tree-|boulder|rubble))/;
@@ -116,16 +128,15 @@ export class Halloween {
   private forcedAt: number | undefined;
   private wasOn = false;
   private wasDeco = false;
-  /** The Slums' mob room (the director's hands), once attached. */
+  /** The upper half's map's mob room (the Slums': its director's hands), once attached. */
   private room: MobRoom | null = null;
-  /** Biikko: its last hit (ms), when its walk ends and it may set off again. */
-  private biikkoHitAt = 0;
-  private biikkoNext = 0;
+  /** Each map's Biikko (halloween.json biikko.maps). */
+  private readonly biikkos = new Map<string, BiikkoSpot>();
   /** The upper half: where it came out, its next swing. */
   private upperHome: [number, number] | null = null;
   private upperSwing = 0;
   private upperNext = 0;
-  /** Biikko's walking tiles (height 1, open, outside the camp and the pit). */
+  /** The upper half's tiles to come out on (the Slums' walking tiles: height 1, open, outside the camp and the pit). */
   private readonly wanderTiles: [number, number][];
   /** The numbers halloween.json writes in words (Mikko's clearance, Biikko's walks and rests, the first spawns, the
    *  Claw Swipe's pace). */
@@ -139,18 +150,32 @@ export class Halloween {
     private readonly random: () => number = Math.random,
   ) {
     this.saved = { ...fresh(), ...(saved ?? {}) };
+    // (Kept before Biikko came out in more than one map: one time, the first map's.)
+    const was = (saved as { biikkoAt?: unknown } | null)?.biikkoAt;
+    if (typeof was !== 'object' || !was) this.saved.biikkoAt = { [data.biikko.maps[0]]: typeof was === 'number' ? was : null };
     this.rules = halloweenRules(data);
     for (const name of data.mikko.maps) if (maps[name]) this.hides.set(name, hideTiles(maps[name]));
-    const slums = maps[data.biikko.map];
-    const pit = pitTiles(slums?.boss)?.all ?? new Set<string>();
-    this.wanderTiles = [];
-    if (slums) {
-      const [cols, rows] = slums.size;
-      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-        if (slums.blocked[r]?.[c] || (slums.height?.[r]?.[c] ?? 0) !== this.rules.biikkoHeight || inRect(slums.safeZone, c, r) || pit.has(key(c, r))) continue;
-        this.wanderTiles.push([c, r]);
-      }
+    for (const name of data.biikko.maps) if (maps[name]) this.biikkos.set(name, { room: null, tiles: this.walkTiles(maps[name]), hitAt: 0, next: 0, devNear: null });
+    this.wanderTiles = maps[data.manananggal.upper.map] ? this.walkTiles(maps[data.manananggal.upper.map]) : [];
+  }
+
+  /** A map's tiles Biikko walks (and the upper half comes out on): open, on its height, outside the safe zone and the
+   *  field boss's pit or arena. */
+  private walkTiles(map: HalloweenMap): [number, number][] {
+    const pit = pitTiles(map.boss)?.all ?? new Set<string>();
+    const arena = (map.boss as { arena?: [number, number, number, number] } | undefined)?.arena;
+    const out: [number, number][] = [];
+    const [cols, rows] = map.size;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      if (map.blocked[r]?.[c] || (map.height?.[r]?.[c] ?? 1) !== this.rules.biikkoHeight || inRect(map.safeZone, c, r) || inRect(arena, c, r) || pit.has(key(c, r))) continue;
+      out.push([c, r]);
     }
+    return out;
+  }
+
+  /** A map's Biikko's walking tiles (tests). */
+  biikkoTilesOf(map: string): [number, number][] {
+    return this.biikkos.get(map)?.tiles ?? [];
   }
 
   /** Dev: the event on from now (whatever its start), until its end. */
@@ -213,7 +238,7 @@ export class Halloween {
       const start = this.startedAt(now);
       // (Its schedules from the start, unless a restart brought them back.)
       if (this.saved.mikkoAt === null && !this.saved.mikko) this.saved.mikkoAt = now;
-      if (this.saved.biikkoAt === null && !this.room?.mobInfo(BIIKKO_ID, now)) this.saved.biikkoAt = Math.max(now, start + this.rules.firstMs);
+      for (const [map, b] of this.biikkos) if ((this.saved.biikkoAt[map] ?? null) === null && !b.room?.mobInfo(BIIKKO_ID, now)) this.saved.biikkoAt[map] = Math.max(now, start + this.rules.firstMs);
       if (this.saved.roundAt === null && !this.saved.round) this.saved.roundAt = Math.max(now, start + this.rules.firstMs);
       this.keep();
     }
@@ -321,12 +346,14 @@ export class Halloween {
   // ── Biikko Kalabasa ──
 
   /** Biikko's one set (rolled once): Kowens, Kusing, maybe Low Repair Kits, a potion, maybe a Warren Ticket, maybe a 5-day
-   *  Witch Hat or Robe; each its own loot. */
-  biikkoLoot(items: ItemData, uid: () => string): LootContent[] {
+   *  Witch Hat or Robe; each its own loot. `map`'s own items stand in for some (halloween.json `itemsIn`: the Old
+   *  Market's Mid Repair Kits and Cellar Key). */
+  biikkoLoot(items: ItemData, uid: () => string, map: string): LootContent[] {
     const L = this.data.biikko.loot;
+    const own = this.data.biikko.itemsIn?.[map] ?? {};
     const out: LootContent[] = [{ kowens: rollRange(L.kowens, this.random) }, { kusing: L.kusing }];
     const item = (id: string, n: number) => {
-      const def = items.defs.get(id);
+      const def = items.defs.get(own[id] ?? id);
       if (def && n > 0) out.push({ item: newItem(items.stats, def, uid(), n) });
     };
     item('low-repair-kit', this.chance(L.lowRepairKit));
@@ -337,9 +364,9 @@ export class Halloween {
     return out;
   }
 
-  /** Biikko fell: back respawnMinutes later. */
-  biikkoKilled(now: number): void {
-    this.saved.biikkoAt = now + rollRange(this.data.biikko.respawnMinutes, this.random) * MIN;
+  /** `map`'s Biikko fell: back respawnMinutes later (the other map's keeps its own time). */
+  biikkoKilled(map: string, now: number): void {
+    this.saved.biikkoAt[map] = now + rollRange(this.data.biikko.respawnMinutes, this.random) * MIN;
     this.keep();
   }
 
@@ -375,11 +402,11 @@ export class Halloween {
     return true;
   }
 
-  // ── The director (the Slums' mob room: Biikko and the upper half) ──
+  // ── The directors (each Biikko map's mob room: its Biikko; the Slums' the upper half too) ──
 
   /** Dev (the dev town's /__halloween, the page's ?halloween=on): on from now; Mikko hidden beside `at` on `room` (the
-   *  nearest hiding tile to it); Biikko out now (or, out, down to `wound` HP); a round now; the upper half carried by
-   *  `member`. What was done. */
+   *  nearest hiding tile to it); Biikko out now in `room` (the first of its maps if it has none there; or, out, down to
+   *  `wound` HP); a round now; the upper half carried by `member`. What was done. */
   dev(o: { mikko?: boolean; biikko?: boolean; wound?: number; round?: boolean; carry?: boolean; member?: string; room?: string; at: [number, number] | null }, now: number): string {
     this.force(now);
     const said = ['on'];
@@ -391,13 +418,15 @@ export class Halloween {
       this.saved.mikkoAt = null;
       said.push(`Mikko at ${col},${row} (${o.room})`);
     }
-    if (o.biikko && !this.room?.mobInfo(BIIKKO_ID, now)) {
-      this.saved.biikkoAt = now;
-      if (o.room === this.data.biikko.map) this.devNear = o.at; // (out by them)
-      said.push('Biikko now');
+    const bmap = o.room && this.biikkos.has(o.room) ? o.room : this.data.biikko.maps[0];
+    const b = this.biikkos.get(bmap);
+    if (o.biikko && b && !b.room?.mobInfo(BIIKKO_ID, now)) {
+      this.saved.biikkoAt[bmap] = now;
+      if (o.room === bmap) b.devNear = o.at; // (out by them)
+      said.push(`Biikko now (${bmap})`);
     }
-    if (o.wound !== undefined && this.room?.mobInfo(BIIKKO_ID, now)) {
-      this.room.devWound(BIIKKO_ID, o.wound);
+    if (o.wound !== undefined && b?.room?.mobInfo(BIIKKO_ID, now)) {
+      b.room.devWound(BIIKKO_ID, o.wound);
       said.push(`Biikko down to ${o.wound} HP`);
     }
     if ((o.round || o.carry) && !this.saved.round) {
@@ -414,50 +443,59 @@ export class Halloween {
     return said.join('; ');
   }
 
-  /** Dev: where the next Biikko comes out (beside whoever asked), or null: anywhere. */
-  private devNear: [number, number] | null = null;
-
-  /** Hands the director its mob room (the Slums'): its zone for the event mobs is the room's, given at its making
-   *  (`eventZone`). */
-  attach(room: MobRoom): void {
-    this.room = room;
+  /** Hands `map`'s director its mob room: its zone for the event mobs is the room's, given at its making (`eventZone`). */
+  attach(room: MobRoom, map: string): void {
+    const b = this.biikkos.get(map);
+    if (b) b.room = room;
+    if (map === this.data.manananggal.upper.map) this.room = room;
   }
 
-  /** The zone the Slums' mob room needs for the event mobs (added to its map's zones as it's made). */
+  /** The maps the event's mobs live in (each needs its mob room attached and `directorFor` it). */
+  get mobMaps(): string[] {
+    return [...new Set([...this.biikkos.keys(), this.data.manananggal.upper.map])];
+  }
+
+  /** The zone a mob room of the event's needs for its mobs (added to its map's zones as it's made). */
   static eventZone(size: [number, number]): MobZoneData {
     return { id: EVENT_ZONE, mob: BIIKKO_KIND, level: 1, rect: [0, 0, size[0] - 1, size[1] - 1], height: 1, active: true, spawns: [], aggro: 'passive' };
   }
 
-  readonly director: MobDirector = {
-    tick: (now, players) => this.directorTick(now, players),
-    hurt: (id, now) => this.hurt(id, now),
-  };
+  /** `map`'s mob room's director: its Biikko, and in the upper half's map the upper half too. */
+  directorFor(map: string): MobDirector {
+    return {
+      tick: (now, players) => this.directorTick(map, now, players),
+      hurt: (id, now) => this.hurt(map, id, now),
+    };
+  }
 
-  private directorTick(now: number, players: ReadonlyMap<string, [number, number]>): MobEvent[] {
-    const room = this.room;
+  private directorTick(map: string, now: number, players: ReadonlyMap<string, [number, number]>): MobEvent[] {
+    const b = this.biikkos.get(map);
+    const room = b?.room ?? (map === this.data.manananggal.upper.map ? this.room : null);
     if (!room) return [];
     const events: MobEvent[] = [];
     const biikko = room.mobInfo(BIIKKO_ID, now);
-    const upper = room.mobInfo(UPPER_ID, now);
     if (!this.on(now)) {
       // (The window closed: the event mobs go.)
       return room.removeMobs([BIIKKO_ID, UPPER_ID]);
     }
     // Biikko: out when it's due; wandering; full again after a while unhit.
-    if (!biikko && this.saved.biikkoAt !== null && now >= this.saved.biikkoAt && this.wanderTiles.length) {
-      const near = this.devNear;
-      this.devNear = null;
-      const tile = near ? this.wanderTiles.reduce((a, b) => (cheb(b, near) < cheb(a, near) ? b : a)) : pickOne(this.wanderTiles, this.random);
-      events.push(...room.addMobs([{ id: BIIKKO_ID, kind: BIIKKO_KIND, zone: EVENT_ZONE, tile, stats: this.biikkoStats(), name: this.data.biikko.name, title: this.data.biikko.title, still: true, silent: true }], now));
-      this.saved.biikkoAt = null;
-      this.biikkoHitAt = now;
-      this.biikkoNext = now + 2000;
+    const due = this.saved.biikkoAt[map] ?? null;
+    if (b && !biikko && due !== null && now >= due && b.tiles.length) {
+      const near = b.devNear;
+      b.devNear = null;
+      const tile = near ? b.tiles.reduce((x, y) => (cheb(y, near) < cheb(x, near) ? y : x)) : pickOne(b.tiles, this.random);
+      events.push(...room.addMobs([{ id: BIIKKO_ID, kind: BIIKKO_KIND, zone: EVENT_ZONE, tile, stats: this.biikkoStats(room), name: this.data.biikko.name, title: this.data.biikko.title, still: true, silent: true }], now));
+      this.saved.biikkoAt[map] = null;
+      b.hitAt = now;
+      b.next = now + 2000;
       this.keep();
-    } else if (biikko && !biikko.dead) {
-      if (biikko.hp < biikko.maxHp && now - this.biikkoHitAt >= this.data.biikko.healAfterSecondsUnhit * 1000) events.push(...room.healFull(BIIKKO_ID));
-      if (now >= this.biikkoNext) events.push(...this.biikkoWalk(room, biikko.at, now));
+    } else if (b && biikko && !biikko.dead) {
+      if (biikko.hp < biikko.maxHp && now - b.hitAt >= this.data.biikko.healAfterSecondsUnhit * 1000) events.push(...room.healFull(BIIKKO_ID));
+      if (now >= b.next) events.push(...this.biikkoWalk(room, b, biikko.at, now));
     }
+    if (map !== this.data.manananggal.upper.map) return events;
     // The upper half: out while a round is on and nobody carries it.
+    const upper = room.mobInfo(UPPER_ID, now);
     const r = this.saved.round;
     if (r && !r.carrier && !upper) {
       const tile = pickOne(this.wanderTiles, this.random);
@@ -472,8 +510,7 @@ export class Halloween {
   }
 
   /** Biikko's numbers: its level and HP (halloween.json), the golem's DEF; it never attacks and gives no XP. */
-  biikkoStats() {
-    const room = this.room!;
+  biikkoStats(room: MobRoom) {
     const B = this.data.biikko;
     return { level: B.level, hp: B.hp, atk: 0, def: mobStats(room.statsData(), 'scrapheap-golem')?.def ?? 0, xp: 0 };
   }
@@ -487,29 +524,29 @@ export class Halloween {
     return { level: U.level, hp: U.hp, atk: at(f?.atk), def: at(f?.def), xp: 0 };
   }
 
-  /** Biikko sets off: a spot wanderTiles away on its walking tiles, walked at its pace; then a pause. */
-  private biikkoWalk(room: MobRoom, from: [number, number], now: number): MobEvent[] {
+  /** A Biikko sets off: a spot wanderTiles away on its walking tiles, walked at its pace; then a pause. */
+  private biikkoWalk(room: MobRoom, b: BiikkoSpot, from: [number, number], now: number): MobEvent[] {
     const [lo, hi] = this.rules.wanderTiles;
-    const near = this.wanderTiles.filter((t) => {
+    const near = b.tiles.filter((t) => {
       const d = cheb(t, from);
       return d >= lo && d <= hi;
     });
     const to = near.length ? pickOne(near, this.random) : null;
-    const path = to ? this.walkPath(from, to) : null;
+    const path = to ? this.walkPath(b.tiles, from, to) : null;
     const [p0, p1] = this.rules.pauseMs;
     const pause = p0 + this.random() * (p1 - p0);
     if (!path?.length) {
-      this.biikkoNext = now + pause;
+      b.next = now + pause;
       return [];
     }
     const speed = this.data.biikko.speedTilesPerSec;
-    this.biikkoNext = now + (path.length / speed) * 1000 + pause;
+    b.next = now + (path.length / speed) * 1000 + pause;
     return room.moveMob(BIIKKO_ID, path, now, speed);
   }
 
   /** A walk on Biikko's tiles from one to another (8 ways, never cutting a blocked corner), or null. */
-  private walkPath(from: [number, number], to: [number, number]): [number, number][] | null {
-    const ok = new Set(this.wanderTiles.map(([c, r]) => key(c, r)));
+  private walkPath(tiles: [number, number][], from: [number, number], to: [number, number]): [number, number][] | null {
+    const ok = new Set(tiles.map(([c, r]) => key(c, r)));
     const prev = new Map<string, string>();
     const start = key(from[0], from[1]);
     const goal = key(to[0], to[1]);
@@ -593,17 +630,19 @@ export class Halloween {
     return [col, row];
   }
 
-  /** A hit on an event mob: Biikko's last hit noted; a death takes it out of the room (never back on its own). */
-  private hurt(id: string, now: number): MobEvent[] {
+  /** A hit on an event mob in `map`: its Biikko's last hit noted; a death takes it out of the room (never back on its own). */
+  private hurt(map: string, id: string, now: number): MobEvent[] {
     if (id !== BIIKKO_ID && id !== UPPER_ID) return [];
-    if (id === BIIKKO_ID) this.biikkoHitAt = now;
-    const info = this.room?.mobInfo(id, now);
-    return info?.dead ? (this.room?.removeMobs([id]) ?? []) : [];
+    const b = this.biikkos.get(map);
+    if (id === BIIKKO_ID && b) b.hitAt = now;
+    const room = b?.room ?? (map === this.data.manananggal.upper.map ? this.room : null);
+    const info = room?.mobInfo(id, now);
+    return info?.dead ? (room?.removeMobs([id]) ?? []) : [];
   }
 }
 
 /** events/halloween.json and the maps it's played on (the game's assets). */
 export function loadHalloween(): { data: HalloweenData; maps: Record<string, HalloweenMap> } {
   const read = <T>(file: string) => JSON.parse(readFileSync(new URL(`../../../game/public/assets/${file}`, import.meta.url), 'utf8')) as T;
-  return { data: read<HalloweenData>('events/halloween.json'), maps: { town: read<HalloweenMap>('maps/town.json'), slums: read<HalloweenMap>('maps/slums.json') } };
+  return { data: read<HalloweenData>('events/halloween.json'), maps: { town: read<HalloweenMap>('maps/town.json'), slums: read<HalloweenMap>('maps/slums.json'), palengke: read<HalloweenMap>('maps/palengke.json') } };
 }

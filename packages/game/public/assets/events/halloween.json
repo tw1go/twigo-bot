@@ -31,18 +31,19 @@
   "biikko": {
     "name": "Biikko Kalabasa",
     "title": "Legendary",
-    "map": "slums",
+    "maps": ["slums", "palengke"],
+    "mapsNote": "A repo change (25 Oct 2026, the owner): one Biikko in each map, each on its own respawn schedule (was \"map\": \"slums\"); the same level and HP in both.",
     "level": 15,
     "hp": 100000,
     "def": "same as the Scrapheap Golem's",
     "attacks": false,
     "speedTilesPerSec": 0.6,
-    "wander": "anywhere walkable on height 1 outside the safe zone and the golem pit; picks a spot 4-10 tiles away, walks there, pauses 3-8 s",
+    "wander": "anywhere walkable on height 1 outside the safe zone and the field boss's pit or arena; picks a spot 4-10 tiles away, walks there, pauses 3-8 s",
     "healAfterSecondsUnhit": 300,
     "respawnMinutes": [60, 180],
     "firstSpawn": "10 minutes after the event starts (or after a restart while it's down: keep the saved schedule)",
     "loot": {
-      "owners": "the last hitter and their party members in the Slums",
+      "owners": "the last hitter and their party members in its map",
       "openAfterSeconds": 10,
       "kowens": [20, 30],
       "kusing": 500000,
@@ -51,6 +52,8 @@
       "warrenTicket": { "chance": 0.25, "count": 1 },
       "witchCosmetic": { "chance": 0.50, "pick": ["witch-hat-5d", "witch-robe-5d"], "days": 5 }
     },
+    "itemsIn": { "palengke": { "low-repair-kit": "mid-repair-kit", "warren-ticket": "susi-ng-silong" } },
+    "itemsInNote": "A repo addition (25 Oct 2026, the owner): the Old Market's Biikko drops Mid Repair Kits in place of Low ones and a Cellar Key in place of the Warren Ticket, at the same chances and counts.",
     "announceKill": "{name} landed the last hit on Biikko Kalabasa!"
   },
 

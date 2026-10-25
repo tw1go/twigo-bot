@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
 import { attachTown } from '../../bot/src/web/town.ts';
-import { MobRoom, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
+import { MobRoom, bothDirectors, loadMobKinds, loadSkillShapes } from '../../bot/src/web/town-mobs.ts';
 import { type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, resetSkillPoints, resetStatPoints, spendPoint } from '../../bot/src/web/progress.ts';
 import { loadItemData, loadLeveling, loadPalengkeLeveling, loadStats } from '../../bot/src/web/stats-data.ts';
 import { Halloween, loadHalloween } from '../../bot/src/web/halloween.ts';
@@ -410,8 +410,8 @@ export function devTown(): Plugin {
       const palengkeMap = liveMap('palengke');
       const classes = (JSON.parse(readFileSync(join(server.config.publicDir, 'assets/classes/classes.json'), 'utf8')) as ClassesFile).classes;
       const classOf = (name: string) => classes.find((c) => c.id === kits.get(name)?.cls);
-      // The Halloween event, off until the page's ?halloween=on (/__halloween): its mobs live in the Slums' room, in a
-      // zone of their own, run by its director (as the bot's server.ts).
+      // The Halloween event, off until the page's ?halloween=on (/__halloween): its mobs live in the Slums' room (and
+      // Biikko in the Old Market's too), in a zone of their own, run by each room's director (as the bot's server.ts).
       const hwLoaded = loadHalloween();
       const halloween = new Halloween(hwLoaded.data, hwLoaded.maps, null);
       const slumsJson = JSON.parse(readFileSync(slumsFile, 'utf8'));
@@ -423,6 +423,7 @@ export function devTown(): Plugin {
       const scaleDef = palengkeJson.boss as FieldBossDef & { active?: boolean };
       const greatScale = scaleDef?.active !== false ? new GreatScale(scaleDef, loadStats(), loadGreatScaleArt(scaleDef.id)) : null;
       if (greatScale) palengkeJson.mobZones = [...(palengkeJson.mobZones ?? []), GreatScale.zone(scaleDef, palengkeJson.height?.[scaleDef.tile[1]]?.[scaleDef.tile[0]] ?? 0)];
+      palengkeJson.mobZones = [...(palengkeJson.mobZones ?? []), Halloween.eventZone(palengkeJson.size)];
       const slumsMobs = new MobRoom(
         slumsJson,
         Math.random,
@@ -432,7 +433,7 @@ export function devTown(): Plugin {
         loadGolemArt(),
         undefined,
         undefined,
-        { director: halloween.director },
+        { director: halloween.directorFor('slums') },
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const ramonDone = new Set<string>();
@@ -450,7 +451,7 @@ export function devTown(): Plugin {
         // The Old Market's opening time (CONTEXT.md Opening time) only when asked: DEV_OPENING=1 (its map's `opensAt`) or an
         // ISO time when starting the dev server; Game Masters (?as=GM…) still go in.
         ...(process.env.DEV_OPENING ? { opening: { palengke: { name: 'The Old Market', opensAt: process.env.DEV_OPENING === '1' ? palengkeJson.opensAt : process.env.DEV_OPENING } } } : {}),
-        mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom(palengkeJson, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', ...(greatScale ? { director: greatScale } : {}) })) },
+        mobs: { slums: slumsMobs, palengke: (palengkeMobs = new MobRoom(palengkeJson, Math.random, Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])), loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', director: bothDirectors(greatScale, halloween.directorFor('palengke')) })) },
         ...(greatScale ? { greatScale: { boss: greatScale, room: 'palengke' } } : {}),
         // Its rewards: Kusing and Low Repair Kits into the kept items (the kits by pretend mail when the bag is full),
         // Kowens into the pretend wallet, the potion only printed.

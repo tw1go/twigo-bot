@@ -134,6 +134,16 @@ export interface MobDirector {
   hurt(id: string, now: number): MobEvent[];
 }
 
+/** Several directors on one mob room (the Old Market's: the Great Scale and the Halloween event's Biikko), each told
+ *  everything, their events together. */
+export function bothDirectors(...ds: (MobDirector | null | undefined)[]): MobDirector {
+  const all = ds.filter((d): d is MobDirector => !!d);
+  return {
+    tick: (now, players) => all.flatMap((d) => d.tick(now, players)),
+    hurt: (id, now) => all.flatMap((d) => d.hurt(id, now)),
+  };
+}
+
 export interface MobRoomOptions {
   /** Fixed numbers for a zone's mobs (the Warrens' areas: by zone id) instead of the mob table's. */
   zoneStats?: Record<string, { level: number; hp: number; atk: number; def: number; xp: number }>;

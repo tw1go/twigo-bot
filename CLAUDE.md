@@ -274,6 +274,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Pet cube (16 Oct 2026): `classes/stats.json` `pets.petCube` (the common cube's item and its six `choices`), `items/items.json`
   `pet-cube-common` (bound consumable) and its art in `pets/cube/` (the art folder's pets/cube).
 - Halloween (17 Oct 2026; the art and its numbers are the art folder's events/halloween): `events/halloween.json` (its
+  `biikko.maps` (+ `mapsNote`: was `map` "slums") and `biikko.itemsIn` (+ `itemsInNote`): a Biikko in the Old Market too,
+  its loot's Mid Repair Kits and Cellar Key, 25 Oct 2026, the owner;
   `biikko.announceSpawn` and `manananggal.announceAppear` left out: no spawn lines, Mac; `manananggal.lowerSpots` moved,
   each to the nearest open grass tile nothing draws over: the art folder's six stood behind tree crowns, `lowerSpotsNote`),
   `items/items.json` `witch-hat-5d` / `witch-robe-5d` (`lastsDays`), the manifest's `characters.wardrobe` `hatCanvas`,
@@ -1419,13 +1421,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   in its sentences read by shared `halloweenRules`): shared `events.ts` (`isEventOn`: startsAt ≤ now < endsAt, both
   +08:00 instants; startsAt null = off), bot `web/halloween.ts` `Halloween` (pure, tested in `halloween.test.ts`: kv
   'halloween' keeps Mikko's spot, Biikko's and the next round's times and the carrier, so restarts keep them; `tick` on
-  town.ts's 1 s clock; its `director` runs Biikko and the upper half in the Slums' MobRoom, in a zone of its own,
-  `Halloween.eventZone`; town.ts attaches it to that room). Mikko Kalabasa: one hides at a time (`hideTiles`: walkable,
+  town.ts's 1 s clock; `directorFor(map)` runs a map's Biikko (and in the Slums the upper half) in that map's MobRoom,
+  in a zone of its own, `Halloween.eventZone`; town.ts attaches each room, `attach(room, map)`; the Old Market's room
+  runs it beside the Great Scale's: town-mobs.ts `bothDirectors`). Mikko Kalabasa: one hides at a time (`hideTiles`: walkable,
   next to cover, never open ground, a door, gate, the camp or the pit, never within 6 of a player), `mikko-claim` →
   first within 2 wins (`halloween-reward`, `mikko-found` to its map, an `event-line` for everyone in every area: never
-  Discord, never kept). Biikko Kalabasa: Lv 15, 100k HP, the golem's DEF, still and silent (never attacks), walks its
-  height-1 tiles, full after 300 s unhit, no XP or quest credit; one set of loot (`biikkoLoot`, new loot contents
-  `{ kowens }` and `{ potion }`, Kowens split like Kusing) held 10 s for the last hitter's party. The Manananggal: a
+  Discord, never kept). Biikko Kalabasa: one in each of `biikko.maps` (the Slums and the Old Market since 25 Oct 2026,
+  the owner), each on its own schedule (kept as `biikkoAt` by map; an old single time is the Slums'): Lv 15, 100k HP,
+  the golem's DEF, still and silent (never attacks), walks its map's height-1 tiles outside the camp and the field
+  boss's pit or arena, full after 300 s unhit, no XP or quest credit; one set of loot (`biikkoLoot(…, map)`, new loot
+  contents `{ kowens }` and `{ potion }`, Kowens split like Kusing; the Old Market's Mid Repair Kits and Cellar Key in
+  place of the Low Repair Kits and Warren Ticket: `itemsIn`) held 10 s for the last hitter's party. The Manananggal: a
   round every 60–180 min, the legs at a `lowerSpots` tile in town up to 60 min, the upper half a flying mob in the
   Slums (passive until hit, Claw Swipe every 1.8 s); its last hitter carries it dazed (HalloweenView `dazed`: everyone
   sees it behind them, any map); `reunite` within 2 of the legs → rewards (kits by mail when the bag is full); gone

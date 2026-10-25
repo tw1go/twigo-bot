@@ -567,9 +567,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const F = opts.friends ? new Friends(opts.friends.store.load(), opts.friends.store) : null;
   /** The Halloween event, if there is one (web/halloween.ts). */
   const H = opts.halloween?.event ?? null;
-  // (Its mobs live in Biikko's map's mob room, made with its director: the director's hands are that room.)
-  const hwRoom = H && opts.mobs?.[H.data.biikko.map];
-  if (hwRoom) H.attach(hwRoom);
+  // (Its mobs live in its maps' mob rooms, each made with its director: each director's hands are its room.)
+  for (const map of H?.mobMaps ?? []) {
+    const room = opts.mobs?.[map];
+    if (room) H!.attach(room, map);
+  }
   /** Since when the member carrying the dazed upper half has been gone (none: here). */
   let carrierAwaySince: number | null = null;
   /** Timed items of a member's that ran out (CONTEXT.md Timed cosmetic): a line each in their feed, their items again,
@@ -994,10 +996,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       H.upperKilled(killer);
       return tellHalloween();
     }
-    H.biikkoKilled(now);
+    H.biikkoKilled(room, now);
     const L = lootIn(room);
     const mobs = mobsOf(room);
-    const contents = H.biikkoLoot(items, () => randomBytes(8).toString('hex'));
+    const contents = H.biikkoLoot(items, () => randomBytes(8).toString('hex'), room);
     const spots = mobs?.lootSpots(k.at, contents.length, L.taken()) ?? [];
     const owners = withParty([killer], room);
     const fresh = contents.map((content, i) => L.add(content, spots[i] ?? k.at, owners, now, H.data.biikko.loot.openAfterSeconds * 1000));

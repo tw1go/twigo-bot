@@ -870,8 +870,10 @@ export class TownScene extends Phaser.Scene {
       const boss = this.map.boss && this.map.boss.active !== false && this.M.mobs?.[this.map.boss.id] ? this.map.boss : null;
       const kinds = new Set([...(this.map.mobZones ?? []).filter((z) => z.active && this.M.mobs?.[z.mob]).map((z) => z.mob), ...(boss ? [boss.id] : [])]);
       if (this.map.dungeon) kinds.add('scrapheap-golem'); // (the Scraplings)
-      // (The Halloween mobs in the Slums; Ang Makinang Yelo and its Frost Scales on Ang Silong's B3.)
+      // (The Halloween mobs in the Slums, Biikko in the Old Market too; Ang Makinang Yelo and its Frost Scales on Ang
+      // Silong's B3.)
       if (this.area === 'slums') for (const k of Object.values(HALLOWEEN_MOBS)) kinds.add(k);
+      if (this.area === 'palengke') kinds.add(HALLOWEEN_MOBS.biikko);
       if (this.map.silong?.floor === 'b3') kinds.add('makinang-yelo').add('frost-scale');
       // (A kind with no sounds: mobs.json `sounds: false`.)
       const data = (this.cache.json.get('mob-data') ?? {}) as Record<string, MobData | string>;
