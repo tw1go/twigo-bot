@@ -122,7 +122,7 @@ export class QuestMap {
       pin.style.top = `${Math.round((spot[1] - ph) * k)}px`;
       this.stage.append(pin);
     }
-    this.foot.textContent = marks.length ? '' : 'No hunting quests right now.';
+    this.foot.textContent = marks.length ? '' : 'No quests to show on the map right now.';
     this.foot.hidden = !!marks.length;
   }
 

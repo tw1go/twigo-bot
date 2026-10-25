@@ -2266,6 +2266,7 @@
       .qm-pin { position: absolute; width: calc(var(--pw) * var(--k)); height: calc(var(--ph) * var(--k)); background-repeat: no-repeat; background-size: calc(var(--pw) * 4 * var(--k)) calc(var(--ph) * var(--k)); image-rendering: pixelated; pointer-events: none; animation: qm-bob 0.667s steps(1) infinite; }
       .qm-pin.qm-kill { --f: 0; }
       .qm-pin.qm-miniBoss { --f: 2; }
+      .qm-pin.qm-visit { --f: 0; }
       @keyframes qm-bob { 0% { background-position-x: calc(var(--f) * var(--pw) * var(--k) * -1); } 50% { background-position-x: calc((var(--f) + 1) * var(--pw) * var(--k) * -1); } }
       .qm-label { position: absolute; transform: translateX(-50%); white-space: nowrap; pointer-events: none; font: 700 calc(7px * var(--k, 1))/1 var(--ui-font); text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
       @media (prefers-reduced-motion: reduce) { .qm-edge { animation: none; } }
