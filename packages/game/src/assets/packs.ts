@@ -6,6 +6,9 @@ import { lagMark } from '../net/lag';
 // path under assets/: the loader fetches the sheet holding it, then every image on that sheet is cut back out
 // into its own texture under its own path, so the rest of the game (and its pixel reads) can't tell the
 // difference. In dev `index` is null and every image loads on its own.
+// Cutting out is a canvas and a GPU upload an image: a big page (a weapon skin's 192 sheets) took 400+ ms in one frame
+// (the lag report). Behind a loading screen that's fine; once the town is up (`unpackInSlices`) a page is decoded off the
+// main thread first and cut out a few ms a frame, and whoever waits for its images waits for that too (`loaded`).
 
 const pageKey = (page: number) => `pack:${index!.pages[page]}`;
 const queued = new Set<number>();
@@ -17,6 +20,27 @@ let byPage: Map<number, string[]> | null = null;
 /** Loaders already told what to do when a page fails. */
 const watched = new WeakSet<Phaser.Loader.LoaderPlugin>();
 let missing: (() => void) | null = null;
+/** Pages are cut out a few ms a frame (once the town is up: nothing waits behind a loading screen then). */
+let inSlices = false;
+const SLICE_MS = 4;
+/** Pages being cut out now, and who waits for them all. */
+const cutting = new Set<number>();
+let waiters: (() => void)[] = [];
+
+/** From now on pages are cut out a few ms a frame (TownScene, once its own first load is done). */
+export function unpackInSlices(): void {
+  inSlices = true;
+}
+
+/** Resolves once no page is being cut out (its images all in). */
+export function unpacked(): Promise<void> {
+  return cutting.size ? new Promise((r) => waiters.push(r)) : Promise.resolve();
+}
+
+/** Resolves once `load` has finished its run and every page it brought is cut out: what waiting for images means now. */
+export function loaded(load: Phaser.Loader.LoaderPlugin): Promise<void> {
+  return new Promise<void>((r) => load.once('complete', () => r())).then(unpacked); // (Phaser.Loader.Events.COMPLETE)
+}
 
 /** `fn` whenever a page can't be loaded (main.ts: look for a newer version, whose notice says to reload: a game left on an
  *  older build asks for pages a deploy has since replaced). */
@@ -71,28 +95,64 @@ function watch(load: Phaser.Loader.LoaderPlugin): void {
   });
 }
 
-/** Cuts every image on a loaded page into its own texture, then drops the page. */
+/** Cuts every image on a loaded page into its own texture, then drops the page: at once, or (unpackInSlices) a few ms a
+ *  frame after the page is decoded. */
 function unpack(textures: Phaser.Textures.TextureManager, page: number): void {
   if (!byPage) {
     byPage = new Map();
     for (const [file, [p]] of Object.entries(index!.files)) byPage.set(p, [...(byPage.get(p) ?? []), file]);
   }
   const img = textures.get(pageKey(page)).getSourceImage() as HTMLImageElement;
-  const t = performance.now();
   const files = byPage.get(page) ?? [];
-  for (const file of files) {
-    if (textures.exists(file)) continue;
-    const [, x, y, w, h, ...trim] = index!.files[file];
-    if (trim.length) trims.set(file, trim);
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext('2d')!.drawImage(img, x, y, w, h, 0, 0, w, h);
-    textures.addCanvas(file, canvas);
-    const frame = sheets.get(file);
-    if (frame) slice(textures, file, frame[0], frame[1]);
+  const name = `unpack ${index!.pages[page].split('/').pop()}`;
+  if (!inSlices) {
+    const t = performance.now();
+    for (const file of files) cut(textures, img, file);
+    done(textures, page);
+    return lagMark(`${name} (${files.length} images)`, performance.now() - t); // (the lag report)
   }
-  textures.remove(pageKey(page));
+  cutting.add(page);
+  // (One page at a time: several at once each took their few ms, and a frame paid for all of them.)
+  turns = turns.then(async () => {
+    await img.decode().catch(() => {}); // (off the main thread: drawing it undecoded decodes it there, all at once)
+    let start = performance.now();
+    for (const file of files) {
+      if (performance.now() - start > SLICE_MS) {
+        lagMark(name, performance.now() - start);
+        await new Promise((r) => requestAnimationFrame(r));
+        start = performance.now();
+      }
+      if (textures.exists(pageKey(page))) cut(textures, img, file);
+    }
+    lagMark(name, performance.now() - start);
+    done(textures, page);
+    cutting.delete(page);
+    if (!cutting.size) {
+      const w = waiters;
+      waiters = [];
+      for (const r of w) r();
+    }
+  }).catch(() => {});
+}
+/** The pages being cut out, one after another. */
+let turns: Promise<void> = Promise.resolve();
+
+/** One image of a page into its own texture (sliced into frames if it's a sheet). */
+function cut(textures: Phaser.Textures.TextureManager, img: HTMLImageElement, file: string): void {
+  if (textures.exists(file)) return;
+  const [, x, y, w, h, ...trim] = index!.files[file];
+  if (trim.length) trims.set(file, trim);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d')!.drawImage(img, x, y, w, h, 0, 0, w, h);
+  textures.addCanvas(file, canvas);
+  const frame = sheets.get(file);
+  if (frame) slice(textures, file, frame[0], frame[1]);
+}
+
+/** A page cut out: dropped, and asked for again if anyone needs one of its images later. */
+function done(textures: Phaser.Textures.TextureManager, page: number): void {
+  if (textures.exists(pageKey(page))) textures.remove(pageKey(page));
   queued.delete(page);
-  lagMark(`unpack ${index!.pages[page].split('/').pop()} (${files.length} images)`, performance.now() - t); // (the lag report)
 }

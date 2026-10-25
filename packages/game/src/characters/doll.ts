@@ -331,7 +331,17 @@ function outfitSheets(C: CharacterDefs): [string, Dir][] {
  * The same, a few sheets at a time between frames (at most `budgetMs` of work a frame), so another player arriving
  * never stalls everyone's game. Resolves once every sheet is made.
  */
-export async function buildOutfitSlowly(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, budgetMs = 4): Promise<void> {
+export function buildOutfitSlowly(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, budgetMs = 4): Promise<void> {
+  // One look at a time: several at once (players arriving, a look changing) each took their own few ms a frame, and a
+  // frame paid for all of them (the lag report: "a look ×4", 60 ms frames for seconds).
+  const mine = looks.then(() => buildNow(scene, C, o, budgetMs));
+  looks = mine.catch(() => {});
+  return mine;
+}
+/** The looks being built, one after another. */
+let looks: Promise<void> = Promise.resolve();
+
+async function buildNow(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, budgetMs: number): Promise<void> {
   await new Promise((r) => requestAnimationFrame(r)); // (not in the loader's own task: its files came in just now)
   let start = performance.now();
   for (const [anim, dir] of outfitSheets(C)) {

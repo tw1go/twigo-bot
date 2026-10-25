@@ -329,8 +329,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   cut them back into per-path textures at load (`src/assets/packs.ts`); dev loads loose files. Add art as loose
   images only.
 - Smoothness (all on the main thread, so nothing big in one go): images load as `<img>` (main.ts `loader.imageLoadType`,
-  no blob step); another player's look is built a few sheets a frame (`buildOutfitSlowly`, ≤ 4 ms; layer pixels read
-  once and copied, each colour's swap looked up once); battle poses a few ms at a time, their clothes' fit searched on
+  no blob step); a packed page is cut back into its images at once only behind the first loading screen: once the
+  town's own load is done (`unpackInSlices`) it's decoded off the main thread (`img.decode()`) and cut out ~4 ms a frame,
+  one page at a time, and whoever waits for images waits for that too (assets/packs.ts `loaded` = the loader's complete
+  + `unpacked`: loading.ts, queue.ts, mobs.ts; a weapon skin's page was 400+ ms in one frame, the lag report); another
+  player's look is built a few sheets a frame (`buildOutfitSlowly`, ≤ 4 ms, one look at a time: four at once made 60 ms
+  frames; layer pixels read once and copied, each colour's swap looked up once); battle poses a few ms at a time, their clothes' fit searched on
   typed arrays and remembered in the browser per build (kit-art `mk_shifts`); a streamed map's ground (`Terrain.stream`)
   and props (`WorldObjects.stream`: a queue, big ones first, then their cast shadows) at most 4 ms a frame, only the view
   itself on the first frame; mob art loads zone by zone within 30 tiles (`Mobs.near`, twice a second; mobs the server tells

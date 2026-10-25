@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
+import { unpackInSlices } from '../assets/packs';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
 import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
@@ -505,6 +506,7 @@ export class TownScene extends Phaser.Scene {
     // Only for the first load: later ones (a new outfit's layers) would update a destroyed bar.
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       this.load.off(Phaser.Loader.Events.PROGRESS, progress);
+      unpackInSlices(); // (from now on art comes in a few ms a frame: nothing waits behind a loading screen)
       rotate.remove();
       this.coverUp(); // (the loading screen goes on over the town while it settles)
       parts.forEach((g) => g.destroy());

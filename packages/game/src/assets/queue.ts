@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import { mobSheets } from './mob-art';
-import { packed, queuePacked } from './packs';
+import { loaded, packed, queuePacked } from './packs';
 import type { Manifest, MapTiles, PropDef, TownMap } from './types';
 
 // Queues every image the town needs, keyed by its path under assets/. Sheets (water, swaying grass, the fountain,
@@ -198,7 +198,7 @@ export function loadBoss(scene: Phaser.Scene, M: Manifest, id: string): Promise<
       if (f.size) queueSheet(scene.load, scene.textures, f.file, f.size[0], f.size[1]);
       else queueImage(scene.load, scene.textures, f.file);
     }
-    scene.load.once('complete', () => resolve());
+    void loaded(scene.load).then(() => resolve()); // (its pages cut out too: packs.ts)
     if (!scene.load.isLoading()) scene.load.start();
   });
 }

@@ -2,6 +2,7 @@
 // doll.ts and kit-art.ts, which only draw, so a page without Phaser (the front page) can draw characters without the
 // pack index.
 import type Phaser from 'phaser';
+import { loaded } from '../assets/packs';
 import { queueImage } from '../assets/queue';
 import type { CharacterDefs } from '../assets/types';
 import { type Outfit, buildOutfitSlowly, outfitFiles } from './doll';
@@ -12,7 +13,7 @@ export function loadImages(scene: Phaser.Scene, files: string[]): Promise<void> 
   if (!missing.length) return Promise.resolve();
   return new Promise((resolve) => {
     for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once('complete', () => resolve()); // (Phaser.Loader.Events.COMPLETE)
+    void loaded(scene.load).then(resolve); // (its pages cut out too: assets/packs.ts)
     if (!scene.load.isLoading()) scene.load.start();
   });
 }
@@ -24,7 +25,7 @@ export function loadOutfit(scene: Phaser.Scene, C: CharacterDefs, o: Outfit): Pr
     const done = () => void buildOutfitSlowly(scene, C, o).then(resolve);
     if (!missing.length) return done();
     for (const f of missing) queueImage(scene.load, scene.textures, f);
-    scene.load.once('complete', done); // (Phaser.Loader.Events.COMPLETE)
+    void loaded(scene.load).then(done);
     scene.load.start();
   });
 }
