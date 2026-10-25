@@ -5,7 +5,7 @@ import { onMap } from './clicks';
 import type { FxDef, Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
 import { queueSheet } from '../assets/queue';
-import { slice } from '../assets/packs';
+import { loaded, slice } from '../assets/packs';
 import { CHARACTER_BIAS, HEIGHT_DEPTH } from './depth';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
@@ -282,8 +282,9 @@ export class Mobs {
       const missing = sheetsNow(def).filter((sh) => !this.scene.textures.exists(sh.file));
       if (!missing.length) return resolve();
       for (const sh of missing) queueSheet(load, this.scene.textures, sh.file, sh.size[0], sh.size[1]);
-      // (In a build they come in packed pages: done once the loader is; files queued mid-run load in the same run.)
-      load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      // (In a build they come in packed pages: done once the loader is and they're cut out; files queued mid-run load in
+      // the same run.)
+      void loaded(load).then(() => resolve()); // (its pages cut out too: assets/packs.ts)
       if (!load.isLoading()) load.start();
     }).then(() => {
       this.art.set(kind, true);
@@ -672,7 +673,7 @@ export class Mobs {
       const missing = def.enraged!.animations.flatMap((a) => def.directions.map((d) => mobSheet(def, '', a, d, true))).filter((f) => !this.scene.textures.exists(f));
       if (!missing.length) return resolve();
       for (const f of missing) queueSheet(load, this.scene.textures, f, def.size[0], def.size[1]);
-      load.once(Phaser.Loader.Events.COMPLETE, () => resolve());
+      void loaded(load).then(() => resolve()); // (its pages cut out too: assets/packs.ts)
       if (!load.isLoading()) load.start();
     }).then(() => {
       this.anims(kind, def);
