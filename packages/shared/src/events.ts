@@ -100,7 +100,8 @@ export interface HalloweenData extends EventWindow {
   biikko: {
     name: string;
     title: string;
-    map: string;
+    /** The maps it comes out in: one in each, each on its own schedule. */
+    maps: string[];
     level: number;
     hp: number;
     speedTilesPerSec: number;
@@ -117,6 +118,8 @@ export interface HalloweenData extends EventWindow {
       warrenTicket: Chance;
       witchCosmetic: { chance: number; pick: string[]; days: number };
     };
+    /** A map's own items in its loot, by the item they stand in for (the Old Market's Mid Repair Kits, its Cellar Key). */
+    itemsIn?: Record<string, Record<string, string>>;
     announceKill: string;
   };
   manananggal: {

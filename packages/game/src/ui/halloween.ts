@@ -83,7 +83,7 @@ function openPanel(d: HalloweenData): Promise<void> {
   const [k0, k1] = d.mikko.rewards.kowens;
   const lines: [string, string][] = [
     [d.mikko.name, `A golden pumpkin hides somewhere in ${d.mikko.maps.map(mapName).join(' or ')}. The first to click it gets ${k0}–${k1} Kowens, Kusing and more; then it hides again.`],
-    [d.biikko.name, `A ${d.biikko.title.toLowerCase()} pumpkin wanders ${mapName(d.biikko.map)} (Lv ${d.biikko.level}). It never fights back: fell it with your party for its loot, maybe a Witch Hat or Robe.`],
+    [d.biikko.name, `${d.biikko.maps.length > 1 ? 'One' : 'A'} ${d.biikko.title.toLowerCase()} pumpkin wanders ${d.biikko.maps.length > 1 ? 'each of ' : ''}${d.biikko.maps.map(mapName).join(' and ')} (Lv ${d.biikko.level}). It never fights back: fell it with your party for its loot, maybe a Witch Hat or Robe.`],
     [d.manananggal.name, `Now and then her lower half waits in ${mapName('town')} and her upper half flies over ${mapName(d.manananggal.upper.map)}. Defeat the upper half, carry it back and reunite them.`],
   ];
   // (A wide box, `.hw-panel`: a row per activity, its name over its words.)
@@ -101,7 +101,7 @@ function openPanel(d: HalloweenData): Promise<void> {
 }
 
 function mapName(id: string): string {
-  return id === 'town' ? 'the town' : id === 'slums' ? 'the Slums' : id;
+  return id === 'town' ? 'the town' : id === 'slums' ? 'the Slums' : id === 'palengke' ? 'the Old Market' : id;
 }
 
 function picture(src: string, size: number): HTMLImageElement {

@@ -257,16 +257,16 @@ test('the window closing: Mikko and the round go (no reward), the schedules stop
   H.upperKilled('mara');
   const end = Date.parse(DATA.endsAt);
   const r = H.tick(end, []);
-  assert.deepEqual([r.changed, r.flew, H.state.mikko, H.state.round, H.state.mikkoAt, H.state.roundAt, H.state.biikkoAt], [true, ['mara'], null, null, null, null, null]);
+  assert.deepEqual([r.changed, r.flew, H.state.mikko, H.state.round, H.state.mikkoAt, H.state.roundAt, H.state.biikkoAt], [true, ['mara'], null, null, null, null, {}]);
   assert.equal(H.view('town', end, () => undefined), null);
 });
 
-/** The Slums' real mob room with the event's zone and director. */
-function slums(H: Halloween) {
-  const map = loadMobMap('slums');
+/** A map's real mob room (the Slums' by default) with the event's zone and that map's director. */
+function slums(H: Halloween, name = 'slums') {
+  const map = loadMobMap(name);
   map.mobZones = [...(map.mobZones ?? []), Halloween.eventZone(map.size)];
-  const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, loadMobKinds(), undefined, undefined, undefined, { director: H.director });
-  H.attach(room);
+  const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, loadMobKinds(), undefined, undefined, undefined, { director: H.directorFor(name), ...(name === 'palengke' ? { area: name } : {}) });
+  H.attach(room, name);
   return room;
 }
 
@@ -274,14 +274,14 @@ test('Biikko: out 10 min after the start; wanders (height 1, 4-10 tiles a walk) 
   const { H, last } = event();
   const room = slums(H);
   H.tick(START, []);
-  assert.equal(H.state.biikkoAt, START + 10 * MIN);
+  assert.equal(H.state.biikkoAt.slums, START + 10 * MIN);
   assert.equal(room.mobInfo(BIIKKO_ID, START + 5 * MIN), null);
   room.tick(START + 10 * MIN);
   const b = room.mobInfo(BIIKKO_ID, START + 10 * MIN)!;
   assert.ok(b, 'out');
-  assert.equal(H.state.biikkoAt, null, 'up: no wait kept (a restart brings it back)');
+  assert.equal(H.state.biikkoAt.slums, null, 'up: no wait kept (a restart brings it back)');
   const golemDef = mobStats(loadStats(), 'scrapheap-golem')!.def;
-  assert.deepEqual([b.kind, b.maxHp, H.biikkoStats().def, H.biikkoStats().level], [BIIKKO_KIND, DATA.biikko.hp, golemDef, DATA.biikko.level]);
+  assert.deepEqual([b.kind, b.maxHp, H.biikkoStats(room).def, H.biikkoStats(room).level], [BIIKKO_KIND, DATA.biikko.hp, golemDef, DATA.biikko.level]);
   // Someone right next to it hits it now and then for a minute: it walks on its own and never swings.
   const t0 = START + 10 * MIN;
   const moves: [number, number][][] = [];
@@ -310,14 +310,55 @@ test('Biikko: out 10 min after the start; wanders (height 1, 4-10 tiles a walk) 
   const up = event(on(), last());
   slums(up.H);
   up.H.tick(t0 + 400_000, []);
-  assert.equal(up.H.state.biikkoAt, t0 + 400_000);
+  assert.equal(up.H.state.biikkoAt.slums, t0 + 400_000);
   // It falls: back 60-180 min later; a restart keeps the wait.
-  H.biikkoKilled(t0 + 400_000);
-  const wait = H.state.biikkoAt! - (t0 + 400_000);
+  H.biikkoKilled('slums', t0 + 400_000);
+  const wait = H.state.biikkoAt.slums! - (t0 + 400_000);
   assert.ok(wait >= 60 * MIN && wait <= 180 * MIN);
   const later = event(on(), last());
   later.H.tick(t0 + 500_000, []);
-  assert.equal(later.H.state.biikkoAt, H.state.biikkoAt, 'the wait kept');
+  assert.equal(later.H.state.biikkoAt.slums, H.state.biikkoAt.slums, 'the wait kept');
+});
+
+test("the Old Market's own Biikko: on its own schedule beside the Slums', walking only open ground outside the camp and the Great Scale's hall, never the upper half there; its loot's Mid Repair Kits and Cellar Key; a wait kept from before carries on in the Slums", () => {
+  const { H } = event();
+  const slumsRoom = slums(H);
+  const market = slums(H, 'palengke');
+  H.tick(START, []);
+  assert.deepEqual(H.state.biikkoAt, { slums: START + 10 * MIN, palengke: START + 10 * MIN });
+  slumsRoom.tick(START + 10 * MIN);
+  market.tick(START + 10 * MIN);
+  const a = slumsRoom.mobInfo(BIIKKO_ID, START + 10 * MIN)!;
+  const b = market.mobInfo(BIIKKO_ID, START + 10 * MIN)!;
+  assert.ok(a && b, 'one out in each');
+  assert.equal(b.maxHp, DATA.biikko.hp, 'the same HP');
+  assert.equal(H.biikkoStats(market).level, DATA.biikko.level, 'the same level');
+  // Its walking tiles: open, outside the camp (the safe zone) and the Great Scale's arena.
+  const P = MAPS.palengke as typeof MAPS.palengke & { boss: { arena: [number, number, number, number] } };
+  const inside = (r: [number, number, number, number] | undefined, [c, w]: [number, number]) => !!r && c >= r[0] && c <= r[2] && w >= r[1] && w <= r[3];
+  const tiles = H.biikkoTilesOf('palengke');
+  assert.ok(tiles.length > 1000);
+  for (const t of tiles) {
+    assert.equal(P.blocked[t[1]][t[0]], 0);
+    assert.ok(!inside(P.safeZone, t) && !inside(P.boss.arena, t), `${t} outside the camp and the hall's arena`);
+  }
+  // Each falls on its own: the other keeps going.
+  H.biikkoKilled('palengke', START + 20 * MIN);
+  assert.ok(H.state.biikkoAt.palengke! >= START + 80 * MIN && H.state.biikkoAt.slums === null);
+  // No upper half in the Old Market, even with a round on.
+  H.tick(START + 10 * MIN, []);
+  market.tick(START + 10 * MIN + 500);
+  assert.equal(market.mobInfo(UPPER_ID, START + 10 * MIN + 500), null);
+  // Its loot: its own items where the Slums' has a Low Repair Kit and a Warren Ticket.
+  const many = event(on(), null, lcg(5)).H;
+  const seen = new Set<string>();
+  for (let i = 0; i < 200; i++) for (const c of many.biikkoLoot(ITEMS, () => 'u', 'palengke')) if ('item' in c) seen.add(c.item.defId);
+  assert.ok(seen.has('mid-repair-kit') && seen.has('susi-ng-silong'), [...seen].join(', '));
+  assert.ok(!seen.has('low-repair-kit') && !seen.has('warren-ticket'));
+  // A wait kept before (one time for the Slums): still the Slums', and the Old Market gets its own first spawn.
+  const before = event(on(), { mikko: null, mikkoAt: null, biikkoAt: START + 90 * MIN as unknown as Record<string, number | null>, round: null, roundAt: null }).H;
+  before.tick(START, []);
+  assert.deepEqual(before.state.biikkoAt, { slums: START + 90 * MIN, palengke: START + 10 * MIN });
 });
 
 test("the upper half: out with a round, passive until hit, then Claw Swipe on its target (flying straight over anything); gone once carried", () => {
@@ -349,7 +390,7 @@ test("the upper half: out with a round, passive until hit, then Claw Swipe on it
 
 test("Biikko's loot: held 10 s for the last hitter's party then anyone's; Kowens and potions as loot (split like Kusing)", () => {
   const H = event().H;
-  const contents = H.biikkoLoot(ITEMS, () => 'u');
+  const contents = H.biikkoLoot(ITEMS, () => 'u', 'slums');
   assert.ok('kowens' in contents[0] && contents[0].kowens >= 20 && contents[0].kowens <= 30);
   assert.deepEqual(contents[1], { kusing: DATA.biikko.loot.kusing });
   assert.ok(contents.some((c) => 'potion' in c), 'a potion every time');
@@ -366,7 +407,7 @@ test("Biikko's loot: held 10 s for the last hitter's party then anyone's; Kowens
   let witch = 0;
   let tickets = 0;
   for (let i = 0; i < 400; i++) {
-    const c = many.biikkoLoot(ITEMS, () => 'u');
+    const c = many.biikkoLoot(ITEMS, () => 'u', 'slums');
     if (c.some((x) => 'item' in x && x.item.defId.startsWith('witch-'))) witch++;
     if (c.some((x) => 'item' in x && x.item.defId === 'warren-ticket')) tickets++;
   }
@@ -380,7 +421,7 @@ test("over the town's socket: Mikko found by the first click (its pop-up, its bu
   // A tiny town where Mikko already hides and Mara already carries the upper half.
   const town: HalloweenMap = { size: [8, 8], blocked: Array.from({ length: 8 }, () => Array(8).fill(0)), ground: Array.from({ length: 8 }, () => Array(8).fill('grass')) };
   const data = on({ startsAt: '2026-01-01T00:00:00+08:00', manananggal: { ...DATA.manananggal, lowerSpots: [[6, 6]] } });
-  const saved: HalloweenSaved = { mikko: { map: 'town', col: 3, row: 2 }, mikkoAt: null, biikkoAt: Date.now() + DAY, round: { lower: [3, 4], until: Date.now() + 30 * MIN, carrier: 'Mara' }, roundAt: null };
+  const saved: HalloweenSaved = { mikko: { map: 'town', col: 3, row: 2 }, mikkoAt: null, biikkoAt: { slums: Date.now() + DAY }, round: { lower: [3, 4], until: Date.now() + 30 * MIN, carrier: 'Mara' }, roundAt: null };
   const H = new Halloween(data, { town, slums: town }, saved);
   const given: [string, HalloweenReward][] = [];
   const server = createServer();

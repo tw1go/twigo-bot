@@ -24,7 +24,7 @@ import { checkRichest } from './richest.js';
 import { attachTown, loadTownMap } from './town.js';
 import { watchStalls } from './stalls.js';
 import { bridgeTownChat } from './town-chat.js';
-import { MobRoom, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
+import { MobRoom, bothDirectors, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
 import { clearRankOf, golemBestOf, recordClear, recordGolem, topClears, topGolem } from './records.js';
 import { loadGolemArt } from './town-golem.js';
 import { type FieldBossDef, GreatScale, loadGreatScaleArt } from './town-great-scale.js';
@@ -1190,8 +1190,10 @@ export function startWebServer(client: Client): void {
     setShopEvents(() => ({ halloween: { on: halloween.on(Date.now()), window: H.data } })); // (the store's Witch Hat and Robe)
     const slumsMobMap = loadMobMap('slums');
     slumsMobMap.mobZones = [...(slumsMobMap.mobZones ?? []), Halloween.eventZone(slumsMobMap.size)];
+    // (The Old Market's Biikko Kalabasa lives in its room too, beside the Great Scale: both directors run there.)
+    palengkeMobMap.mobZones = [...(palengkeMobMap.mobZones ?? []), Halloween.eventZone(palengkeMobMap.size)];
     const skillLevels = Object.fromEntries(CLASSES.map((c) => [c.id, c.skills.map((k) => k.level)]));
-    const palengkeRoom = new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', ...(greatScale ? { director: greatScale } : {}) });
+    const palengkeRoom = new MobRoom(palengkeMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), undefined, undefined, loadPalengkeLeveling(), { area: 'palengke', director: bothDirectors(greatScale, halloween.directorFor('palengke')) });
     greatScale?.attach(palengkeRoom);
     // The Scrap Warrens: runs a restart ended before any boss fell there give their openers' tickets back (a boss down
     // spends it; runs saved before `spent` existed: unless Barong-Barong fell, as then).
@@ -1218,9 +1220,10 @@ export function startWebServer(client: Client): void {
       rooms: { hood: hoodTownMap, slums: () => slumsMap, palengke: () => palengkeMap },
       // The Old Market opens at its map's `opensAt` (CONTEXT.md Opening time): Game Masters before it.
       opening: { palengke: { name: 'The Old Market', opensAt: palengkeMap.opensAt } },
-      // (The Halloween event's mobs live in the Slums' room too: its director runs them, in a zone of their own.)
+      // (The Halloween event's mobs live in the Slums' room too, and Biikko in the Old Market's: its directors run them,
+      // in a zone of their own.)
       mobs: {
-        slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.director })),
+        slums: (slumsRoom = new MobRoom(slumsMobMap, Math.random, skillLevels, loadSkillShapes(), loadMobKinds(), loadGolemArt(), undefined, undefined, { director: halloween.directorFor('slums') })),
         palengke: palengkeRoom,
       },
       // The Halloween event (events/halloween.json; its schedules kept in kv 'halloween'): rewards into the wallet, the
