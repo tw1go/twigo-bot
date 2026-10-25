@@ -52,17 +52,17 @@ import { arenaBets, refundHeldBets } from './town-arena-bets.js';
 import { kowen } from '../kowens.js';
 import { filterText, kickedUntil, mutedUntil } from './town-mod.js';
 import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
-import { type OutfitData, cosmeticHatOf, cosmeticTopOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
+import { type OutfitData, cosmeticHatOf, cosmeticTopOf, cosmeticWeaponOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
 import { loadCosmeticHats, loadCosmeticTops } from './stats-data.js';
 import { dropRateOf } from './adventure.js';
 import { hotbarsOf, isClassId, saveHotbar } from './hotbar.js';
 import { keybindsOf, saveKeybinds } from './keybinds.js';
 
-/** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top (shared
- *  cosmetics.ts). */
+/** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top, a weapon
+ *  cosmetic that fits their class (the Moonlight weapons: everyone sees their weapon in its skin; shared cosmetics.ts). */
 const withWorn = (userId: string, o: OutfitData): OutfitData => {
   const worn = cosmeticsOf(userId);
-  return withCosmetics(o, cosmeticHatOf(loadCosmeticHats(), worn), cosmeticTopOf(loadCosmeticTops(), worn));
+  return withCosmetics(o, cosmeticHatOf(loadCosmeticHats(), worn), cosmeticTopOf(loadCosmeticTops(), worn), cosmeticWeaponOf(loadItemData(), worn, kitOf(userId).cls));
 };
 
 /** Where the Halloween event's schedules are kept (kv). */
@@ -473,6 +473,12 @@ export function startWebServer(client: Client): void {
   }
 
   let town: Town | null = null; // set once the town is attached, below
+  /** A class changed: the look again for someone wearing a weapon cosmetic (it fits the new class now, or no longer). */
+  const restyleWeaponSkin = (userId: string) => {
+    if (!cosmeticsOf(userId).weapon) return;
+    const look = lookOf(userId);
+    if (look) town?.restyle(userId, look, titleOf(userId));
+  };
   const playerDeps: PlayerDeps = {
     nameOf: (id) => nameOf(client, id),
     statusOf: (id) => statusOf(client, id),
@@ -739,6 +745,7 @@ export function startWebServer(client: Client): void {
         const result = changeClassWithTicket(userId, body?.cls);
         if (result.ok) {
           town?.kit(userId, result.adventure.cls, result.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(result.adventure.equipped.weapon)); // their badge and weapon, for everyone
+          restyleWeaponSkin(userId); // (a worn weapon skin fits the new class, or no longer does)
           console.log(`[class] ${userId}: ${before} → ${result.adventure.cls} (${result.tickets} ticket(s) left)`);
         }
         return send(res, 200, JSON.stringify(result));
@@ -813,7 +820,10 @@ export function startWebServer(client: Client): void {
         // A report's XP (and its level-ups: "Level up!" for their room) and Kusing reach the town at once.
         if (reply.xp) town?.progress(userId, reply.adventure.progress, ups ?? 0, reply.xp);
         if (reply.kusing || reply.rewards?.length || reply.pieces?.length || reply.handed || reply.taken) town?.items(userId);
-        if (changed) town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
+        if (changed) {
+          town?.kit(userId, reply.adventure.cls, reply.adventure.equipped.weapon?.defId ?? null, weaponPlusOf(reply.adventure.equipped.weapon)); // the resting weapon for everyone, their gear's stats in fights
+          restyleWeaponSkin(userId); // (a class chosen: a worn weapon skin may fit it now)
+        }
         if (reply.completed) console.log(`[quests] ${userId} completed ${reply.completed}${reply.adventure.cls ? ` (${reply.adventure.cls})` : ''}${reply.pieces?.length ? `, got ${reply.pieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}` : ''}`);
         return send(res, 200, JSON.stringify(reply));
       }

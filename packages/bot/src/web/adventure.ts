@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
 import { type ShopEvents, type PalengkeData, addToBag, markCutscene, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
-import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
+import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, wornItems, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
 import { type Attacker, fighterStats } from './town-mobs.js';
@@ -633,8 +633,9 @@ export const adventurersWithClass = (): string[] => withClassStmt.all().map((r) 
 export function fighterOf(userId: string): Attacker {
   const s = load(userId);
   const moves = Object.fromEntries((classOf(s.cls)?.mobility ?? []).map((m) => [m.id, skillLevelOf(s.progress, m.id)]));
-  // (The pet out counts like gear: its pet tree and its kind's bonus, shared items.ts itemTotals.)
-  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: [...Object.values(s.equipped), ...(s.pet ? [s.pet] : [])], skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
+  // (The pet out counts like gear: its pet tree and its kind's bonus; a worn cosmetic with stats, a Moonlight weapon, while
+  // it fits their class: shared items.ts itemTotals.)
+  return { cls: s.cls, level: s.progress.level, points: s.progress.points, gear: [...wornItems(s), ...(s.pet ? [s.pet] : [])], skills: damageSkillLevels(classOf(s.cls), s.progress), moves, buffLevels: buffSkillLevels(classOf(s.cls), s.progress) };
 }
 
 /** Changes their progress through `f` (web/progress.ts) and saves it; a level-up starts any quest that waited for it

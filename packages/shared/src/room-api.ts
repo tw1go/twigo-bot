@@ -56,6 +56,9 @@ export interface OutfitData {
   glassesColour?: string;
   hat?: string;
   hatColour?: string;
+  /** A worn weapon cosmetic that fits their class (shared cosmetics.ts cosmeticWeaponOf): their weapon drawn in its skin.
+   *  Only ever on a resolved look (the server's, the game's own); a saved look never holds it (the bot's parseOutfit). */
+  weaponCosmetic?: string;
 }
 
 /** `GET /me` — the member logged in to the web game (401 when not logged in). */
@@ -377,6 +380,8 @@ export interface TownShopItem {
   set?: string;
   pieces?: string[];
   limited?: string;
+  /** A weapon cosmetic's class (a Moonlight weapon): its look and stats only for that class. */
+  forClass?: string;
 }
 
 /** POST /town/shop { id, quantity } → the shop afterwards, whether it worked, and what to tell the member. */

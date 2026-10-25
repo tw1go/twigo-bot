@@ -1,4 +1,4 @@
-import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
+import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, cosmeticFits, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
 import { onMyBuffs } from '../net/buffs';
 import { myStats } from './rating';
 import { moreStatsSection, petPart } from './more-stats';
@@ -88,7 +88,7 @@ export class EquipmentPanel {
   private readonly root = el('div');
   private readonly slots = new Map<EquipPlace, HTMLButtonElement>();
   private readonly cslots = new Map<CosmeticPlace, HTMLButtonElement>();
-  /** Gear (the twelve places), Costume (Weapon, Head, Body: cosmetics, never stats) or Pet (the pet out and its pet
+  /** Gear (the twelve places), Costume (Weapon, Head, Body: cosmetics, stats only from a Weapon skin) or Pet (the pet out and its pet
    *  tree: ui/pet-tab.ts). */
   private tab: 'gear' | 'costume' | 'pet' = 'gear';
   private middle: HTMLElement | null = null;
@@ -224,7 +224,7 @@ export class EquipmentPanel {
     this.root.style.right = `${Math.round(innerWidth - bag.left + 10)}px`;
   }
 
-  /** Gear or Costume: the places shown (the doll and the stats box stay: cosmetics never change stats). */
+  /** Gear or Costume: the places shown (the doll and the stats box stay: the stats box counts a fitting Weapon skin too). */
   setTab(tab: 'gear' | 'costume' | 'pet'): void {
     this.tab = tab;
     for (const c of this.gearCols) c.hidden = tab !== 'gear';
@@ -466,6 +466,9 @@ export class EquipmentPanel {
       const item = s.cosmetics[place];
       b.replaceChildren();
       b.classList.toggle('eq-worn', !!item);
+      // (A weapon cosmetic for another class stays worn, greyed: no look or stats until they're of its class.)
+      const def = item && anyDef(item.defId);
+      b.classList.toggle('eq-off', !!def && !isGearDef(def) && !cosmeticFits(def, s.cls));
       b.draggable = !!item;
       b.setAttribute('aria-label', item ? `${COSTUME_NAME[place]}: ${nameOf(item)}` : `${COSTUME_NAME[place]} (empty)`);
       if (item) {

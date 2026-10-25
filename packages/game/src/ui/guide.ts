@@ -391,6 +391,7 @@ const TOPICS: Topic[] = [
       '• **Healing**: HP and MP Potions for **Kusing**. **Smithing**: Rough Whetstones and Repair Kits for Kowens. Type how many in the box',
       '• **Pets**: the seven pet boxes for Kowens (Fairy Cha’s, the rare one, costs more). Each needs a free slot in your bag',
       '• **Cosmetics**: Head and Body costumes for Kowens, or both together as a **Set** for less. The picture shows it on your own character. They go into your bag’s **Costume** tab, bound to you, one of each; wear them from there. **Limited** ones (the Witch Hat and Robe) are sold only during their event, and kept for good',
+      '• **Moonlight weapons** (Weapon tab): one for each class, your own listed first. Worn in the Costume tab’s **Weapon** place, it changes how your weapon looks everywhere and adds **+10 ATK** and **+3% crit damage**, but only while you’re that class; on another class it stays greyed and does nothing',
       '',
       '**Parlor** (north of the shop):',
       '• **Appearance**: a new look for your character, **3 Kowens**',

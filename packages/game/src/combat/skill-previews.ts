@@ -405,7 +405,7 @@ const broom: Skill[] = [
 
 // ── Pot lid (fx/potlid; the lid centre and the ladle bowl from launch.json) ──
 
-const LID = 'char-weapon-lid'; // the lid's layers (front and back), hidden while it flies
+const LID = 'char-weapon-lid'; // the lid's layers (front and back), hidden while it flies (a weapon skin's too: char-weapon-lid-moonlight…)
 
 /** Boiling Splash: its target (enemy 2, as before), the drops' flight (px a second, at least this long, this high in the
  *  middle, a quarter turn this often) and how long the puddle lies there before fading. */

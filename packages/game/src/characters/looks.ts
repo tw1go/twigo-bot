@@ -57,6 +57,8 @@ export function sanitize(C: CharacterDefs, saved: Partial<OutfitData> | null | u
     glassesColour: one(saved.glassesColour, c.colours, fallback.glassesColour ?? c.colours[0]),
     hat: opt(saved.hat, [...c.hats, ...Object.values(C.wardrobe.cosmeticHats ?? {})]), // (a worn cosmetic's hat too)
     hatColour: one(saved.hatColour, c.colours, fallback.hatColour ?? c.colours[0]),
+    // (A resolved look's worn weapon cosmetic, one the manifest knows: the server's, for someone else.)
+    ...(saved.weaponCosmetic && C.wardrobe.cosmeticWeapons?.[saved.weaponCosmetic] ? { weaponCosmetic: saved.weaponCosmetic } : {}),
   };
 }
 

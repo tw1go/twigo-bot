@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { CharacterDefs, ClassArt, ClassLayer, Dir, Manifest, Vec2 } from '../assets/types';
 import { slice } from '../assets/packs';
-import { restLayers } from './kit-art';
+import { artFor, restLayers } from './kit-art';
 import type { BattleSheets } from './battle-art';
 import { CHARACTER_BIAS, GLOW_DEPTH, HEIGHT_DEPTH, LABEL_DEPTH } from '../world/depth';
 import { floatNumber } from '../world/damage-number';
@@ -1049,7 +1049,7 @@ export class Character {
   /** In battle: the pose's weapon layers on this frame (standing = walk-ready's first), against the frame as shown. */
   private battleTrace(): { trace: AuraTrace; x: number; y: number } | null {
     const b = this.battle!;
-    const art = this.M.classes?.list[b.cls] as ClassArt | undefined;
+    const art = this.M.classes ? artFor(this.M.characters, this.M.classes, b.cls, this.outfit) : undefined; // (the poses' weapon skin)
     const key = this.sprite.anims.currentAnim?.key;
     if (!art || !key) return null;
     const parts = key.split(':');

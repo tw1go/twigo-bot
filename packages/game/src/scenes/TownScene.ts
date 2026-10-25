@@ -149,7 +149,7 @@ import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } fro
 import { cutscenesDue, cutscenesSeen, markCutsceneOf, enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, devQuestBell, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
 import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
-import { cosmeticPoseFiles, drawRested, poseFiles, restFiles } from '../characters/kit-art';
+import { artFor, cosmeticPoseFiles, drawRested, drawRestedStill, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
 import { holdQuestBanners, mountQuests } from '../ui/quests';
 import { openClassChoice } from '../ui/class-choice';
@@ -636,7 +636,7 @@ export class TownScene extends Phaser.Scene {
     const door = mine && this.map.doors[`house-${mine.lot}`];
     if (door && !Array.isArray(door[0])) this.player.place({ col: door[0] as number, row: door[1] as number }, 'se');
     this.others = new OtherPlayers(this, this.M, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint));
-    this.others.restFor = (weapon, cls) => this.restArt(weapon, cls);
+    this.others.restFor = (weapon, cls, look) => this.restArt(weapon, cls, look);
     this.others.speedAt = this.player.speedAt;
     this.others.auraFor = (plus) => {
       const D = itemData();
@@ -2212,13 +2212,13 @@ export class TownScene extends Phaser.Scene {
     if (!data || !K || !icons) return;
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     const C = this.M.characters;
-    await loadImages(this, data.classes.flatMap((c) => (K.list[c.id] ? restFiles(K.list[c.id]) : [])));
+    await loadImages(this, data.classes.flatMap((c) => { const a = artFor(C, K, c.id, this.outfit); return a ? restFiles(a) : []; }));
     const frame = this.M.ui.inventory?.itemFrame;
     openClassChoice({
       classes: data.classes,
       badge: (cls, size) => asset((size === 16 ? icons.small : size === 64 ? icons.large : icons.file).replace('{class}', cls)),
       frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
-      drawResting: (ctx, cls, anim, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, K.list[cls] ?? null, anim, dir, f, t),
+      drawResting: (ctx, cls, anim, dir, f, t) => drawRested(ctx, this, C, K, this.outfit, artFor(C, K, cls, this.outfit) ?? null, anim, dir, f, t),
       idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
       walk: { frames: C.animations.walk.frames, fps: C.animations.walk.fps },
       // (Each skill's level and cap at your level: "Lv 1 / 10"; your own class's as raised.)
@@ -2314,7 +2314,7 @@ export class TownScene extends Phaser.Scene {
   /** The skill preview's stage for a class, once its poses and fx have loaded. */
   private async skillStage(cls: string, fxFolder: string): Promise<SkillStage | null> {
     const K = this.M.classes;
-    const art = K?.list[cls];
+    const art = K && artFor(this.M.characters, K, cls, this.outfit); // (your weapon skin on your own class)
     if (!K || !art) return null;
     const asset = (f: string) => `${import.meta.env.BASE_URL}assets/${f}`;
     // The class's fx, and the mobility moves' (shared by every class).
@@ -2358,12 +2358,14 @@ export class TownScene extends Phaser.Scene {
     return c;
   }
 
-  /** A worn weapon's resting art (its sheets loaded): the weapon's class, else the wearer's. */
-  private async restArt(weapon: string | null | undefined, cls: string | null | undefined): Promise<ClassArt | null> {
+  /** A worn weapon's resting art (its sheets loaded): the weapon's class, else the wearer's; in the skin of `look`'s
+   *  worn weapon cosmetic when that's for the same class (characters/kit-art.ts artFor). */
+  private async restArt(weapon: string | null | undefined, cls: string | null | undefined, look?: Outfit | null): Promise<ClassArt | null> {
     if (!weapon) return null;
     await this.adventureReady;
     const id = itemDef(weapon)?.class ?? cls;
-    const art = id ? this.M.classes?.list[id] : undefined;
+    const K = this.M.classes;
+    const art = id && K ? artFor(this.M.characters, K, id, look) : undefined;
     if (!art) return null;
     await loadImages(this, restFiles(art));
     return art;
@@ -2375,10 +2377,11 @@ export class TownScene extends Phaser.Scene {
 
   /** Your resting weapon in town (others see it through the server's kit message). */
   private async wearWeapon(weapon: string | undefined, cls: string | null): Promise<void> {
-    const key = weapon ?? null;
+    const look = this.outfit;
+    const key = weapon ? `${weapon}|${look.weaponCosmetic ?? ''}` : null; // (a weapon skin put on or off: drawn again)
     if (this.worn === key) return;
     this.worn = key;
-    const art = await this.restArt(key, cls);
+    const art = await this.restArt(weapon, cls, look);
     if (this.worn !== key) return;
     this.wornArt = art;
     this.player.setRestingWeapon(art, this.M.classes?.bodyOffset);
@@ -2449,12 +2452,17 @@ export class TownScene extends Phaser.Scene {
       const W = C.wardrobe;
       const hat = ids.map((id) => W.cosmeticHats[id]).find(Boolean) ?? cosmeticHatOf(W.cosmeticHats, adventure()?.cosmetics);
       const top = ids.map((id) => W.cosmeticTops?.[id]).find(Boolean) ?? cosmeticTopOf(W.cosmeticTops, adventure()?.cosmetics);
-      const look = withCosmetics(this.savedOutfit, hat, top);
-      await loadImages(this, stillFiles(C, look, 'idle', 'se'));
+      // A weapon cosmetic: its class's resting weapon in its skin (whichever class: it shows what it is).
+      const weapon = ids.find((id) => W.cosmeticWeapons?.[id]) ?? null;
+      const look = withCosmetics(this.savedOutfit, hat, top, weapon);
+      const K = this.M.classes;
+      const rest = weapon && K ? artFor(C, K, W.cosmeticWeapons![weapon].class, look) : undefined;
+      await loadImages(this, [...stillFiles(C, look, 'idle', 'se'), ...(rest ? restFiles(rest) : [])]);
       if (!this.sys.isActive()) return null;
       const canvas = document.createElement('canvas');
       canvas.width = canvas.height = 64;
-      drawStill(canvas.getContext('2d')!, this, C, look, 'idle', 'se', 0, 16, 16);
+      if (rest && K) drawRestedStill(canvas.getContext('2d')!, this, C, K, look, rest, 'se');
+      else drawStill(canvas.getContext('2d')!, this, C, look, 'idle', 'se', 0, 16, 16);
       return canvas;
     });
     this.events.once('shutdown', () => setShopPreview(null));
@@ -5373,6 +5381,8 @@ export class TownScene extends Phaser.Scene {
     if (sameOutfit(look, this.outfit)) return;
     await this.setOutfit(look);
     setHudAvatar(headPortrait(this, this.M.characters, look));
+    const s = adventure();
+    if (s) void this.wearWeapon(s.equipped.weapon?.defId, s.cls); // (a weapon skin put on or off: your resting weapon in it)
     if (fakeLogin()) void fetch(`/__look?${new URLSearchParams({ as: fakeName(), look: JSON.stringify(look), title: this.me?.status === 'ok' ? (this.me.me.title?.name ?? 'Townfolk') : 'Townfolk', color: this.me?.status === 'ok' ? (this.me.me.title?.color ?? '#B794F6') : '#B794F6' })}`).catch(() => {});
   }
 

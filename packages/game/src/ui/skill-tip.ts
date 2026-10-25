@@ -1,4 +1,4 @@
-import { type ClassInfo, type SkillEffect, baseStats, derivedStats, itemTotals, moveDodgeMs, shapeParts, skillEffects, skillHits as hitsOf, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
+import { type ClassInfo, type SkillEffect, baseStats, derivedStats, itemTotals, wornItems, moveDodgeMs, shapeParts, skillEffects, skillHits as hitsOf, skillLevelBonus, skillPct, skillTier } from '@mikazuki/shared';
 import { cooldownOf, mpCostOf, seconds } from '../combat/cooldowns';
 import { type SkillView, adventure, adventureData } from '../net/adventure';
 import { MOVES, isMoveKind } from '../world/mobility';
@@ -102,8 +102,7 @@ export function skillTipLines(cls: ClassInfo, s: SkillView): HTMLElement[] {
     let atk = 0;
     if (me) {
       const p = me.progress;
-      const worn = Object.values(me.equipped).filter((i) => !!i);
-      atk = derivedStats(S, me.cls, p.level, baseStats(S, me.cls, p.level, p.points), itemTotals(D, worn, myMainStat())).power;
+      atk = derivedStats(S, me.cls, p.level, baseStats(S, me.cls, p.level, p.points), itemTotals(D, wornItems(me), myMainStat(), me.cls)).power;
     }
     lines.push(row('Damage', `${Math.round(pct * 100)}% of ATK${atk ? ` (≈ ${Math.round(atk * pct)})` : ''}`));
     const shapes = H?.[cls.id] as string[] | undefined;
