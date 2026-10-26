@@ -94,7 +94,8 @@ export interface SilongData {
   } & Record<string, unknown>;
   scaling: { mobHp: string; bossHp: string };
   floors: SilongFloorData[];
-  lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
+  /** `exitWarp`: B3's way out once it falls (a 2x2: stepping on it leaves the run, as the Warrens' clear warp). */
+  lastBoss: SilongMiniBoss & { title: string; reachRadius: number; exitWarp?: [number, number][] };
   miniBossLook: { drawScale: number; nameColour: string };
   /** A practice run's mobs and bosses: this % of their HP and of their ATK; its loot's Kusing this %; Mang Pido's next
    *  Practice Cellar Key this long after the last (one failed: none held, the run over, the practice not cleared). */
