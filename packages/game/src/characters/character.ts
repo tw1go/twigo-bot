@@ -290,6 +290,11 @@ export class Character {
     return { col: Math.floor(this.col), row: Math.floor(this.row) };
   }
 
+  /** Where the feet are on the map's flat ground (world px, between tiles too; no height, no nudge): the minimap's. */
+  get groundAt(): { x: number; y: number } {
+    return { x: (this.col - this.row) * 16, y: (this.col + this.row) * 8 };
+  }
+
   /** Standing still (no steps left to walk). */
   get isIdle(): boolean {
     return !this.path.length;
