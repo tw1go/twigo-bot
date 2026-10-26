@@ -128,6 +128,11 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
+- The Old Market and the Cellar toughened (25 Oct 2026, the owner): `classes/stats.json` `mobs.list` the eight Old Market
+  mobs' and the Great Scale's `hp` ×2 and `atk` ×1.4 (+ `mobs.toughenedNote`), `mobBehaviour.greatScale.hpPerPlayer` 1.5 (its
+  HP × that ^ players in the Old Market, never under the table's: town-great-scale.ts `hpFor`, MobRoom `setMaxHp`, a
+  `mob-scale`), `classes/palengke-leveling.json` its three mini bosses the same, `classes/dungeons.json` silong's every room
+  mob, mini boss and the Ice Machine the same (+ `toughenedNote`).
 - `classes/stats.json`: `growth.pointsPerLevelUp` 2 and `growth.pointsGoTo` all three stats (+ `pointsNote`; 25 Oct 2026, the
   owner: was 1 a level-up, main and second only).
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).

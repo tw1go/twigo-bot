@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type GreatScaleChange, type MobStats, type StatsData, type TelegraphShape, type TownGreatScale, mobStats } from '@mikazuki/shared';
+import { type GreatScaleChange, type MobStats, type StatsData, type TelegraphShape, type TownGreatScale, greatScaleHpPerPlayer, mobStats } from '@mikazuki/shared';
 import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facing8 } from './town-mobs.js';
 import { inShape } from './town-warrens.js';
 
@@ -130,6 +130,12 @@ export class GreatScale implements MobDirector {
     return this.boss.id;
   }
 
+  /** Its most HP with `n` players in the Old Market: the mob table's × hpPerPlayer ^ n (stats.json
+   *  mobBehaviour.greatScale, like the golem's), never under the table's. */
+  hpFor(n: number): number {
+    return Math.max(this.stats.hp, Math.round(this.stats.hp * greatScaleHpPerPlayer(this.data) ** n));
+  }
+
   /** The zone the Palengke's mob room needs for it (its arena; added to its map's zones as it's made). */
   static zone(boss: FieldBossDef, height: number): MobZoneData {
     return { id: GREAT_SCALE_ZONE, mob: boss.id, level: boss.level, rect: boss.arena, height, active: true, spawns: [], aggro: 'aggressive', aggroRange: boss.leash, leash: boss.leash, field: true };
@@ -196,8 +202,9 @@ export class GreatScale implements MobDirector {
     const room = this.room;
     if (!room) return [];
     const events: MobEvent[] = [];
-    // Its mob: there from the start, asleep.
+    // Its mob: there from the start, asleep; its most HP for the players in the Old Market (its share kept).
     if (!room.mobInfo(this.id, now)) events.push(...this.place(now, true));
+    events.push(...room.setMaxHp(this.id, this.hpFor(players.size)));
     // Moves landing now.
     const due = this.pending.filter((p) => p.at <= now);
     if (due.length) {

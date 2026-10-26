@@ -123,7 +123,7 @@ test('Weigh-in (two in its fight): the one in its circle is held on the pan, squ
   assert.ok(held && held.id === weigh.data!.target);
   const pan = of(ev, 'mob-add').flatMap((a) => a.mobs).find((m) => m.id === held.pan)!;
   assert.equal(pan.kind, PAN_KIND);
-  assert.equal(pan.maxHp, Math.round(row.hp * 0.08));
+  assert.equal(pan.maxHp, Math.round(scale.hpFor(2) * 0.08), '8% of its most HP, two players in the Old Market');
   const grabbed = room.landed(t).filter((l) => l.player === held.id);
   assert.ok(grabbed.some((l) => l.hold === 8000), 'held 8 s');
   // A second on: squeezed (5% of their most HP).
@@ -295,4 +295,16 @@ test("over the town's socket: arrivals hear its state; held, attacks are refused
     for (const ws of sockets) ws.close();
     await new Promise((ok) => server.close(ok));
   }
+});
+
+test("its HP grows with the players in the Old Market, like the golem's (×1.5 each, never under the table's), its share kept", () => {
+  const { room, scale } = setup(0);
+  run(room, 0, 0, {});
+  const max = () => room.mobInfo(boss.id, 0)!.maxHp;
+  assert.equal(max(), row.hp, 'nobody: the table');
+  run(room, 250, 250, { A: beside(3) });
+  assert.equal(max(), Math.round(row.hp * 1.5));
+  run(room, 500, 500, { A: beside(3), B: beside(0, 3), C: beside(3, 3) });
+  assert.equal(max(), Math.round(row.hp * 1.5 ** 3));
+  assert.equal(scale.hpFor(0), row.hp);
 });
