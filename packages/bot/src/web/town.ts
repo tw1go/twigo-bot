@@ -417,6 +417,15 @@ export function loadTownMap(name = 'town'): TownMap {
   return { size: json.size, spawn: json.spawn, blocked, avoid: Object.values(json.gates ?? {}).flat(), lanterns: lanternPostsOf({ ...json, blocked }), ...(json.opensAt ? { opensAt: json.opensAt } : {}) };
 }
 
+/** One of a map's objects by id (its top tile), from the game's assets: what the bot places by one (the Silong Hatch).
+ *  loadTownMap leaves the objects out, so reading them from its map found nothing (the Cellar was off on the live
+ *  server until 26 Oct 2026). */
+export function loadMapObject(name: string, id: string): { col: number; row: number } | undefined {
+  const json = JSON.parse(readFileSync(new URL(`../../../game/public/assets/maps/${name}.json`, import.meta.url), 'utf8')) as { objects?: { id: string; col: number; row: number }[] };
+  const o = json.objects?.find((x) => x.id === id);
+  return o && { col: o.col, row: o.row };
+}
+
 /** Facing for one grid step (as the game's dirForStep: col runs screen right-down, row runs screen left-down). */
 function dirForStep(dc: number, dr: number): TownDir {
   const table: Record<string, TownDir> = {

@@ -23,7 +23,7 @@ import { townMemory } from './town-memory.js';
 import { MAX_BET as RACE_MAX_BET, PAYOUT as RACE_PAYOUT, openRaceInTown, placeBet, raceFor } from '../games/race.js';
 import { isTester } from '../games/testers.js';
 import { checkRichest } from './richest.js';
-import { attachTown, loadTownMap } from './town.js';
+import { attachTown, loadMapObject, loadTownMap } from './town.js';
 import { watchStalls } from './stalls.js';
 import { bridgeTownChat } from './town-chat.js';
 import { MobRoom, bothDirectors, fighterStats, loadMobKinds, loadMobMap, loadSkillShapes } from './town-mobs.js';
@@ -1242,7 +1242,8 @@ export function startWebServer(client: Client): void {
     }
     kvSave(SILONG_RUNS, []);
     // (The Silong Hatch: the Palengke map's palengke-silong-hatch object.)
-    const hatch = (palengkeMap as { objects?: { id?: string; col: number; row: number }[] }).objects?.find((o) => o.id === 'palengke-silong-hatch');
+    const hatch = loadMapObject('palengke', 'palengke-silong-hatch');
+    if (!hatch) console.log('[silong] no palengke-silong-hatch on the Old Market map: the Cellar is off');
     town = attachTown(server, {
       arenaBets: arenaBets(),
       onSay: (userId, nickname, text, megaphone, gm) => toDiscord(userId, nickname, text, megaphone, gm),
