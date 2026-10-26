@@ -58,11 +58,9 @@
       "base": 4,
       "perLevel": 0
     },
-    "pointsPerLevelUp": 1,
-    "pointsGoTo": [
-      "main",
-      "second"
-    ]
+    "pointsPerLevelUp": 2,
+    "pointsGoTo": ["main", "second", "third"],
+    "pointsNote": "A repo change (25 Oct 2026, the owner): 2 stat points a level-up (was 1) and any of the three stats takes them (was the main and second only), so a player can build as they like; points already spent stay, the new ones wait unspent."
   },
   "gearTypeStats": {
     "heavy": [
@@ -193,6 +191,7 @@
     }
   },
   "mobs": {
+    "toughenedNote": "Repo change (25 Oct 2026, the owner): the Old Market's eight mobs and the Great Scale have twice the HP and 1.4x the ATK they had (the table's formula numbers before that); the Cellar's in dungeons.json and the mini bosses in palengke-leveling.json the same.",
     "placeholder": true,
     "formula": {
       "hp": "40 * 1.17^(lv-1) * hpMult",
@@ -274,8 +273,8 @@
       },
       "payong-flapper": {
         "level": 21,
-        "hp": 924,
-        "atk": 69,
+        "hp": 1848,
+        "atk": 97,
         "def": 42,
         "xp": 103,
         "hpMult": 1.0,
@@ -285,8 +284,8 @@
       },
       "sibuyas-sobber": {
         "level": 23,
-        "hp": 1265,
-        "atk": 75,
+        "hp": 2530,
+        "atk": 105,
         "def": 46,
         "xp": 121,
         "hpMult": 1.0,
@@ -296,8 +295,8 @@
       },
       "garapon-jars": {
         "level": 25,
-        "hp": 693,
-        "atk": 81,
+        "hp": 1386,
+        "atk": 113,
         "def": 50,
         "xp": 56,
         "hpMult": 0.4,
@@ -307,8 +306,8 @@
       },
       "sako-slammer": {
         "level": 27,
-        "hp": 3082,
-        "atk": 87,
+        "hp": 6164,
+        "atk": 122,
         "def": 54,
         "xp": 208,
         "hpMult": 1.3,
@@ -318,8 +317,8 @@
       },
       "monobloc-stack": {
         "level": 29,
-        "hp": 2921,
-        "atk": 93,
+        "hp": 5842,
+        "atk": 130,
         "def": 58,
         "xp": 163,
         "hpMult": 0.9,
@@ -329,8 +328,8 @@
       },
       "sangkalan-chomper": {
         "level": 31,
-        "hp": 7997,
-        "atk": 99,
+        "hp": 15994,
+        "atk": 139,
         "def": 62,
         "xp": 305,
         "hpMult": 1.8,
@@ -340,8 +339,8 @@
       },
       "banyera-lurker": {
         "level": 33,
-        "hp": 6690,
-        "atk": 105,
+        "hp": 13380,
+        "atk": 147,
         "def": 66,
         "xp": 250,
         "hpMult": 1.1,
@@ -351,8 +350,8 @@
       },
       "timbangan-sentinel": {
         "level": 35,
-        "hp": 8325,
-        "atk": 111,
+        "hp": 16650,
+        "atk": 155,
         "def": 70,
         "xp": 252,
         "hpMult": 1.0,
@@ -362,8 +361,8 @@
       },
       "great-scale": {
         "level": 37,
-        "hp": 341879,
-        "atk": 117,
+        "hp": 683758,
+        "atk": 164,
         "def": 74,
         "xp": 6939,
         "hpMult": 30,
@@ -393,7 +392,7 @@
     },
     "mpCost": {
      "placeholder": true,
-     "rules": "Costs at skill Lv 1 (+3% per skill level, see perSkillLevel). Tier 1 is free. Low-INT classes pay less so every class empties a full bar in about 30 s of nonstop casting at Lv 20. 5-minute buffs cost about a quarter of the bar; stances are free.",
+     "rules": "Costs at skill Lv 1 (+3% per skill level, see perSkillLevel). Tier 1 is free. The Lv 21-40 damage skills (places 7-12) cost 40% less since 26 Oct 2026 (the owner: rounded from the old numbers). Low-INT classes pay less so every class empties a full bar in about 30 s of nonstop casting at Lv 20. 5-minute buffs cost about a quarter of the bar; stances are free.",
      "damageByTier": {
       "slingshot": [
        0,
@@ -403,12 +402,12 @@
        11,
        15,
        20,
-       21,
-       27,
-       33,
-       40,
-       49,
-       58,
+       13,
+       16,
+       20,
+       24,
+       29,
+       35,
        74,
        102
       ],
@@ -420,12 +419,12 @@
        7,
        9,
        12,
-       13,
-       16,
-       20,
-       25,
-       30,
-       35,
+       8,
+       10,
+       12,
+       15,
+       18,
+       21,
        45,
        62
       ],
@@ -437,12 +436,12 @@
        7,
        9,
        12,
-       13,
-       16,
-       20,
-       25,
-       30,
-       35,
+       8,
+       10,
+       12,
+       15,
+       18,
+       21,
        45,
        62
       ],
@@ -454,12 +453,12 @@
        20,
        27,
        36,
-       37,
-       48,
-       59,
-       72,
-       87,
-       103,
+       22,
+       29,
+       35,
+       43,
+       52,
+       62,
        132,
        182
       ],
@@ -471,12 +470,12 @@
        11,
        15,
        20,
-       21,
-       27,
-       33,
-       40,
-       49,
-       58,
+       13,
+       16,
+       20,
+       24,
+       29,
+       35,
        74,
        102
       ],
@@ -488,12 +487,12 @@
        20,
        27,
        36,
-       37,
-       48,
-       59,
-       72,
-       87,
-       103,
+       22,
+       29,
+       35,
+       43,
+       52,
+       62,
        132,
        182
       ]
@@ -878,7 +877,7 @@
      }
     },
     "cooldownByUnlock": {
-     "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns. Lv 21 to 40: a flat 15 s each (Mac, 20 Oct 2026: was 12, 15, 18, 20, 24, 26 s; a touch over Lv 18's 14 s, so no newer skill comes round sooner than an older one).",
+     "note": "Damage skill cooldown (s) at skill Lv 1, by unlock level (Mac, 9 Oct: longer cooldowns so the MP costs hold, a full bar lasts about 30 s of nonstop casting at Lv 20). Tier 1 keeps the game's 1 s. -1% a skill level past 1 (perSkillLevel.cooldown). Mobility moves keep their own cooldowns. Lv 21 to 40: a flat 8 s each (the owner, 26 Oct 2026: was 15 s, before that 12, 15, 18, 20, 24, 26 s; quicker than Lv 15's and Lv 18's now, so the new skills come round more often).",
      "1": 1.0,
      "3": 1.5,
      "6": 4,
@@ -886,12 +885,12 @@
      "12": 8,
      "15": 10,
      "18": 14,
-     "21": 15,
-     "25": 15,
-     "28": 15,
-     "32": 15,
-     "36": 15,
-     "40": 15,
+     "21": 8,
+     "25": 8,
+     "28": 8,
+     "32": 8,
+     "36": 8,
+     "40": 8,
      "45": 30,
      "50": 40
     },
@@ -900,7 +899,7 @@
       "ms": { "step-back": 500 }
     },
     "rule": "higher-tier skill at Lv 5 always beats a lower-tier skill at Lv 20",
-    "unlocksAbove20": "new damage skills at Lv 21, 25, 28, 32, 36, 40 (6 per class, separate track); cooldownByUnlock tiers 8-13 = 15 s each (Mac, 20 Oct: was 16, 18, 20, 22, 24, 26 s); skill level cap formula unchanged (max 20)"
+    "unlocksAbove20": "new damage skills at Lv 21, 25, 28, 32, 36, 40 (6 per class, separate track); cooldownByUnlock tiers 8-13 = 8 s each (26 Oct 2026, the owner: was 15 s; 20 Oct: was 16, 18, 20, 22, 24, 26 s); skill level cap formula unchanged (max 20)"
   },
   "affixes": {
     "placeholder": true,
@@ -1198,7 +1197,7 @@
       "currency": "none, whetstones only"
     },
     "temper": { "minusPerTier": 2 },
-    "temperNote": "Repo addition (23 Oct 2026, the owner): a filled Temper Stone goes onto gear of its type at its own item level or above; each gear tier up it crosses (gearTiers: Low Lv 1-20, Mid 30-40) takes minusPerTier off its + (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). Shared forge.ts temperedPlus.",
+    "temperNote": "Repo addition (23 Oct 2026, the owner): a filled Temper Stone goes onto gear of its type at its own item level or above; each gear tier up it crosses (gearTiers: Low Lv 1-20, Mid 30-40) takes minusPerTier off its + (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). Shared forge.ts temperedPlus. A Retainment Stone (items.json retainment-stone, 25 Oct 2026, Mac) in the Apply popup keeps the full +, used up only when the item is a gear tier up (forge.ts retainSaves).",
     "weaponAura": {
       "appliesTo": "weapons only, in hand and resting, all directions, visible to everyone; also the item icon",
       "tiers": [
@@ -1528,7 +1527,8 @@
   "potions": {
     "placeholder": true,
     "sellShare": 0.5,
-    "sellShareNote": "Repo addition (13 Oct 2026): HP and MP Potions sell from the combat bag for this share of their tier's kusing (Low 25, Medium 75 each), as many of a stack as you pick",
+    "sellShareNote": "Repo addition (13 Oct 2026): HP and MP Potions sell from the combat bag for this share of their tier's kusing (Low 25, Medium 75, Large 200 each), as many of a stack as you pick",
+    "highNote": "Repo change (25 Oct 2026, Mac): the high tier is the Large HP and MP Potions (items.json high-*-potion), sold from Lv 25 (was 50), healing 500 HP / 250 MP (were 350 / 200)",
     "tiers": {
       "low": {
         "minLevel": 1,
@@ -1543,9 +1543,9 @@
         "kusing": 150
       },
       "high": {
-        "minLevel": 50,
-        "hp": 350,
-        "mp": 200,
+        "minLevel": 25,
+        "hp": 500,
+        "mp": 250,
         "kusing": 400
       },
       "superior": {
@@ -1715,6 +1715,7 @@
       "white": "otherwise",
       "red": "mob 3+ levels above"
     },
+    "greatScale": { "hpPerPlayer": 1.5, "hpPerPlayerNote": "Repo addition (25 Oct 2026, the owner): the Great Scale's HP is the mob table's x hpPerPlayer^(players in the Old Market), never under the table's, kept up to date as they come and go (its HP % stays), as the golem's" },
     "golem": {
       "leavesPit": false,
       "resetAfterSecondsEmpty": 30,

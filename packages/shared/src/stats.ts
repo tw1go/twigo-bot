@@ -153,11 +153,12 @@ export function gainXp(data: StatsData, level: number, xp: number, gained: numbe
 
 // ── Stats ──
 
-/** Stat points a character has earned by `level` (one a level-up), and skill points (three a level-up). */
+/** Stat points a character has earned by `level` (stats.json growth.pointsPerLevelUp a level-up), and skill points (three a
+ *  level-up). */
 export const statPointsAt = (data: StatsData, level: number) => (lvl(data, level) - 1) * data.growth.pointsPerLevelUp;
 export const skillPointsAt = (data: StatsData, level: number) => (lvl(data, level) - 1) * data.skills.skillPointsPerLevelUp;
 
-/** The stats a class's points may go into (its main and second); none before a class. */
+/** The stats a class's points may go into (stats.json growth.pointsGoTo: every one of the three); none before a class. */
 export function pointStats(data: StatsData, cls: string | null | undefined): StatName[] {
   const c = cls ? data.classes[cls] : undefined;
   return c ? data.growth.pointsGoTo.map((place) => c[place]) : [];
@@ -168,8 +169,8 @@ export function unspentStatPoints(data: StatsData, cls: string | null | undefine
   return statPointsAt(data, level) - pointStats(data, cls).reduce((n, s) => n + Math.max(0, spent[s] ?? 0), 0);
 }
 
-/** Base stats (what gear requirements check): the class's growth at `level` plus the points spent on its main and second
- *  stat; before a class, the classless stats (points are banked, not spent). */
+/** Base stats (what gear requirements check): the class's growth at `level` plus the points spent (any of its
+ *  stats: pointsGoTo); before a class, the classless stats (points are banked, not spent). */
 export function baseStats(data: StatsData, cls: string | null | undefined, level: number, spent: StatPoints = {}): StatBlock {
   const c = cls ? data.classes[cls] : undefined;
   if (!c) return { ...data.classless };
@@ -788,6 +789,10 @@ export const golemHpMin = (data: StatsData): number => (data.mobBehaviour.golem 
 /** The golem's HP multiplier per player in the Slums (stats.json mobBehaviour.golem.hpPerPlayer, a repo addition): its HP
  *  is the mob table's × this ^ players. 1 without it. */
 export const golemHpPerPlayer = (data: StatsData): number => (data.mobBehaviour.golem as { hpPerPlayer?: number }).hpPerPlayer ?? 1;
+
+/** The Great Scale's HP multiplier per player in the Old Market (stats.json mobBehaviour.greatScale.hpPerPlayer, a repo
+ *  addition, as the golem's): its HP is the mob table's × this ^ players, never under the table's. 1 without it. */
+export const greatScaleHpPerPlayer = (data: StatsData): number => ((data.mobBehaviour as { greatScale?: { hpPerPlayer?: number } }).greatScale?.hpPerPlayer ?? 1);
 
 /** A small seeded number (0–1) from a string, so a mob's look, pack and first spot are the same on every restart and in
  *  the game before the server answers. */

@@ -135,6 +135,9 @@ export interface MobDirector {
   tick(now: number, players: ReadonlyMap<string, [number, number]>): MobEvent[];
   /** A mob's HP fell (a hit or a burn's tick), or it died: its thresholds (calls, vanish, hunker, enrage); events. */
   hurt(id: string, now: number): MobEvent[];
+  /** A player's hit is about to land on a mob (a miss too: it starts the fight), by a fighter of `level`: before it's
+   *  rolled, so a director can change the mob's numbers first (the Halloween event's mobs grow with their hitters). */
+  hit?(id: string, level: number, now: number): MobEvent[];
 }
 
 /** Several directors on one mob room (the Old Market's: the Great Scale and the Halloween event's Biikko), each told
@@ -144,6 +147,7 @@ export function bothDirectors(...ds: (MobDirector | null | undefined)[]): MobDir
   return {
     tick: (now, players) => all.flatMap((d) => d.tick(now, players)),
     hurt: (id, now) => all.flatMap((d) => d.hurt(id, now)),
+    hit: (id, level, now) => all.flatMap((d) => d.hit?.(id, level, now) ?? []),
   };
 }
 
@@ -1710,6 +1714,7 @@ export class MobRoom {
   private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, member = player, from?: [number, number]): MobHit {
     const [mc, mr] = this.at(m, now);
     this.struck(m, player, now);
+    if (this.opts.director?.hit) this.pending.push(...this.opts.director.hit(m.id, by.level, now));
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     // A director's front block (its shell): all of a hit from its front, unless it's open.
     if (m.frontBlock && m.frontBlock.share >= 1 && now >= m.frontBlock.openUntil && from && this.fromFront(m, [mc, mr], from, now)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
@@ -1982,6 +1987,21 @@ export class MobRoom {
     return [{ t: 'mob-heal', id, hp: m.hp }];
   }
 
+  /** New numbers for a living mob (a Halloween event mob growing with its hitters, or back to its own): its level, ATK,
+   *  DEF and most HP, its HP keeping its share. The `mob-scale` to send (empty if nothing changed). */
+  restat(id: string, stats: { level: number; hp: number; atk: number; def: number }): MobEvent[] {
+    const m = this.byId.get(id);
+    if (!m || m.respawnAt) return [];
+    if (m.level === stats.level && m.maxHp === stats.hp && m.stats.atk === stats.atk && m.stats.def === stats.def) return [];
+    const share = m.hp / m.maxHp;
+    m.stats = { ...m.stats, level: stats.level, hp: stats.hp, atk: stats.atk, def: stats.def };
+    m.level = stats.level;
+    m.maxHp = stats.hp;
+    m.baseHp = stats.hp;
+    m.hp = Math.max(1, Math.round(share * stats.hp));
+    return [{ t: 'mob-scale', mobs: [{ id, hp: m.hp, maxHp: m.maxHp, level: m.level }] }];
+  }
+
   /** Moves a mob along `path` at `speed` tiles a second now (Tire Ranny's Burnout Charge), or puts it on a tile at once
    *  (`jump`: Bag Yani coming back). */
   moveMob(id: string, path: [number, number][], now: number, speed = SPEED, jump = false): MobEvent[] {
@@ -2096,6 +2116,18 @@ export class MobRoom {
       changed.push({ id: m.id, hp: m.hp, maxHp: m.maxHp });
     }
     return changed.length ? [{ t: 'mob-scale', mobs: changed }] : [];
+  }
+
+  /** One mob's most HP to `max` (a field boss growing with the players about: the Great Scale), its HP keeping its share.
+   *  The `mob-scale` to send (empty if nothing changed, or it's dead). */
+  setMaxHp(id: string, max: number): MobEvent[] {
+    const m = this.mobs.find((x) => x.id === id);
+    max = Math.max(1, Math.round(max));
+    if (!m || m.respawnAt || m.hp <= 0 || m.maxHp === max) return [];
+    const share = m.hp / m.maxHp;
+    m.maxHp = max;
+    m.hp = Math.max(1, Math.round(share * max));
+    return [{ t: 'mob-scale', mobs: [{ id: m.id, hp: m.hp, maxHp: m.maxHp }] }];
   }
 
   /** Dev (?minibosses=now): every mini boss that's down comes back on the next tick. How many. */

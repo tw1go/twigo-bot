@@ -47,6 +47,22 @@ export function rollRange(range: number | [number, number], random: () => number
 /** One of a list, equal chances. */
 export const pickOne = <T>(list: readonly T[], random: () => number): T => list[Math.min(list.length - 1, Math.floor(random() * list.length))];
 
+/** How an event mob grows with the players fighting it (halloween.json's `scaling`, a repo addition, 26 Oct 2026): its
+ *  level follows the highest level among the players who have hit it this fight (never below its own), its HP
+ *  `hpPerLevel` more of its own for every level above it. */
+export interface HalloweenScaling {
+  note?: string;
+  follows?: string;
+  hpPerLevel: number;
+}
+
+/** An event mob's level and HP at the highest level among its hitters (`top`): its own level and HP without scaling, or
+ *  below its own level. */
+export function scaledEventMob(base: { level: number; hp: number; scaling?: HalloweenScaling }, top: number): { level: number; hp: number } {
+  const level = base.scaling ? Math.max(base.level, Math.round(top)) : base.level;
+  return { level, hp: Math.round(base.hp * (1 + (base.scaling?.hpPerLevel ?? 0) * (level - base.level))) };
+}
+
 /** The Halloween event mobs' kinds (manifest mobs, mobs.json): Biikko Kalabasa and the Manananggal's upper half. */
 export const HALLOWEEN_MOBS = { biikko: 'biikko-kalabasa', upper: 'manananggal-upper' } as const;
 
@@ -120,6 +136,8 @@ export interface HalloweenData extends EventWindow {
     };
     /** A map's own items in its loot, by the item they stand in for (the Old Market's Mid Repair Kits, its Cellar Key). */
     itemsIn?: Record<string, Record<string, string>>;
+    /** It grows with the players fighting it (a repo addition): see `HalloweenScaling`. */
+    scaling?: HalloweenScaling;
     announceKill: string;
   };
   manananggal: {
@@ -127,7 +145,7 @@ export interface HalloweenData extends EventWindow {
     everyMinutes: [number, number];
     lowerStaysMinutes: number;
     lowerSpots: [number, number][];
-    upper: { map: string; level: number; hp: number; speedTilesPerSec: number; attack: string };
+    upper: { map: string; level: number; hp: number; speedTilesPerSec: number; attack: string; scaling?: HalloweenScaling };
     reuniteReach: number;
     rewards: { kowens: [number, number]; kusing: number; lowRepairKit: Chance };
     announceReunite: string;

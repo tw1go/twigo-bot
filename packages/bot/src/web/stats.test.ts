@@ -5,6 +5,8 @@ import {
   type ClassesFile,
   type EquipmentDef,
   type GearItem,
+  type StatName,
+  type StatPoints,
   STAT_NAMES,
   baseStats,
   moreStats,
@@ -88,10 +90,10 @@ test('base stats by level for every class (the guide\'s table, no points spent);
   const table: [number, number, number, number, number][] = [
     // level, main, second, third, points
     [1, 10, 6, 4, 0],
-    [5, 18, 10, 4, 4],
-    [10, 28, 15, 4, 9],
-    [15, 38, 20, 4, 14],
-    [20, 48, 25, 4, 19],
+    [5, 18, 10, 4, 8],
+    [10, 28, 15, 4, 18],
+    [15, 38, 20, 4, 28],
+    [20, 48, 25, 4, 38],
   ];
   for (const cls of ids) {
     const c = data.classes[cls];
@@ -103,13 +105,13 @@ test('base stats by level for every class (the guide\'s table, no points spent);
   for (const L of [1, 10, 20]) assert.deepEqual(baseStats(data, null, L, { STR: 5 }), { STR: 4, DEX: 4, INT: 4 }, 'classless: points are banked');
 });
 
-test('stat points go into the class\'s main or second stat only; unspent ones are counted', () => {
-  assert.deepEqual(pointStats(data, 'slingshot'), ['DEX', 'INT']);
+test('stat points go into any of the class\'s three stats (2 a level-up); unspent ones are counted', () => {
+  assert.deepEqual(pointStats(data, 'slingshot'), ['DEX', 'INT', 'STR']);
   assert.deepEqual(pointStats(data, null), []);
   const b = baseStats(data, 'slingshot', 10, { DEX: 3, INT: 2, STR: 4 });
-  assert.deepEqual(b, { DEX: 31, INT: 17, STR: 4 }, 'the STR points don\'t count: the third stays at 4');
-  assert.equal(unspentStatPoints(data, 'slingshot', 10, { DEX: 3, INT: 2, STR: 4 }), 4);
-  assert.equal(unspentStatPoints(data, null, 10), 9, 'classless: banked');
+  assert.deepEqual(b, { DEX: 31, INT: 17, STR: 8 }, 'the third stat takes points too');
+  assert.equal(unspentStatPoints(data, 'slingshot', 10, { DEX: 3, INT: 2, STR: 4 }), 18 - 9);
+  assert.equal(unspentStatPoints(data, null, 10), 18, 'classless: banked');
 });
 
 test('derived stats: HP, MP, MP regen, Power with the weapon\'s ATK, DEF, crit (capped) — the guide\'s Power and HP table', () => {
@@ -118,13 +120,13 @@ test('derived stats: HP, MP, MP regen, Power with the weapon\'s ATK, DEF, crit (
     const c = data.classes[cls];
     return derivedStats(data, cls, L, baseStats(data, cls, L, { [c.main]: statPointsAt(data, L) }), { atk }).power;
   };
-  for (const cls of ids) assert.deepEqual([power(cls, 1, weaponOf(cls).stats.atk!), power(cls, 10, 20), power(cls, 20, 40)], [31, 109, 199], cls);
+  for (const cls of ids) assert.deepEqual([power(cls, 1, weaponOf(cls).stats.atk!), power(cls, 10, 20), power(cls, 20, 40)], [31, 127, 237], cls); // (2 points a level: 109 and 199 at 1)
   const hp = (cls: string, L: number) => {
     const c = data.classes[cls];
     return derivedStats(data, cls, L, baseStats(data, cls, L, { [c.main]: statPointsAt(data, L) })).hp;
   };
   assert.deepEqual([1, 10, 20].map((L) => hp('slingshot', L)), [119, 254, 404], 'third stat STR');
-  assert.deepEqual([1, 10, 20].map((L) => hp('greatstick', L)), [155, 452, 782], 'STR main');
+  assert.deepEqual([1, 10, 20].map((L) => hp('greatstick', L)), [155, 506, 896], 'STR main (2 points a level: 452 and 782 at 1)');
   const d = derivedStats(data, 'potlid', 1, baseStats(data, 'potlid', 1), { def: 2 });
   assert.equal(d.def, Math.floor(0.5 * 10) + 2);
   const h = derivedStats(data, 'hilot', 1, baseStats(data, 'hilot', 1));
@@ -154,20 +156,35 @@ test('requirements: weapons main ≥ 2R + 6 (and the highest) and second ≥ R +
   }
 });
 
-test('every class can wear exactly its own weapon and gear type, at every level and however its points are spent', () => {
+test('every class wears exactly its own weapon and gear type, at every level, its points spread over all three stats (another class\'s gear: gearMismatch; its own: while its main stat stays the highest)', () => {
+  const may = (cls: string, base: ReturnType<typeof baseStats>, L: number, item: GearItem) => !gearMismatch(data, cls, item) && canEquip(data, base, L, item).ok;
   for (const cls of ids) {
     const c = data.classes[cls];
     for (let L = 1; L <= data.levelCap; L++) {
       const points = statPointsAt(data, L);
-      for (let k = 0; k <= points; k++) {
-        const base = baseStats(data, cls, L, { [c.main]: k, [c.second]: points - k });
+      // Every split of the points that keeps the main stat highest: all in the main, a third each, all in the second
+      // or third up to where it would pass the main.
+      const g = baseStats(data, cls, L);
+      const room = (s: StatName) => Math.max(0, g[c.main] - g[s]);
+      const splits: StatPoints[] = [{ [c.main]: points }, { [c.main]: Math.ceil(points / 3), [c.second]: Math.floor(points / 3), [c.third]: points - Math.ceil(points / 3) - Math.floor(points / 3) }];
+      for (const s of [c.second, c.third]) {
+        const n = Math.min(points, room(s));
+        splits.push({ [s]: n, [c.main]: points - n });
+      }
+      for (const spent of splits) {
+        const base = baseStats(data, cls, L, spent);
+        if (Object.values(base).some((v) => v > base[c.main])) continue; // (the main must stay the highest: below)
         for (const R of new Set([1, L])) {
-          for (const other of ids) assert.equal(canEquip(data, base, L, { slot: 'weapon', class: other, level: R }).ok, other === cls, `${cls} Lv ${L} (${k} in main): ${other} weapon Lv ${R}`);
-          for (const gear of Object.keys(data.gearTypeStats)) assert.equal(canEquip(data, base, L, { slot: 'feet', gear, level: R }).ok, gear === c.gearType, `${cls} Lv ${L}: ${gear} armor Lv ${R}`);
+          for (const other of ids) assert.equal(may(cls, base, L, { slot: 'weapon', class: other, level: R }), other === cls, `${cls} Lv ${L} ${JSON.stringify(spent)}: ${other} weapon Lv ${R}`);
+          for (const gear of Object.keys(data.gearTypeStats)) assert.equal(may(cls, base, L, { slot: 'feet', gear, level: R }), gear === c.gearType, `${cls} Lv ${L}: ${gear} armor Lv ${R}`);
         }
       }
     }
   }
+  // Its second stat raised past its main: its own weapon wants the main as its highest stat again.
+  const sling = baseStats(data, 'slingshot', 20, { INT: statPointsAt(data, 20) });
+  assert.ok(sling.INT > sling.DEX);
+  assert.equal(needsLine(canEquip(data, sling, 20, { slot: 'weapon', class: 'slingshot', level: 20 }).missing), 'Needs DEX as your highest stat');
 });
 
 test('canEquip says what\'s missing (base stats only: gear never counts) and the line says it short', () => {

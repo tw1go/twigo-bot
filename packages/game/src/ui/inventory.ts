@@ -14,12 +14,12 @@ import { hotbarDragItem, pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
 import { openCube } from './pet-cube';
-import { type ForgePopup, confirmCombine, confirmDestroy, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge } from './forge';
+import { type ForgePopup, confirmCombine, confirmDestroy, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge, RETAIN_WHERE } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
 
 /** What a forge tool's button and menu say (the popup's mode it opens). */
-const FORGE_LABEL: Record<string, string> = { whetstone: 'Enhance…', repairKit: 'Repair…', pliers: 'Remove an agimat…', temper: 'Draw a +…', tempered: 'Apply its +…' };
+const FORGE_LABEL: Record<string, string> = { whetstone: 'Enhance…', repairKit: 'Repair…', pliers: 'Remove an agimat…', temper: 'Draw a +…', tempered: 'Apply its +…', retain: 'Use…' };
 
 // 🎒 The inventory: a bag button just right of the chat box (or B) opens the bag on the right of the screen. The bag shows every
 // slot a bag can ever have (5 × 10): the ones unlocked so far (bags from the shop add more) hold your items, one slot
@@ -611,6 +611,8 @@ export class Inventory {
     else if (def.forge === 'pliers') this.forge.open('remove', def.id);
     else if (def.forge === 'temper') this.forge.open('draw', def.id);
     else if (def.forge === 'tempered') this.forge.open('apply', it.uid); // (each filled stone its own)
+    // A Retainment Stone: into an open Apply popup's slot; else where it goes.
+    else if (def.forge === 'retain') return this.forge.putRetain() || (toast(RETAIN_WHERE, 2600), true);
     else return false;
     this.hideTip();
     return true;

@@ -18,7 +18,7 @@ const { addRenameCards, renameCards, renameWithCard } = await import('./rename-c
 const { addClassTickets, classTickets, changeClassWithTicket } = await import('./class-ticket.js');
 const { adventureOf, gainXpFor, townEquip, townPoints, townQuest } = await import('../web/adventure.js');
 const { loadStats } = await import('../web/stats-data.js');
-const { skillPointsAt, xpForLevel } = await import('@mikazuki/shared');
+const { skillPointsAt, statPointsAt, xpForLevel } = await import('@mikazuki/shared');
 const { usedSlots } = await import('../dig/bag.js');
 const { closeDatabase } = await import('../db/db.js');
 
@@ -56,7 +56,7 @@ test('a Bagong Buhay Ticket changes the class (the new training gear in the old 
   assert.deepEqual([now.equipped.head, now.equipped.body, now.equipped.hands, now.equipped.bottoms, now.equipped.feet].map((i) => i?.defId), [light[0], light[1], undefined, light[3], light[4]]);
   assert.deepEqual(now.bag.map((i) => i.defId), ['low-hp-potion', 'low-mp-potion', light[2]]);
   // Every stat and skill point back; the level stays.
-  assert.deepEqual([now.progress.level, now.progress.points, now.progress.statPoints, now.progress.skillPoints], [5, {}, 4, skillPointsAt(loadStats(), 5)]);
+  assert.deepEqual([now.progress.level, now.progress.points, now.progress.statPoints, now.progress.skillPoints], [5, {}, statPointsAt(loadStats(), 5), skillPointsAt(loadStats(), 5)]);
   assert.deepEqual(now.quests.done, done);
   assert.equal(classTickets('a'), 1);
 

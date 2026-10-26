@@ -40,8 +40,9 @@ export interface MapMenuArt {
 }
 
 export interface MapOpen {
-  /** The map you're on and the post you're at or nearest (it's "You are here"); null: none (the neighbourhood, a run). */
-  here: { map: LanternMap; post: number } | null;
+  /** The map you're on, the post you're at (-1: none) and your tile: "You are here" on that post, else on your own spot
+   *  (the Old Market is big: its nearest post could be far from you); null: none (the neighbourhood, a run). */
+  here: { map: LanternMap; post: number; tile: [number, number] } | null;
   /** Opened from a Lantern Post: the other posts' icons teleport. */
   fromPost: boolean;
   /** How many Return Lanterns you hold (read again whenever it's shown). */
@@ -334,6 +335,22 @@ export class MapMenu {
       this.hoverable(icon, tag, frame);
       icon.addEventListener('click', () => (broken ? this.notRestored() : this.pick(id, index)));
     });
+    // Not at a post: the pin on your own spot (the map's formula: map-layout.json).
+    const me = this.o?.here;
+    if (me && me.map === id && me.post < 0) {
+      const at = worldPx(L, id, me.tile[0], me.tile[1]);
+      if (at) {
+        const [x, y] = at;
+        const pin = el('img', 'mm-pin');
+        pin.src = this.art.pin;
+        pin.alt = '';
+        pin.style.left = `${x * k - 4 * ik}px`;
+        pin.style.top = `${y * k - 13 * ik}px`;
+        view.append(pin);
+        const here = label('You are here', [x, y], 'mm-here', true, 9, -7);
+        if (here) this.clearOf(view, here, x * k - 9 * ik);
+      }
+    }
     // Its dungeon entrance (after the posts in the map's list: their place is the post number a teleport takes).
     const file = this.places?.files[id];
     (file ? lanternPostsOf(file) : []).forEach((e: LanternPost, index) => {

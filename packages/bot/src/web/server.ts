@@ -152,7 +152,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   POST /town/equip    { action: equip, item } | { action: unequip, place }: wear or take off equipment, if its requirements are met (from the game's page only; members)
 //   POST /town/forge    { action: enhance|repair, item, tool? } | { action: embed, item, agimat, slot, replace? } | { action: disassemble|combine, item }:
 //                       the forge popup (web/forge.ts rolls it; from the game's page only; members)
-//   POST /town/points   { action: spend, stat } | { action: reset }: a stat point into the class's main or second stat, or all of them back (from the game's page only; members)
+//   POST /town/points   { action: spend, stat } | { action: reset }: a stat point into STR, DEX or INT, or all of them back (from the game's page only; members)
 //   POST /town/skills   { action: raise, skill } | { action: reset }: a skill point into an unlocked skill below its cap, or all of them back (from the game's page only; members)
 //   POST /town/rename   { nickname } a new town nickname, using a Rename Card (from the game's page only; members)
 //   POST /town/class-change { cls } a new class, using a Bagong Buhay Ticket (from the game's page only; members)

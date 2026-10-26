@@ -102,7 +102,7 @@ test('dev ?level=N: up as from kills (each level-up counted); down from Lv 1 aga
 
 test('saved numbers are held to the rules: level within 1…cap, XP under the next, no negatives', () => {
   const v = progressView(S, 'stick', { level: 0, xp: -4, points: { STR: -2, INT: 1.7 }, skills: { '0': 1, '1': 3 }, skillPoints: -1 });
-  assert.deepEqual(v, { level: 1, xp: 0, next: xpToNext(S, 1), points: { INT: 1 }, statPoints: 0, skills: { '1': 3 }, skillPoints: 0 }, 'INT is the Stick\'s third stat: not counted as spent');
+  assert.deepEqual(v, { level: 1, xp: 0, next: xpToNext(S, 1), points: { INT: 1 }, statPoints: 0, skills: { '1': 3 }, skillPoints: 0 }, 'more spent than earned (Lv 1 earns none): none left, never fewer');
   assert.equal(progressView(S, 'stick', { level: 3, xp: 1e9 }).xp, xpToNext(S, 3) - 1);
 });
 

@@ -288,12 +288,21 @@ function clothShift(scene: ImageHost, C: CharacterDefs, idleBody: string, poseBo
 
 let trim: CanvasRenderingContext2D | null = null;
 let keepMask: CanvasRenderingContext2D | null = null;
-/** A scratch canvas of w×h, cleared. */
+/** A scratch canvas of w×h, cleared. Resized only when its size changes: setting a canvas's size makes it anew, and this
+ *  runs for every layer of every frame of every combat pose (the lag report's "combat poses"). */
 function scratch(c: CanvasRenderingContext2D | null, w: number, h: number): CanvasRenderingContext2D {
-  const ctx = c ?? document.createElement('canvas').getContext('2d')!;
-  ctx.canvas.width = w;
-  ctx.canvas.height = h;
-  ctx.globalCompositeOperation = 'source-over';
+  const ctx = c ?? document.createElement('canvas').getContext('2d', { willReadFrequently: true })!; // (in memory: read back and drawn from)
+  if (ctx.canvas.width !== w || ctx.canvas.height !== h) {
+    ctx.canvas.width = w;
+    ctx.canvas.height = h;
+  } else {
+    // (What a resize would have reset: the state these scratches use.)
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#000';
+    ctx.imageSmoothingEnabled = true;
+  }
   return ctx;
 }
 

@@ -199,7 +199,7 @@ test('levels are saved: XP and kills level them up (points earned), the fight se
   assert.equal(adventureOf('lv').cls, null);
 });
 
-test('stat points: banked before a class, then only into its main or second stat; Reset gives them all back', () => {
+test('stat points: banked before a class, then into any of its three stats; Reset gives them all back', () => {
   // No class: points bank.
   levelFor('sp', 4);
   assert.equal(adventureOf('sp').progress.statPoints, 3 * S.growth.pointsPerLevelUp);
@@ -209,16 +209,15 @@ test('stat points: banked before a class, then only into its main or second stat
   townQuest('sp', { quest: Q, action: 'chooseClass', cls: 'slingshot' });
   const g = S.growth;
   assert.deepEqual(baseStats(S, 'slingshot', 4), { DEX: g.main.base + g.main.perLevel * 4, INT: g.second.base + g.second.perLevel * 4, STR: g.third.base + g.third.perLevel * 4 });
-  assert.equal(townPoints('sp', { action: 'spend', stat: 'STR' }).message, "Your class doesn't put points into STR.");
-  assert.ok(townPoints('sp', { action: 'spend', stat: 'DEX' }).ok);
-  assert.ok(townPoints('sp', { action: 'spend', stat: 'INT' }).ok);
+  // (Its third stat, STR, takes them too: stats.json growth.pointsGoTo.)
+  for (const stat of ['STR', 'DEX', 'INT', 'DEX', 'DEX'] as const) assert.ok(townPoints('sp', { action: 'spend', stat }).ok, stat);
   const r = townPoints('sp', { action: 'spend', stat: 'DEX' });
-  assert.deepEqual([r.ok, r.adventure.progress.points, r.adventure.progress.statPoints], [true, { DEX: 2, INT: 1 }, 0]);
+  assert.deepEqual([r.ok, r.adventure.progress.points, r.adventure.progress.statPoints], [true, { STR: 1, DEX: 4, INT: 1 }, 0]);
   assert.equal(townPoints('sp', { action: 'spend', stat: 'DEX' }).message, 'No stat points to spend.');
-  assert.deepEqual(fighterOf('sp').points, { DEX: 2, INT: 1 }); // the fight sees them
+  assert.deepEqual(fighterOf('sp').points, { STR: 1, DEX: 4, INT: 1 }); // the fight sees them
   // Reset: free, all of them back; the level and skill points stay.
   const reset = townPoints('sp', { action: 'reset' });
-  assert.deepEqual([reset.ok, reset.adventure.progress.points, reset.adventure.progress.statPoints, reset.adventure.progress.level], [true, {}, 3, 4]);
+  assert.deepEqual([reset.ok, reset.adventure.progress.points, reset.adventure.progress.statPoints, reset.adventure.progress.level], [true, {}, 3 * S.growth.pointsPerLevelUp, 4]);
   assert.equal(townPoints('sp', { action: 'reset' }).ok, false); // nothing spent
   assert.deepEqual(parsePointsAction({ action: 'spend', stat: 'LUK' }), null);
   assert.deepEqual(parsePointsAction({ action: 'spend', stat: 'INT' }), { action: 'spend', stat: 'INT' });
