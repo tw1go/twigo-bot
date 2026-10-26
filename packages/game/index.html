@@ -1017,6 +1017,17 @@
          goes under it meanwhile (and hides when it shows the boss too). */
       #boss-bar { position: fixed; top: 12px; left: 50%; z-index: 3; width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 6px 14px 9px; border: 2px solid #7C2AE8; background: #111827; color: #E6E9F2; font: calc(15px * var(--text))/1.3 var(--ui-font); transform: translateX(-50%); pointer-events: none; transition: border-color 0.4s, background 0.4s; }
       #boss-bar[hidden] { display: none; }
+      /* The combo counter (ui/combo-counter.ts): your hits in a row, a little above the middle on the right (where exactly:
+         its place(), clear of the HUD's buff tray, stay box and feed). */
+      #combo-counter { position: fixed; right: 24px; top: 38%; z-index: 3; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; pointer-events: none; color: #fff; text-shadow: 0 1px 0 #0B0A1A, 0 -1px 0 #0B0A1A, 1px 0 0 #0B0A1A, -1px 0 0 #0B0A1A; }
+      #combo-counter[hidden], #combo-counter .cc-kills[hidden] { display: none; }
+      #combo-counter .cc-hits, #combo-counter .cc-kills { display: flex; align-items: baseline; gap: 6px; transform-origin: right center; }
+      #combo-counter .cc-n { display: inline-block; font: calc(40px * var(--text))/1 var(--ui-font); transform-origin: right center; }
+      #combo-counter .cc-word { font: 700 calc(16px * var(--text))/1 'Pixelify Sans', var(--ui-font); color: #F8BF27; letter-spacing: 0.04em; }
+      #combo-counter .cc-kills .cc-n { font-size: calc(20px * var(--text)); }
+      #combo-counter .cc-kills .cc-word { font-size: calc(13px * var(--text)); color: #F87171; }
+      #combo-counter .cc-bar { width: calc(96px * var(--text)); height: 3px; margin-top: 3px; background: #1E1B3A; box-shadow: 0 0 0 1px #0B0A1A; }
+      #combo-counter .cc-fill { display: block; height: 100%; background: #7C2AE8; transform-origin: left center; }
       #boss-bar .bb-top { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
       #boss-bar .bb-name { font-size: calc(18px * var(--text)); font-weight: 700; color: #fff; letter-spacing: 0.02em; }
       #boss-bar .bb-level { font-size: calc(13px * var(--text)); font-weight: 700; color: #F8BF27; }

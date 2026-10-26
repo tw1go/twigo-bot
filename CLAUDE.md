@@ -1960,6 +1960,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   asked: the art folder's docs/skills-21-40/build_slingshot_extra_fx.py, its fx/slingshot/_sheets_scripted.csv; a PixelLab
   piece of the same name and cell can replace any). Hailstorm's area is 2 tiles
   (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
+- Combo counter (`ui/combo-counter.ts`, CONTEXT.md Combo; 26 Oct 2026; page only, battle maps): your own hits in a row,
+  "N HITS" (Jersey 10, white → gold at 10 → orange at 25 → purple at 50) and under it "N KILLS" once one dies, a 3 px bar
+  draining over COMBO_MS (2 s): a hit counts as its number pops (TownScene `showHit` with `mine`, and your Boiling Splash
+  ticks: `mob-burn`'s `by`), never a miss or a blocked one; a kill only if that mob was alive here before the hit
+  (`Mobs.hit` returns it, so several hits carrying `dead` count once). No new hit for 2 s: a 300 ms fade, then 0;
+  a knock-out, the tab hidden, leaving the map: at once. Placed as a streak starts (`place`): the right edge 38% down,
+  else under whatever HUD piece is in the way (buff tray, stay box, feed, minimap…; no lower than 60%), else left of
+  them; pointer-events none; pops off under reduced motion. Settings → Game → Combo counter (localStorage `mk_combo`).
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
   a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,
