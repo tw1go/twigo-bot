@@ -341,7 +341,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   one page at a time, and whoever waits for images waits for that too (assets/packs.ts `loaded` = the loader's complete
   + `unpacked`: loading.ts, queue.ts, mobs.ts; a weapon skin's page was 400+ ms in one frame, the lag report); another
   player's look is built a few sheets a frame (`buildOutfitSlowly`, ≤ 4 ms, one look at a time: four at once made 60 ms
-  frames; layer pixels read once and copied, each colour's swap looked up once); battle poses a few ms at a time, their clothes' fit searched on
+  frames; layer pixels read once and copied, each colour's swap looked up once; a sheet's layers laid over each other in
+  plain arrays, `blendOver`, and written to its canvas once: a canvas per layer was a GPU round trip each, 30-40 ms a
+  sheet on integrated graphics; every canvas the art is read back from is `willReadFrequently`: packs.ts `cut`, the
+  pose and faint sheets; kit-art's scratch canvases are only resized when their size changes; the faint's Scale2x
+  yields every ~16k px); battle poses a few ms at a time, their clothes' fit searched on
   typed arrays and remembered in the browser per build (kit-art `mk_shifts`); a streamed map's ground (`Terrain.stream`)
   and props (`WorldObjects.stream`: a queue, big ones first, then their cast shadows) at most 4 ms a frame, only the view
   itself on the first frame; mob art loads zone by zone within 30 tiles (`Mobs.near`, twice a second; mobs the server tells

@@ -139,11 +139,14 @@ function turn(a: Img, k: number, pivot: Vec2): Img {
   return out;
 }
 
-/** Scale2x (EPX): twice the size, edges kept sharp. */
-function scale2x(a: Uint32Array, w: number, h: number): Uint32Array {
+/** Scale2x (EPX): twice the size, edges kept sharp. A generator: it yields every ~16k px, so the caller spreads the
+ *  biggest pass (an 896 px square) over frames (on a slow laptop one big8 was a 40 ms frame: the lag report's "a faint"). */
+function* scale2x(a: Uint32Array, w: number, h: number): Generator<void, Uint32Array> {
   const out = new Uint32Array(w * h * 4);
   const W = w * 2;
+  const rows = Math.max(1, Math.floor(16384 / w));
   for (let y = 0; y < h; y++) {
+    if (y && y % rows === 0) yield;
     const up = Math.max(0, y - 1) * w;
     const dn = Math.min(h - 1, y + 1) * w;
     const row = y * w;
@@ -165,7 +168,11 @@ function scale2x(a: Uint32Array, w: number, h: number): Uint32Array {
 }
 
 /** An image at 8× (Scale2x three times), for RotSprite. */
-const big8 = (a: Img) => scale2x(scale2x(scale2x(a, N, N), N * 2, N * 2), N * 4, N * 4);
+function* big8(a: Img): Generator<void, Uint32Array> {
+  const x2 = yield* scale2x(a, N, N);
+  const x4 = yield* scale2x(x2, N * 2, N * 2);
+  return yield* scale2x(x4, N * 4, N * 4);
+}
 
 /** RotSprite: `deg` counter-clockwise about `pivot`, from the 8× image (nearest neighbour, as PIL's rotate does it),
  *  sampled back every 8th px from 4 in. */
@@ -258,9 +265,9 @@ function* fall(stand: Img, headLeft: boolean, body: Img, weapon: Img | null, bar
   const dropped = layFlat(weapon, headLeft, bbox(flatBare), ground);
   const frames = KNEEL.map((r) => buckle(stand, r, ref));
   yield;
-  const bigBare = big8(kneelBare);
+  const bigBare = yield* big8(kneelBare);
   yield;
-  const bigFull = big8(kneelFull);
+  const bigFull = yield* big8(kneelFull);
   yield;
   for (const deg of [35, 70]) {
     const low = bbox(rotsprite(bigBare, s * deg, knee))[3] - 1;
@@ -462,7 +469,7 @@ function* buildFaint(scene: Phaser.Scene, M: Manifest, o: Outfit, cls: string | 
       const c = document.createElement('canvas');
       c.width = W * frames.length;
       c.height = H;
-      const g = c.getContext('2d')!;
+      const g = c.getContext('2d', { willReadFrequently: true })!; // (in memory: the sheet's upload is Phaser's, once)
       frames.forEach((f, i) => g.putImageData(new ImageData(new Uint8ClampedArray(f.buffer as ArrayBuffer), W, H), i * W, 0));
       const tex = scene.textures.addCanvas(key, c)!;
       frames.forEach((_, i) => tex.add(i, 0, i * W, 0, W, H));

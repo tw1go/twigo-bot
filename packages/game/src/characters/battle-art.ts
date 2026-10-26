@@ -76,7 +76,9 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
       const canvas = document.createElement('canvas');
       canvas.width = CELL * a.frames;
       canvas.height = CELL;
-      const ctx = canvas.getContext('2d')!;
+      // (Kept in memory, not on the GPU: drawPose lays a dozen layers a frame on it, each a GPU round trip on integrated
+      // graphics otherwise. Phaser uploads the finished sheet once.)
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
       ctx.imageSmoothingEnabled = false;
       for (let f = 0; f < a.frames; f++) {
         await breathe();
@@ -91,7 +93,7 @@ async function build(scene: Phaser.Scene, C: CharacterDefs, K: ClassesDefs, art:
         const glass = document.createElement('canvas');
         glass.width = CELL * a.frames;
         glass.height = CELL;
-        const g = glass.getContext('2d')!;
+        const g = glass.getContext('2d', { willReadFrequently: true })!;
         g.imageSmoothingEnabled = false;
         for (let f = 0; f < a.frames; f++) drawLitHead(g, scene, C, K, art, anim, dir, f, lit.sheet('idle', dir), f * CELL, 0);
         const lt = scene.textures.addCanvas(`${tag}:lit:${anim}:${dir}`, glass)!;

@@ -293,15 +293,38 @@ function swapPixels(d: Uint8ClampedArray, swaps: Map<number, number>): void {
   }
 }
 
-/** One canvas for putting a layer's pixels before drawing it onto a sheet (made once). */
-let scratch: CanvasRenderingContext2D | null = null;
-function scratchFor(w: number, h: number): CanvasRenderingContext2D {
-  if (!scratch) scratch = document.createElement('canvas').getContext('2d')!;
-  if (scratch.canvas.width !== w || scratch.canvas.height !== h) {
-    scratch.canvas.width = w;
-    scratch.canvas.height = h;
+/** Lays `src` (a layer's pixels, `sw` wide) over `dst` (`dw` × `dh`) as a canvas would (source-over), its (sx, sy, w, h)
+ *  at (dx, dy), kept inside the destination and within (cx0, cx1) across: all in plain arrays. Putting each layer on a
+ *  canvas and drawing it onto the sheet moved every pixel through the GPU and back, 30-40 ms a sheet on integrated
+ *  graphics (the lag report: "a look"). */
+function blendOver(dst: Uint8ClampedArray, dw: number, dh: number, src: Uint8ClampedArray, sw: number, sx: number, sy: number, w: number, h: number, dx: number, dy: number, cx0 = 0, cx1 = dw): void {
+  for (let y = 0; y < h; y++) {
+    const ty = dy + y;
+    if (ty < 0 || ty >= dh) continue;
+    for (let x = 0; x < w; x++) {
+      const tx = dx + x;
+      if (tx < cx0 || tx >= cx1) continue;
+      const si = ((sy + y) * sw + sx + x) * 4;
+      const sa = src[si + 3];
+      if (!sa) continue;
+      const di = (ty * dw + tx) * 4;
+      const da = dst[di + 3];
+      if (sa === 255 || !da) {
+        dst[di] = src[si];
+        dst[di + 1] = src[si + 1];
+        dst[di + 2] = src[si + 2];
+        dst[di + 3] = sa;
+        continue;
+      }
+      const a = sa / 255;
+      const keep = (da / 255) * (1 - a);
+      const out = a + keep;
+      dst[di] = Math.round((src[si] * a + dst[di] * keep) / out);
+      dst[di + 1] = Math.round((src[si + 1] * a + dst[di + 1] * keep) / out);
+      dst[di + 2] = Math.round((src[si + 2] * a + dst[di + 2] * keep) / out);
+      dst[di + 3] = Math.round(out * 255);
+    }
   }
-  return scratch;
 }
 
 export const outfitKey = (o: Outfit) =>
@@ -363,10 +386,8 @@ function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: stri
   const key = sheetKey(o, anim, dir);
   if (scene.textures.exists(key) || !spec) return;
   const width = spec.frames * cw;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = ch;
-  const ctx = canvas.getContext('2d')!;
+  const sheet = new ImageData(width, ch);
+  const out = sheet.data;
   for (const l of layerFiles(C, o, anim, dir)) {
     const data = pixels(scene, l.file);
     if (!data) {
@@ -387,23 +408,19 @@ function buildSheet(scene: Phaser.Scene, C: CharacterDefs, o: Outfit, anim: stri
         for (let i = 0; i < d.length && i < md.length; i += 4) if (visible(md[i + 3]) && md[i] > 127 && md[i + 1] > 127 && md[i + 2] > 127) d[i + 3] = 0;
       }
     }
-    const layer = scratchFor(data.width, data.height);
-    layer.putImageData(data, 0, 0);
-    if (!l.canvas) ctx.drawImage(layer.canvas, 0, 0);
+    if (!l.canvas) blendOver(out, width, ch, d, data.width, 0, 0, Math.min(data.width, width), Math.min(data.height, ch), 0, 0);
     else {
       // A big hat: each frame at the doll's cell less its offset, kept to that frame (the town draws the rest of it:
       // Character's hat overlay; this keeps it on still pictures, avatars and the Info window).
       const [ox, oy] = l.canvas.offset;
-      for (let f = 0; f < spec.frames; f++) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(f * cw, 0, cw, ch);
-        ctx.clip();
-        ctx.drawImage(layer.canvas, f * lw, 0, lw, lh, f * cw - ox, -oy, lw, lh);
-        ctx.restore();
-      }
+      for (let f = 0; f < spec.frames && (f + 1) * lw <= data.width; f++) blendOver(out, width, ch, d, data.width, f * lw, 0, lw, Math.min(lh, data.height), f * cw - ox, -oy, f * cw, (f + 1) * cw);
     }
   }
+  // (One write onto a canvas kept in memory: its upload to the GPU is Phaser's, once.)
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = ch;
+  canvas.getContext('2d', { willReadFrequently: true })!.putImageData(sheet, 0, 0);
   const tex = scene.textures.addCanvas(key, canvas)!;
   for (let f = 0; f < spec.frames; f++) tex.add(f, 0, f * cw, 0, cw, ch);
   scene.anims.create({
