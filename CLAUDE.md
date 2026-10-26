@@ -286,7 +286,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `pet-cube-common` (bound consumable) and its art in `pets/cube/` (the art folder's pets/cube).
 - Halloween (17 Oct 2026; the art and its numbers are the art folder's events/halloween): `events/halloween.json` (its
   `biikko.maps` (+ `mapsNote`: was `map` "slums") and `biikko.itemsIn` (+ `itemsInNote`): a Biikko in the Old Market too,
-  its loot's Mid Repair Kits and Cellar Key, 25 Oct 2026, the owner;
+  its loot's Mid Repair Kits and Cellar Key, 25 Oct 2026, the owner; `biikko.scaling` and `manananggal.upper.scaling`
+  (26 Oct 2026, the owner: they grow with the players fighting them);
   `biikko.announceSpawn` and `manananggal.announceAppear` left out: no spawn lines, Mac; `manananggal.lowerSpots` moved,
   each to the nearest open grass tile nothing draws over: the art folder's six stood behind tree crowns, `lowerSpotsNote`),
   `items/items.json` `witch-hat-5d` / `witch-robe-5d` (`lastsDays`), the manifest's `characters.wardrobe` `hatCanvas`,
@@ -1448,7 +1449,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Discord, never kept). Biikko Kalabasa: one in each of `biikko.maps` (the Slums and the Old Market since 25 Oct 2026,
   the owner), each on its own schedule (kept as `biikkoAt` by map; an old single time is the Slums'): Lv 15, 100k HP,
   the golem's DEF, still and silent (never attacks), walks its map's height-1 tiles outside the camp and the field
-  boss's pit or arena, full after 300 s unhit, no XP or quest credit; one set of loot (`biikkoLoot(…, map)`, new loot
+  boss's pit or arena, full after 300 s unhit, no XP or quest credit; it grows with its hitters (halloween.json
+  `scaling`, a repo addition, 26 Oct 2026: the director's `hit` hook, MobDirector `hit` called in MobRoom.damage before
+  the roll: its level the highest among the players who have hit it this fight, never lower in it, its HP `hpPerLevel`
+  (10%) more of its own a level above it, its HP's share kept: `MobRoom.restat` → `mob-scale` with `level`, the page's
+  name tag and boss bar follow; DEF the higher of the golem's and the mob table's at that level; back to its own once
+  healed full or out again; shared `scaledEventMob`; the upper half the same, its ATK and DEF the table's; tested); one set of loot (`biikkoLoot(…, map)`, new loot
   contents `{ kowens }` and `{ potion }`, Kowens split like Kusing; the Old Market's Mid Repair Kits and Cellar Key in
   place of the Low Repair Kits and Warren Ticket: `itemsIn`) held 10 s for the last hitter's party. The Manananggal: a
   round every 60–180 min, the legs at a `lowerSpots` tile in town up to 60 min, the upper half a flying mob in the

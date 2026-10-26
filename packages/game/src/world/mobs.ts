@@ -691,13 +691,18 @@ export class Mobs {
     }
   }
 
-  /** Party scaling (`mob-scale`): their most HP and HP. */
-  scale(list: { id: string; hp: number; maxHp: number }[]): void {
+  /** Party scaling (`mob-scale`): their most HP and HP; a Halloween event mob's level too, as it grows with its hitters
+   *  (its name, if it shows, says the new one). */
+  scale(list: { id: string; hp: number; maxHp: number; level?: number }[]): void {
     for (const s of list) {
       const m = this.byId.get(s.id);
       const u = !m && this.unmade.get(s.id);
-      if (u) Object.assign(u, { hp: s.hp, maxHp: s.maxHp });
-      if (m) this.setHp(m, s.hp, s.maxHp);
+      if (u) Object.assign(u, { hp: s.hp, maxHp: s.maxHp, ...(s.level !== undefined ? { level: s.level } : {}) });
+      if (!m) continue;
+      this.setHp(m, s.hp, s.maxHp);
+      if (s.level === undefined || s.level === m.level) continue;
+      m.level = s.level;
+      if (m.label) this.showLabel(m);
     }
   }
 
