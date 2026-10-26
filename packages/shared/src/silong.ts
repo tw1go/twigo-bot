@@ -96,7 +96,8 @@ export interface SilongData {
   floors: SilongFloorData[];
   lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
   miniBossLook: { drawScale: number; nameColour: string };
-  practiceRun: { mobHpAtkPct: number; once: boolean };
+  /** A practice run's mobs and bosses: this % of their HP and of their ATK. */
+  practiceRun: { mobHpPct: number; mobAtkPct: number; once: boolean };
   loot: SilongLoot;
   key: { id: string; name: string; sources: { shop: { kusing: number }; greatScaleChance: number; lastBossChance: number } };
 }

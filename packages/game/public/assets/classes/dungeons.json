@@ -1576,7 +1576,9 @@
   "practiceRun": {
    "from": "the free key from palengke-15",
    "once": true,
-   "mobHpAtkPct": 60,
+   "mobHpPct": 40,
+   "mobAtkPct": 35,
+   "mobPctNote": "Repo change (owner, 26 Oct 2026): a practice run nerfed to 40% of the mobs' and bosses' HP and 35% of their ATK, as the Warrens' practice (was mobHpAtkPct 60).",
    "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Freezer Breath warning (hide behind an ice block)",
    "ramonBox": {
     "tile": "the R mark on B2 (Meat Lockers, far corner)",

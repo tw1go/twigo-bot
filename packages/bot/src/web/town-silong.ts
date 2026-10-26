@@ -20,7 +20,7 @@ import { FloorBosses } from './town-silong-bosses.js';
 //   (scaling); a mini boss with no living player in its room for bossResetSeconds heals to full. Death: back after 3 s
 //   at the arrival elevator of the deepest floor reached (the host's respawn).
 // • The opener's key (a Susi ng Silong; a practice run's Practice Susi) counts as spent only once a mini boss falls:
-//   until then the run's mobs give nothing, and a run that ends gives it back. A practice run (60% HP and ATK) is solo.
+//   until then the run's mobs give nothing, and a run that ends gives it back. A practice run (40% HP, 35% ATK) is solo.
 // • It closes when time's up, 3 minutes after the last boss falls, or after 2 minutes with nobody inside; everyone still
 //   in goes back up to the Market Hall beside the hatch.
 // Pure (the host gives the clock, who's where, the party and the quest), tested in town-silong.test.ts.
@@ -217,7 +217,7 @@ export class SilongRun {
     /** The opener's party (the host's key for it), or null: a solo run. */
     readonly party: unknown,
     now: number,
-    /** A practice run (the Practice Susi ng Silong: 60% HP and ATK, solo). */
+    /** A practice run (the Practice Susi ng Silong: 40% HP, 35% ATK, solo). */
     readonly practice = false,
   ) {
     this.room = `silong:${id}`;
@@ -231,11 +231,11 @@ export class SilongRun {
     for (const f of SILONG_FLOORS) this.placeBosses(this.floors[f], now);
   }
 
-  /** A mob's or boss's numbers in this run: a practice run's HP and ATK × practiceRun.mobHpAtkPct. */
+  /** A mob's or boss's numbers in this run: a practice run's HP × practiceRun.mobHpPct, ATK × mobAtkPct. */
   weaker<T extends { hp: number; atk: number }>(s: T): T {
     if (!this.practice) return s;
-    const k = this.S.practiceRun.mobHpAtkPct / 100;
-    return { ...s, hp: Math.max(1, Math.round(s.hp * k)), atk: Math.max(1, Math.round(s.atk * k)) };
+    const { mobHpPct, mobAtkPct } = this.S.practiceRun;
+    return { ...s, hp: Math.max(1, Math.round((s.hp * mobHpPct) / 100)), atk: Math.max(1, Math.round((s.atk * mobAtkPct) / 100)) };
   }
 
   /** Each room's mini boss on its tile (its room's mobs' art at miniBossLook.drawScale) with its guards beside it. (The

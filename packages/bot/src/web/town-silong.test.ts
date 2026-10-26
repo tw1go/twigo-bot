@@ -33,7 +33,7 @@ function fell(run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string, now: numb
   return r.kills.find((k) => k.id === info.id)!;
 }
 
-test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
+test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 40% HP and 35% ATK', () => {
   const s = silong();
   assert.equal(s.open('a', 'A', 36, () => true, 0).ok, false);
   const q = s.open('a', 'A', 40, () => true, 0, { done: false });
@@ -48,7 +48,8 @@ test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a
   assert.ok(p.ok && p.run.practice && !p.run.party);
   const real = run.floors.b1.mobs.mobInfo('boss:atsarah', 0)!;
   const prac = p.run.floors.b1.mobs.mobInfo('boss:atsarah', 0)!;
-  assert.equal(prac.maxHp, Math.round(real.maxHp * 0.6));
+  assert.equal(prac.maxHp, Math.round(real.maxHp * 0.4));
+  assert.deepEqual(p.run.weaker({ hp: 1000, atk: 100 }), { hp: 400, atk: 35 });
   assert.equal(s.join('b', 40, p.run.id).ok, false, 'practice runs are solo');
 });
 
