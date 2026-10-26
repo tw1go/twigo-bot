@@ -244,6 +244,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   clips the hair, `hatClips` true with its char-hatclip-visitor masks; the suit's shock gauntlets ride with the hands, in
   town and on every combat pose); their items.json pieces and wardrobe entries as the five's. The art is the art folder's
   cosmetics/new-outfits/new-outfits-v5.zip `repo/` as it is (its src/ and build/ stay there).
+- `classes/stats.json`: the Lv 21-40 damage skills cheaper and quicker (26 Oct 2026, the owner): `skills.mpCost.damageByTier`
+  places 7-12 40% less (rounded; + a sentence in its `rules`) and `skills.cooldownByUnlock` 21-40 a flat 8 s (was 15 s;
+  its `note` and `unlocksAbove20` say so); the utilities unchanged.
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
