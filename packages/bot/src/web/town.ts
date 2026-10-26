@@ -1507,7 +1507,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!kind) return;
         const now = Date.now();
         if (!vitals?.get(c.userId) || !battle(c.room)) return send(c, { t: 'potion-refused', reason: 'here' });
-        const from = potionMinLevel(items, m.item); // (a Medium Potion traded to someone under its level)
+        const from = potionMinLevel(items, m.item); // (a Medium or Large Potion traded to someone under its level)
         if (levelOf(c) < from) return send(c, { t: 'potion-refused', reason: 'level', level: from });
         const cdKey = `${c.userId}:${potionCooldownGroup(items.stats, kind.heals)}`;
         const ready = potionReady.get(cdKey) ?? 0;

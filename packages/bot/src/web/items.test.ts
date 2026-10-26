@@ -909,3 +909,21 @@ test('Medium HP and MP Potions: sold from Lv 10 at 150 Kusing (not at Lv 9), hea
   assert.equal(potionMinLevel(D, 'low-hp-potion'), 1);
   assert.equal(potionMinLevel(D, 'rough-whetstone'), 1);
 });
+test('Large HP and MP Potions: sold from Lv 25 at 400 Kusing (not at Lv 24), after the Medium ones, heal 500 / 250, usable from Lv 25', () => {
+  const potions = (level: number) => combatWares(D, level).filter((w) => w.tab === 'healing').map((w) => `${w.def.id}:${w.cost}`);
+  assert.deepEqual(potions(24), ['low-hp-potion:50', 'low-mp-potion:50', 'mid-hp-potion:150', 'mid-mp-potion:150']);
+  assert.deepEqual(potions(25), ['low-hp-potion:50', 'low-mp-potion:50', 'mid-hp-potion:150', 'mid-mp-potion:150', 'high-hp-potion:400', 'high-mp-potion:400']);
+  const c = { equipped: {}, cosmetics: {}, bag: [] as Item[], kusing: 10_000 };
+  const wallet = () => ({ have: 0, spend: () => false });
+  assert.equal(buyCombat(D, c, 24, 'high-hp-potion', 1, wallet(), uid).ok, false, 'not sold at Lv 24');
+  assert.ok(buyCombat(D, c, 25, 'high-hp-potion', 2, wallet(), uid).ok);
+  assert.ok(buyCombat(D, c, 25, 'high-mp-potion', 1, wallet(), uid).ok);
+  assert.equal(c.kusing, 10_000 - 3 * 400);
+  assert.deepEqual(usePotion(D, c, 'high-hp-potion'), { heals: 'hp', amount: 500 });
+  assert.deepEqual(usePotion(D, c, 'high-mp-potion'), { heals: 'mp', amount: 250 });
+  assert.equal(potionMinLevel(D, 'high-hp-potion'), 25);
+  assert.equal(potionMinLevel(D, 'high-mp-potion'), 25);
+  assert.equal(stackLimit(D.stats, D.defs.get('high-hp-potion')), 99, 'they stack to 99');
+  assert.equal(shared.combatWareAbout(D, thing('high-hp-potion')), 'Heals 500 HP at once. Put it on your hotbar; HP and MP Potions each have their own 10 s cooldown.');
+});
+

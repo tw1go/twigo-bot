@@ -144,6 +144,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
   `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
+- `classes/stats.json`: `potions.tiers.high` minLevel 25, hp 500, mp 250 (were 50 / 350 / 200; + `potions.highNote`; 25 Oct
+  2026, Mac: the Large HP/MP Potions, 400 Kusing); `items/items.json` `high-hp-potion`, `high-mp-potion` (the art folder's
+  items/potions/item-potion-high-* icons) and `retainment-stone` (100 Kowens, Smithing; items/consumables/item-retainment-stone*),
+  the filled Temper Stone's `about`; `enhancement.temperNote`.
 - `classes/stats.json`: `agimats.valueAtLevel` (22 Oct 2026, Mac: + `valueAtLevelNote`): the flat stats grow twice as fast
   (atk 0.2A+1, hp 0.72A+1, mp / def 0.5A+1, stat 0.1A+1) and the rates with level (0.001A, crit damage 0.004A; were a flat
   1% / 4%): a Lv 20 agimat about twice a Lv 10's.
@@ -1295,8 +1299,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   instance (`Item`: uid, defId, level, rarity, plus, broken, bound, luck, agimats (one per slot, null = empty), lines,
   count; an agimat's stat/lock). Kinds: `items/equipment.json` (gear: training, Crude/Sturdy weapons Lv 10/20, Tin/Copper,
   Abaca/Cotton, Hemp/Jute armor, Shell/Bone accessories; base from stats.json gearBase unless a training piece's own
-  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low and Medium HP/MP Potions
-  (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, and the town refuses a potion
+  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low, Medium and Large HP/MP Potions
+  (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, Large from Lv 25, and the town refuses a potion
   under its level: 'level', "You can use this from Lv 10."; the auto MP Potion drinks the strongest your level allows), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
   (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +10, +4% to +15, +10% at +16, +12% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
@@ -1510,7 +1514,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   30-40; shared `temperedPlus`; the popup asks first: `confirmTemper`), its own is lost; "Needs a Weapon" / "Needs a Lv
   10 item or higher." / "This item is already +7 or higher." / "Its +2 is too little to carry up a tier."; training gear
   never) (shared `removeRefusal` / `drawRefusal` / `applyRefusal`, `toolOf`; actions 'remove' {item, slot}, 'draw' {item},
-  'apply' {item, stone}; the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
+  'apply' {item, stone, retain?}: a Retainment Stone (items.json `forge: retain`, 100 Kowens) in the Apply popup's second
+  slot keeps the full + up a gear tier, used up only then (shared `retainSaves`, `temperedPlus(…, retain)`, `applyRefusal(…,
+  retain)`; "You need a Retainment Stone."; the bag's click puts it in an open Apply popup, else "Use it in a filled Temper
+  Stone's Apply popup."); the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
   fx-enhance-success with their sounds; tested); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
   the one-item rules on a copy, every one or none, the refusal names the item; one message adding up what came back; tested).
   The bag's Combat tab multi-selects (Select, or Ctrl/⌘/Shift-click; Select all gear) → Disassemble N / Sell N with

@@ -56,6 +56,6 @@ export function combatWares(data: ItemData, level: number, ticketPrice: (id: str
 export function combatWareAbout(data: ItemData, def: CombatItemDef): string {
   const S = itemStats(data.stats);
   const tier = def.kind === 'potion' && def.heals && def.tier ? S.potions.tiers[def.tier] : undefined;
-  if (tier && def.heals) return `Heals ${tier[def.heals]} ${def.heals.toUpperCase()} at once. Put it on your hotbar; HP and MP Potions share a ${S.potions.sharedCooldownSec} s cooldown. For the Slums.`;
+  if (tier && def.heals) return `Heals ${tier[def.heals]} ${def.heals.toUpperCase()} at once. Put it on your hotbar; HP and MP Potions each have their own ${S.potions.sharedCooldownSec} s cooldown.`;
   return def.about ?? '';
 }

@@ -102,7 +102,7 @@ export interface CombatItemDef {
   useAt?: string;
   /** What it does at the forge popup for its tier's gear: enhances (whetstone), combines ten into a whetstone
    *  (fragment), repairs (repairKit). */
-  forge?: 'whetstone' | 'fragment' | 'repairKit' | 'pliers' | 'temper' | 'tempered';
+  forge?: 'whetstone' | 'fragment' | 'repairKit' | 'pliers' | 'temper' | 'tempered' | 'retain';
   /** Never stacks (a filled Temper Stone: each one holds its own +, item level and type). */
   noStack?: boolean;
   /** A quest item that stacks (the Lumang Palengke's drops: Fresh Onions…): up to this many in a slot. */
