@@ -96,6 +96,9 @@ function townUrl(look: unknown, room: string): { url: string; protocols?: string
     q.set('dev', fakeName());
     if (look) q.set('look', JSON.stringify(look));
     q.set('kit', JSON.stringify(devKit()));
+    // (Dev: ?lanterns=all restores every Lantern Post for you, ?lanterns=none breaks them all again.)
+    const lanterns = new URLSearchParams(location.search).get('lanterns');
+    if (lanterns === 'all' || lanterns === 'none') q.set('lanterns', lanterns);
   }
   return townSocket(q);
 }

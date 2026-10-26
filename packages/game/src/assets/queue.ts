@@ -74,6 +74,9 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
       if (p?.file) img(p.file);
       if (o.animated && p?.animation) queueSheet(load, textures, p.animation.file, p.animation.frameSize[0], p.animation.frameSize[1]);
       if (p?.portal) queueSheet(load, textures, p.portal.file, p.portal.frameSize[0], p.portal.frameSize[1]);
+      // (A Lantern Post's broken look and its restore, CONTEXT.md Restored Lantern Post.)
+      if (p?.broken) img(p.broken.file);
+      if (o.animated && p?.restore) queueSheet(load, textures, p.restore.file, p.restore.frameSize[0], p.restore.frameSize[1]);
     }
     if (o.shadow) img(o.shadow);
     if (o.tufts) img(o.tufts);

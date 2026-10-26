@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
-import { RETURN_LANTERN, combatRating } from '@mikazuki/shared';
+import { RETURN_LANTERN, combatRating, mapOpensAt, type AdventureState } from '@mikazuki/shared';
+import { resumeFor, saveLastArea } from './last-area.js';
+import { restorePost, restoredPostsOf } from './lantern-posts.js';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
@@ -55,7 +57,7 @@ import { getOutfit, parseOutfit, saveOutfit } from './outfit.js';
 import { type OutfitData, cosmeticHatOf, cosmeticTopOf, cosmeticWeaponOf, parseMailAction, parsePetAction, withCosmetics, type HalloweenReward, addToBag, newItem } from '@mikazuki/shared';
 import { loadCosmeticHats, loadCosmeticTops } from './stats-data.js';
 import { dropRateOf } from './adventure.js';
-import { hotbarsOf, isClassId, saveHotbar } from './hotbar.js';
+import { hotbarLockOf, hotbarsOf, isClassId, saveHotbar, saveHotbarLock } from './hotbar.js';
 import { keybindsOf, saveKeybinds } from './keybinds.js';
 
 /** A saved look with what a member wears as cosmetics on it: a head cosmetic's hat, a body cosmetic's top, a weapon
@@ -98,7 +100,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, silongClearedFor, ramonBoxFor, ramonGiveFor, adventurersWithClass } from './adventure.js';
+import { QUESTS, practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, silongClearedFor, ramonBoxFor, ramonGiveFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -169,6 +171,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   POST /town/dig      dig at the Mine (/dig's rules; from the game's page only; members)
 //   POST /title/seen    { id? } the game showed the member their new title (from the game's page only)
 //   POST /town/hotbar   { cls, layout } a class's hotbar, kept for every device (/me hotbars; from the game's page only; members)
+//   POST /town/hotbar-lock { locked } the hotbar lock, kept for every device (/me hotbarLocked; from the game's page only; members)
 //   POST /town/keybinds { keys } the keybinds changed from the defaults, kept for every device (/me keybinds; from the game's page only; members)
 //   POST /welcome/seen  the game showed the member their welcome gift (from the game's page only)
 //   CMS_PATH/*          the CMS, for the gifter (see cms.ts)
@@ -321,6 +324,18 @@ async function statusOf(client: Client, userId: string): Promise<PresenceStatus>
   return status === 'dnd' ? 'busy' : status === 'idle' ? 'idle' : status === 'online' ? 'online' : 'offline';
 }
 
+/** The Old Market's opening (its map's `opensAt`), read once. */
+let palengkeOpens: { opensAt?: string | null } | null = null;
+const palengkeOpening = () => (palengkeOpens ??= { opensAt: loadTownMap('palengke').opensAt });
+
+/** /me's resume spot (web/last-area.ts): with whether a guided quest is under way and the Old Market still closed. */
+function resumeOf(userId: string, adventure: AdventureState): Pick<MeResponse, 'lastArea' | 'guided' | 'palengkeClosed'> {
+  return resumeFor(userId, {
+    guided: adventure.quests.active.some((p) => QUESTS.find((q) => q.id === p.id)?.guided),
+    palengkeClosed: mapOpensAt(palengkeOpening(), Date.now()) !== null && !isCmsUser(userId),
+  });
+}
+
 /** Digs left today and on the shovel, and shovels left to buy (for /me and the Mine). */
 function digStatus(userId: string): MeDig {
   return {
@@ -357,8 +372,9 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   const questPieces = questPiecesFor(userId);
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
-  const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
-    dig: digStatus(userId), tagoUntil: tagoUntil(userId), hotbars: hotbarsOf(userId), keybinds: keybindsOf(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
+  const adventure = adventureOf(userId);
+  const body: MeResponse = { ...upkeep, ...resumeOf(userId, adventure), id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure,
+    dig: digStatus(userId), tagoUntil: tagoUntil(userId), hotbars: hotbarsOf(userId), ...(hotbarLockOf(userId) !== undefined ? { hotbarLocked: hotbarLockOf(userId) } : {}), keybinds: keybindsOf(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
 
@@ -1061,6 +1077,25 @@ export function startWebServer(client: Client): void {
         if (!kept) return send(res, 400, '{"error":"invalid layout"}');
         return send(res, 200, '{"ok":true}');
       }
+      if (req.method === 'POST' && path === '/town/hotbar-lock') {
+        // The hotbar lock (web/hotbar.ts; CONTEXT.md Hotbar lock): one switch for every class and device.
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { locked?: unknown } | null = null;
+        try {
+          const raw = await readBody(req);
+          if (raw.length > 1000) return send(res, 413, '{"error":"too big"}');
+          body = JSON.parse(raw || 'null');
+        } catch {
+          // invalid JSON → rejected below
+        }
+        if (typeof body?.locked !== 'boolean') return send(res, 400, '{"error":"invalid lock"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        saveHotbarLock(userId, body.locked);
+        return send(res, 200, '{"ok":true}');
+      }
       if (req.method === 'POST' && path === '/town/keybinds') {
         // The keybinds changed from the defaults (web/keybinds.ts): kept for every device the member plays on.
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
@@ -1220,6 +1255,8 @@ export function startWebServer(client: Client): void {
       rooms: { hood: hoodTownMap, slums: () => slumsMap, palengke: () => palengkeMap },
       // The Old Market opens at its map's `opensAt` (CONTEXT.md Opening time): Game Masters before it.
       opening: { palengke: { name: 'The Old Market', opensAt: palengkeMap.opensAt } },
+      // The resume spot: the area each member was last in (web/last-area.ts), for /me.
+      resume: { save: saveLastArea },
       // (The Halloween event's mobs live in the Slums' room too, and Biikko in the Old Market's: its directors run them,
       // in a zone of their own.)
       mobs: {
@@ -1263,7 +1300,8 @@ export function startWebServer(client: Client): void {
           }
         : {}),
       // Lantern Posts: a Return Lantern from the combat bag for each teleport.
-      lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN) },
+      // (Each member's posts restored on foot first: web/lantern-posts.ts.)
+      lanterns: { count: (userId) => kindCountOf(userId, RETURN_LANTERN), use: (userId) => useKindFor(userId, RETURN_LANTERN), restored: restoredPostsOf, restore: restorePost },
       quests: { kill: questKillFor, enter: enterAreaFor, drops: (userId, kind) => questDropsFor(userId, kind), bell: ringBellFor },
       // Aling Conching's dishes: bought for Kusing (unlocked by the Palengke's quests); the ones on everyone kept in kv
       // 'dishes' through restarts.

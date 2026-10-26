@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, TestingSettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, postAt, postKey, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, resumeAreaOf, skillMpCost, tradeRules, type ResumeArea } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -228,6 +228,9 @@ export interface TownOptions {
    *  `opensAt`). Before it only Game Masters (`gm`) come in: anyone else is sent back (`area-closed`, 4002) and their
    *  Lantern Post teleport there refused; each welcome lists what's still closed to them. */
   opening?: Record<string, { name: string; opensAt?: string | null }>;
+  /** The resume spot (CONTEXT.md Resume spot; web/last-area.ts): each member's area kept as they arrive in a room (the
+   *  town and the neighbourhood as 'hood', a run's rooms as 'warrens' / 'silong': shared resumeAreaOf). */
+  resume?: { save: (userId: string, area: ResumeArea) => void };
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
@@ -277,8 +280,10 @@ export interface TownOptions {
     dev?: boolean;
   };
   /** Return Lanterns (a teleport between Lantern Posts uses one): how many a member holds, and using one (false: none).
-   *  Without it, no teleports. */
-  lanterns?: { count(userId: string): number; use(userId: string): boolean };
+   *  Without it, no teleports. `restored` / `restore` (CONTEXT.md Restored Lantern Post; web/lantern-posts.ts): the posts
+   *  a member has restored on foot (shared postKey) and restoring one (true: new); a teleport needs both ends restored.
+   *  Without them, every post works. */
+  lanterns?: { count(userId: string): number; use(userId: string): boolean; restored?(userId: string): string[]; restore?(userId: string, post: string): boolean };
   /** Friends (web/town-friends.ts): where they're kept (web/friends-db.ts in the bot; in memory on the game's dev
    *  server), and the member who goes by a nickname (any case), for a request by name. Without it, no friends. */
   friends?: { store: FriendStore; byName(name: string): string | null };
@@ -711,7 +716,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Their most HP and MP, a regen buff's share (and their DEF, DEF rate and level, for mobs' hits). */
   const maxOf = (c: Conn): VitalMax => {
     const d = rules!.fighter(fighterOf(c));
-    c.guard = { def: d.def, level: d.level, defRate: d.defRate, priority: targetPriority(STATS, c.player.cls), ...(d.evasion ? { evasion: d.evasion } : {}) };
+    c.guard = { def: d.def, level: d.level, defRate: d.defRate, ...(d.evasion ? { evasion: d.evasion } : {}) };
     return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen, hpRegenPct: d.hpRegenPct ?? 0, ...(d.hpDrainPct ? { hpDrainPct: d.hpDrainPct } : {}) };
   };
   /** A skill's heal (heal:F, Herbal Storm): the caster and their party members in the room within the buffs' party
@@ -1767,6 +1772,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       case 'lantern':
         return lanternMessage(c, m.to, m.post);
+      case 'lantern-restore':
+        return restoreMessage(c, m.post);
       case 'arena-queue':
         if (p.jailed) return; // no games from jail
         c.seat ??= { key: c.userId, player: p, send: (msg) => send(c, msg) };
@@ -2027,7 +2034,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (loot) send(c, { t: 'loot', loot: loot.viewAll(userId, Date.now()) });
     });
     const closed = closedRooms(userId, Date.now());
-    send(c, { t: 'welcome', now: Date.now(), you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}), ...(player.jailed ? { jailed: true } : {}), ...(closed ? { closed } : {}) });
+    send(c, { t: 'welcome', now: Date.now(), you: player.id, players: [...conns.values()].filter((o) => o.room === room).map((o) => o.player), recent, system: systemLines, spawn: [col, row], notice: notice && notice.until > Date.now() ? notice.a : undefined, ...(opts.gm?.(userId) ? { gm: true } : {}), ...(player.jailed ? { jailed: true } : {}), ...(closed ? { closed } : {}), ...(opts.lanterns?.restored ? { restored: opts.lanterns.restored(userId) } : {}) });
     conns.set(userId, c);
     others(c, { t: 'join', player });
     known.set(userId, { nickname: player.nickname, outfit: player.outfit, cls: player.cls, level: player.level });
@@ -2035,6 +2042,12 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are
     friendArrived(userId, room, !!old);
+    // (Where a fresh visit starts next time: sent out of a run, the Slums or the Old Market's own join overwrites it.)
+    const resumed = resumeAreaOf(room);
+    if (resumed) opts.resume?.save(userId, resumed);
+    // (Into a run: its entrance has been reached, as a gate's panel by it would.)
+    if (resumed === 'warrens') reachedEntrance(c, 'slums', 'warrens');
+    if (resumed === 'silong') reachedEntrance(c, 'palengke', 'silong');
     if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
     // A Game Master's testing switches (and only a Game Master's: rights taken away, they no longer count).
     if (opts.testing) {
@@ -2370,6 +2383,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       inCombat: !!vitals?.inCombat(c.userId, now),
       out: !!p.out || !!vitals?.out(c.userId),
       lanterns: opts.lanterns.count(c.userId),
+      // (Both ends restored on foot: CONTEXT.md Restored Lantern Post.)
+      ...(opts.lanterns.restored ? { restored: new Set(opts.lanterns.restored(c.userId)), toKey: isLanternMap(to) && typeof (toPost ?? 0) === 'number' ? postKey(to, mapOf(to).lanterns ?? [], (toPost as number | undefined) ?? 0) : undefined } : {}),
     });
     if (why || !isLanternMap(to)) return refuse(why ?? "There's no Lantern Post there.");
     const shut = closedFor(to, c.userId, now);
@@ -2382,6 +2397,27 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     console.log(`[lantern] ${c.userId}: ${c.room} → ${to}${post ? ` (post ${post})` : ''}`);
     send(c, { t: 'lantern-go', to, ...(post ? { post } : {}) });
   };
+  /** A post or dungeon entrance restored for them (CONTEXT.md Restored Lantern Post): kept, and told (`fresh`: only now). */
+  const restoreFor = (c: Conn, key: string, quiet = false) => {
+    if (!opts.lanterns?.restore || !opts.lanterns.restored) return;
+    const fresh = opts.lanterns.restore(c.userId, key);
+    if (fresh) console.log(`[lantern] ${c.userId} restored ${key}`);
+    if (fresh || !quiet) send(c, { t: 'lantern-restored', key, fresh, restored: opts.lanterns.restored(c.userId) });
+  };
+  /** Restoring the Lantern Post they're by (its place in this map's list): only beside it (as a teleport's own check), never
+   *  a dungeon entrance (that one by reaching it). Told either way, so the page goes on to its Map menu. */
+  const restoreMessage = (c: Conn, post: unknown) => {
+    if (!opts.lanterns?.restore) return;
+    const now = Date.now();
+    if (now - (c.lanternAt ?? 0) < 500) return;
+    c.lanternAt = now;
+    const posts = mapOf(c.room).lanterns ?? [];
+    if (typeof post !== 'number' || !Number.isInteger(post) || !posts[post] || posts[post].entrance) return send(c, { t: 'lantern-refused', message: "There's no Lantern Post there." });
+    if (postAt(posts, c.player.col, c.player.row) !== post) return send(c, { t: 'lantern-refused', message: 'Walk up to the Lantern Post first.' });
+    restoreFor(c, postKey(c.room, posts, post));
+  };
+  /** A dungeon entrance reached on foot (its gate's panel asked for from beside it, or a run's room joined): restored. */
+  const reachedEntrance = (c: Conn, map: 'slums' | 'palengke', dungeon: 'warrens' | 'silong') => restoreFor(c, `${map}:${dungeon}`, true);
   /** Arrived where they teleported to (their first 'here' there): everyone there sees them come. */
   const landed = (c: Conn) => {
     const trip = trips.get(c.userId);
@@ -2449,6 +2485,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const notReady = () => (parties.of(c.userId)?.members ?? []).filter((m) => m !== c.userId && conns.get(m)?.room === 'slums' && !access(m).done);
     switch (m.t) {
       case 'warrens-gate': {
+        if (atGate) reachedEntrance(c, 'slums', 'warrens');
         const a = access(c.userId);
         return send(c, { t: 'warrens-gate', gate: W.gate(c.userId, levelOf(c), opts.warrens.tickets.count(c.userId), { ...a, notReady: notReady().map(nameOf) }) });
       }
@@ -2586,6 +2623,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const access = (member: string): SilongAccess => opts.silong?.access?.(member) ?? { done: true };
     switch (m.t) {
       case 'silong-gate':
+        if (atGate) reachedEntrance(c, 'palengke', 'silong');
         return send(c, { t: 'silong-gate', gate: SL.gate(c.userId, levelOf(c), opts.silong.keys.count(c.userId), access(c.userId)) });
       case 'silong-practice': {
         if (!atGate) return refuse('gone', 'Walk up to the Cellar Hatch first.');

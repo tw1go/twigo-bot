@@ -57,6 +57,7 @@ import { setPrivacy, setPrivacyLink } from '../net/privacy';
 import { setTesting, setTestingLink, testing } from '../net/testing';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
+import { syncHotbarLock } from '../ui/hotbar-lock';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
@@ -148,7 +149,7 @@ import { Hotbar } from '../ui/hotbar';
 import { mountClassSwitch } from '../ui/class-switch';
 import { MOVES, type MoveKind, isMoveKind, moveTiles, playMove, startDodge } from '../world/mobility';
 import { cutscenesDue, cutscenesSeen, markCutsceneOf, enterArea, gapLine, waitingFor, changeClass, devItemsReady, devQuestKill, devQuestBell, questReport, setQuestCounts, devSwitchClass, adventure, adventureData, anyDef, chooseClass, classInfo, initAdventure, itemData, itemDef, loadAdventureData, lookWithCosmetics, onAdventure, questDef, questFor, questTalk, setItems, setProgress, skillView, skillViews, buffViews, wornHeadCosmetic, setPetXp } from '../net/adventure';
-import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
+import { readyToReport, type LanternMap, type LanternPost, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, isLanternMap, lanternPostsOf, nearPost, postAt, postKey, type StatsData, buffsStack, potionCooldownGroup, dropRefusal, nameColour, type Item, type QuestReward, type TownItems, LOOT_REACH, auraFor, classBuffs, classSkills, countOf, isGearDef, itemAura, itemStats, newItem, tradeRules, petRules } from '@mikazuki/shared';
 import type { ClassArt } from '../assets/types';
 import { artFor, cosmeticPoseFiles, drawRested, drawRestedStill, poseFiles, restFiles } from '../characters/kit-art';
 import { loadImages } from '../characters/loading';
@@ -289,6 +290,11 @@ const potionKeyOf = (S: StatsData, heals: 'hp' | 'mp') => `potion-${potionCooldo
 
 /** A dodged hit's word over the player (a Step Back's window). */
 const DODGE_COLOUR = '#A5F3FC';
+
+/** The tile a Lantern Post is drawn on: a 2 × 2 post's front tile (palengkeTownMap), else its own. */
+function postDrawnAt(post: LanternPost): [number, number] {
+  return (post.size ?? 1) > 1 ? [post.tile[0] + 1, post.tile[1] + 1] : post.tile;
+}
 
 export class TownScene extends Phaser.Scene {
   private M!: Manifest;
@@ -625,6 +631,11 @@ export class TownScene extends Phaser.Scene {
     // Through a Lantern Post (a teleport): by the post it was to (a map can have several), unseen until its light brings
     // you in (after the cover).
     this.lanternPosts = lanternPostsOf(this.map);
+    // (Each post broken for you until you've restored it: CONTEXT.md Restored Lantern Post.)
+    this.objects.lanternBroken = (c, r) => {
+      const i = this.lanternPosts.findIndex((p) => !p.entrance && postDrawnAt(p)[0] === c && postDrawnAt(p)[1] === r);
+      return i >= 0 && this.postBroken(i);
+    };
     const via = cameByLantern();
     const landing = via !== null ? (this.lanternPosts[via] ?? this.lanternPosts[0]) : undefined;
     if (landing) {
@@ -849,6 +860,9 @@ export class TownScene extends Phaser.Scene {
     // In the HUD's corner, above its buttons; a map with its own picture (manifest ui.minimapPictures) drawn from it.
     const minimapPicture = this.map.tileset ? this.M.ui.minimapPictures?.[this.map.tileset] : undefined;
     this.minimap = new Minimap(this.map, minimapPicture ? `${import.meta.env.BASE_URL}assets/${minimapPicture}` : undefined);
+    const MI = this.M.ui.minimapIcons;
+    if (MI) this.minimap.setIcons(Object.fromEntries(Object.entries(MI).filter(([k]) => k !== 'note').map(([k, v]) => [k, { ...v, url: `${import.meta.env.BASE_URL}assets/${v.file}` }])));
+    this.minimapMarks();
     const tray = new BuffTray({
       icon: (cls, name) => this.buffIcon(cls, name),
       effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
@@ -1279,6 +1293,7 @@ export class TownScene extends Phaser.Scene {
       if (this.me?.status === 'ok' && !fakeLogin()) {
         hotbar.setSynced(this.me.me.hotbars ?? {});
         syncKeybinds(this.me.me.keybinds ?? {}, (keys) => queueSave('/town/keybinds', { keys }));
+        syncHotbarLock(this.me.me.hotbarLocked, (locked) => queueSave('/town/hotbar-lock', { locked }));
       }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
@@ -2762,9 +2777,11 @@ export class TownScene extends Phaser.Scene {
       // Lantern Posts: off you go (the light, then the other map), why not, and someone else's teleport.
       if (m.t === 'lantern-go') return this.lanternGo(m.to, m.post ?? 0);
       if (m.t === 'lantern-refused') {
+        this.restoring = -1;
         playSound('error');
         return toast(m.message, 2800, 'bad');
       }
+      if (m.t === 'lantern-restored') return this.lanternRestored(m.key, m.fresh, m.restored);
       if (m.t === 'lantern-fx') {
         const ch = this.others.charOf(m.id);
         if (ch) return this.lanternFx(ch, m.phase);
@@ -3254,6 +3271,7 @@ export class TownScene extends Phaser.Scene {
         this.myId = m.you;
         setServerNow(m.now); // (the server's clock: the Kapre's tree)
         this.closedAreas = m.closed ?? {}; // (maps not open yet: their gates say when)
+        this.setRestored(m.restored ?? null); // (the Lantern Posts you've restored: the rest drawn broken)
         this.gotWelcome = true;
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
@@ -3694,11 +3712,9 @@ export class TownScene extends Phaser.Scene {
       this.pressAt = { x: p.x, y: p.y };
       if (p.wasTouch) { this.touchDownAt = performance.now(); this.touchHoldTile = null; }
       if (import.meta.env.DEV) console.log('[touch] down wasTouch=%s leftButton=%s', p.wasTouch, p.leftButtonDown());
-      // The middle button: as Z (the nearest mob, again: the next). Never the browser's autoscroll.
-      if (p.middleButtonDown()) {
-        p.event.preventDefault();
-        if (this.mobs && !this.intro && !this.inside) this.mobs.targetNext(this.player.tile);
-      }
+      // The middle button: never the browser's autoscroll. What it does is its keybind's (Target by default: the press
+      // hub in ui/keybinds.ts hands it on as a key).
+      if (p.middleButtonDown()) p.event.preventDefault();
     });
     watchClicks(this.game.canvas);
     // Touch hold-walk: after TAP_MS of holding, dragging the finger walks continuously toward the pointer tile.
@@ -3712,7 +3728,7 @@ export class TownScene extends Phaser.Scene {
       this.moveTo({ col, row });
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (p.button === 1) return; // the middle button only targets
+      if (p.button === 1 || p.button === 3 || p.button === 4) return; // (the middle, back and forward buttons: keybinds)
       if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
       if (this.watching) return; // (a cutscene: the map isn't yours to click)
       if (p.wasTouch) {
@@ -3768,7 +3784,7 @@ export class TownScene extends Phaser.Scene {
       // Pick up (F) and Space: the nearest loot in reach; Space otherwise enters, sits or talks as ever.
       if (matches('pickup', e) && !e.repeat) this.pickUpNearest();
       else if (matches('interact', e) && !(e.code === 'Space' && !e.repeat && this.pickUpNearest())) this.interact();
-      // Target (Z, or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
+      // Target (Z, or the middle button: a keybind like any key): the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && matches('target', e) && !e.repeat) this.mobs.targetNext(this.player.tile);
       // The Map menu (M): to look at; again closes it.
       if (matches('map', e) && !e.repeat) {
@@ -5221,6 +5237,11 @@ export class TownScene extends Phaser.Scene {
 
   /** This map's Lantern Posts (its object and `arrive.lanternPost`, or the Palengke's four `teleporters`). */
   private lanternPosts: LanternPost[] = [];
+  /** The Lantern Posts and dungeon entrances you've restored (CONTEXT.md Restored Lantern Post: the welcome's, then each
+   *  `lantern-restored`; shared postKey), or null: the server keeps none (every post works). */
+  private restoredPosts: Set<string> | null = null;
+  /** The post you're restoring (its place in this map's list) until the server answers; -1: none. */
+  private restoring = -1;
   /** A click on a post sent you walking to it (the scene's time, and which post): its Map menu opens once you're near. */
   private lanternWanted = 0;
   private lanternWantedPost = 0;
@@ -5245,8 +5266,7 @@ export class TownScene extends Phaser.Scene {
   private lanternPostBox(post: LanternPost, index: number): void {
     const def = this.M.props['lantern-post'];
     if (!def) return;
-    // (A 2 × 2 post is drawn on its front tile: palengkeTownMap.)
-    const [col, row] = (post.size ?? 1) > 1 ? [post.tile[0] + 1, post.tile[1] + 1] : post.tile;
+    const [col, row] = postDrawnAt(post);
     const top = tileToScreen(col, row);
     const lift = this.objects.heights.at(col, row) * LEVEL_PX;
     // (Its art fills rows ART_TOP–ART_BOTTOM of the cell: the post and its plinth, the lantern hanging off its arm.)
@@ -5265,19 +5285,84 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  /** To a post: its Map menu if you're near, else a walk there first (never during a fight). */
+  /** To a post: its Map menu if you're near, else a walk there first (never during a fight). One not restored yet is
+   *  restored first (even in a fight: it isn't travel), then its menu. */
   private toLanternPost(index: number): void {
     const post = this.lanternPosts[index];
     if (!post || this.knockedOut) return;
-    if (this.inCombat()) {
+    const broken = this.postBroken(index);
+    if (!broken && this.inCombat()) {
       playSound('error');
       return toast("Can't travel during a fight.", 2400, 'bad');
     }
     const t = this.player.tile;
-    if (nearPost(post, t.col, t.row, LANTERN_WALK_TILES)) return this.openMap(true);
+    if (nearPost(post, t.col, t.row, LANTERN_WALK_TILES)) return broken ? this.restorePost(index) : this.openMap(true);
     this.lanternWanted = this.time.now;
     this.lanternWantedPost = index;
     this.goToTile({ col: post.arrive[0], row: post.arrive[1] });
+  }
+
+  /** This map's post `index` is broken for you (not restored yet; a dungeon entrance by its own key). */
+  private postBroken(index: number): boolean {
+    if (!this.restoredPosts || !isLanternMap(this.area) || !this.lanternPosts[index]) return false;
+    return !this.restoredPosts.has(postKey(this.area, this.lanternPosts, index));
+  }
+
+  /** The posts you've restored (the welcome's): the posts drawn broken or lit by them, the minimap's icons too. */
+  private setRestored(keys: string[] | null): void {
+    this.restoredPosts = keys ? new Set(keys) : null;
+    this.objects.refreshLanterns();
+    this.minimapMarks();
+  }
+
+  /** Restoring the post you're by: asked of the server (it checks you're beside it); its answer plays it. */
+  private restorePost(index: number): void {
+    if (this.restoring >= 0) return;
+    if (!this.link?.send({ t: 'lantern-restore', post: index })) return void toast('Not connected right now. Try again in a moment.', 2600, 'bad');
+    this.restoring = index;
+  }
+
+  /** A post or dungeon entrance restored for you: the post you're by put back together (its restore anim, a chime, a
+   *  line), then its Map menu (out of a fight); an entrance reached on foot, a line. Every other post as it is now. */
+  private lanternRestored(key: string, fresh: boolean, keys: string[]): void {
+    const asked = this.restoring;
+    this.restoring = -1;
+    this.restoredPosts = new Set(keys);
+    this.minimapMarks();
+    const index = isLanternMap(this.area) ? this.lanternPosts.findIndex((_, i) => postKey(this.area as LanternMap, this.lanternPosts, i) === key) : -1;
+    const post = this.lanternPosts[index];
+    if (post?.entrance) {
+      this.objects.refreshLanterns();
+      if (fresh) toast(`You found the ${post.name}! You can travel here now with a Return Lantern.`, 3600, 'good');
+      return;
+    }
+    const menu = () => {
+      if (asked !== index || this.knockedOut) return;
+      if (this.inCombat()) {
+        playSound('error');
+        return void toast("Can't travel during a fight.", 2400, 'bad');
+      }
+      this.openMap(true);
+    };
+    if (!fresh || !post) {
+      this.objects.refreshLanterns();
+      return menu();
+    }
+    const [c, r] = postDrawnAt(post);
+    const ms = this.objects.restoreLantern(c, r);
+    playSound('combat-repair', 0.15);
+    toast('The Lantern Post is restored! You can travel here now.', 3200, 'good');
+    this.time.delayedCall(ms + 150, () => {
+      this.objects.refreshLanterns();
+      menu();
+    });
+  }
+
+  /** The minimap's posts (restored or not) and this map's dungeon entrance. */
+  private minimapMarks(): void {
+    this.minimap?.setMarks(
+      this.lanternPosts.map((p, i) => ({ col: p.tile[0] + 1, row: p.tile[1] + 1, icon: p.entrance ?? (this.postBroken(i) ? 'postBroken' : 'post') })),
+    );
   }
 
   /** Each frame: there after a click on the post (its menu opens), or stopped elsewhere (forgotten); walked away from the
@@ -5307,6 +5392,7 @@ export class TownScene extends Phaser.Scene {
         ...(U.mapWorld?.size ? { size: U.mapWorld.size } : {}),
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         teleporter: asset(U.mapTeleporter?.file ?? 'ui/map/ui-map-teleporter.png'),
+        ...(U.mapTeleporterBroken ? { teleporterBroken: asset(U.mapTeleporterBroken.file) } : {}),
         pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),
         lantern: asset((def && !isGearDef(def) && def.icon) || 'items/consumables/item-return-lantern-16.png'),
         frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null,
@@ -5314,6 +5400,7 @@ export class TownScene extends Phaser.Scene {
         town: asset('maps/town.json'),
         palengke: asset('maps/palengke.json'),
         marks: this.questMarkArt() ?? undefined,
+        dungeons: Object.fromEntries(Object.entries(U.mapDungeons ?? {}).filter(([k]) => k !== 'note').map(([k, d]) => [k, { ...d, url: asset(d.file) }])),
       });
       onAdventure(() => this.mapView?.refresh());
     }
@@ -5325,6 +5412,7 @@ export class TownScene extends Phaser.Scene {
       fromPost: fromPost && at >= 0,
       lanterns: () => countOf(adventure()?.bag ?? [], RETURN_LANTERN),
       travel: (to, post) => this.lanternTo(to, post),
+      restored: this.restoredPosts,
     });
   }
 

@@ -1,3 +1,4 @@
+import { onHotbarLock, setHotbarLocked } from './hotbar-lock';
 import { fakeLogin } from '../session';
 import { setTrailOn, trailOn } from '../world/quest-trail';
 import { playSound, setSound, soundSettings } from '../audio/sound';
@@ -274,6 +275,17 @@ function leave(): HTMLElement {
     playSound('click');
   });
   trail.append(trailBox, el('span', undefined, 'Show the quest trail'));
+  // The hotbar lock (ui/hotbar-lock.ts): the same switch as the padlock on the bar.
+  const lock = el('label', 'st-row st-check');
+  const lockBox = el('input');
+  lockBox.type = 'checkbox';
+  onHotbarLock((on) => (lockBox.checked = on));
+  lockBox.addEventListener('change', () => {
+    setHotbarLocked(lockBox.checked);
+    playSound('click');
+  });
+  lock.append(lockBox, el('span', undefined, 'Lock hotbar'));
+  const lockNote = el('p', 'st-note', "Skills and potions can't be dragged off or moved. You can still fill empty slots.");
   // The lag report (net/lag.ts): what ran in each slow frame, to paste to the developers.
   const lag = el('button', 'st-button', `Copy lag report (${lagCount()} slow frame${lagCount() === 1 ? '' : 's'})`);
   lag.addEventListener('click', () => {
@@ -287,7 +299,7 @@ function leave(): HTMLElement {
       },
     );
   });
-  section.append(el('h3', 'st-heading', 'Game'), trail, lag, el('p', 'st-note', 'Lag or stutter? Copy this right after it happens and send it to the developers.'), out);
+  section.append(el('h3', 'st-heading', 'Game'), trail, lock, lockNote, lag, el('p', 'st-note', 'Lag or stutter? Copy this right after it happens and send it to the developers.'), out);
   return section;
 }
 
@@ -312,8 +324,9 @@ function keybindsPage(): { body: HTMLElement; reset: HTMLElement } {
     document.removeEventListener('pointerdown', cancel, true);
     draw();
   };
-  const cancel = (e: Event) => {
-    if (waiting && e.target !== waiting.b) stop();
+  // (A left or right click elsewhere: never mind. The middle, back and forward buttons bind: they come as keys.)
+  const cancel = (e: PointerEvent) => {
+    if (waiting && (e.button === 0 || e.button === 2) && e.target !== waiting.b) stop();
   };
   // Caught before anything else (the town's keys, the box's own Escape).
   const capture = (e: KeyboardEvent) => {
@@ -348,7 +361,7 @@ function keybindsPage(): { body: HTMLElement; reset: HTMLElement } {
       b.addEventListener('click', () => {
         if (waiting) stop();
         waiting = { b, id: a.id, place };
-        b.textContent = 'Press a key…';
+        b.textContent = 'Press a key or mouse button…';
         b.classList.add('st-key-wait');
         document.addEventListener('keydown', capture, true);
         document.addEventListener('pointerdown', cancel, true);
@@ -364,7 +377,7 @@ function keybindsPage(): { body: HTMLElement; reset: HTMLElement } {
     draw();
     toast('Every key is back to the default.', 2200);
   });
-  const note = el('p', 'st-key-note', 'Click a key, then press the new one. Esc: never mind. Backspace: no key. Enter (chat) and Esc stay as they are.');
+  const note = el('p', 'st-key-note', 'Click a key, then press a key or mouse button (middle, back, forward). Esc: never mind. Backspace: none. Left and right click, Enter and Esc stay as they are.');
   box.append(note, list);
   draw();
   return { body: box, reset };

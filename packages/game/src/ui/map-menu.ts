@@ -1,7 +1,8 @@
-import { type LanternMap, type LanternMapData, type LanternPost, isLanternMap, lanternPostsOf } from '@mikazuki/shared';
+import { type LanternMap, type LanternMapData, type LanternPost, NOT_RESTORED, isLanternMap, lanternPostsOf } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { type QuestMarkArt, drawQuestMarks } from './quest-marks';
 import { toast } from './toast';
+import type { MapDungeonIcon } from '../assets/types';
 import { type MapLayout, type SlumsPlaces, loadPlaces, loadWorldMap, middleOf, postsOf, shifted, worldPoint, worldPx } from './world-map';
 
 // 🗺️ The Map menu (M anywhere; a Lantern Post's click): a tab per map (Town, Slums, Old Market), each its map alone, cut
@@ -9,7 +10,8 @@ import { type MapLayout, type SlumsPlaces, loadPlaces, loadWorldMap, middleOf, p
 // 2026) to its own diamond and drawn at the largest whole-number scale that fits (3× at most), opening on the map you're
 // in. Over it, its names and places from the map itself (the Slums' zones, the Golem Pit, the Camp; the Old Market's
 // sections; the way to the neighbourhood), every Lantern Post as a teleporter icon (the Old Market has four) and its
-// dungeon entrance (the Warren Gate, the Cellar Hatch: shared travel.ts DUNGEON_ENTRANCES) as a gate marker. Opened from
+// dungeon entrance (the Warren Gate, the Cellar Hatch: shared travel.ts DUNGEON_ENTRANCES) as a small picture of it,
+// its gold glow pulsing (manifest ui.mapDungeons; lit up on hover; held still under reduced motion). Opened from
 // a post, another post's icon or an entrance asks to teleport there (the Teleport box: one Return Lantern; another post
 // of the same map too); opened anywhere else it's only to look at. Built like the Equipment
 // panel: its frame, a title bar with ×, the UI font. Under the posts and labels, every active quest's hunting area in
@@ -22,6 +24,8 @@ export interface MapMenuArt {
   size?: [number, number];
   layout: string;
   teleporter: string;
+  /** A Lantern Post not restored yet (2 frames: normal, hover). */
+  teleporterBroken?: string;
   pin: string;
   lantern: string;
   frame: { url: string; slice: number } | null;
@@ -31,6 +35,8 @@ export interface MapMenuArt {
   palengke: string;
   /** The quest marks' art (the quest map's pins, the quests' colours). */
   marks?: QuestMarkArt;
+  /** The dungeon entrances' icons by entrance id (manifest ui.mapDungeons, `url` its sheet); one without: a diamond. */
+  dungeons?: Record<string, MapDungeonIcon & { url: string }>;
 }
 
 export interface MapOpen {
@@ -43,6 +49,9 @@ export interface MapOpen {
   lanterns: () => number;
   /** Teleport there (after the Teleport box's yes): a map and its post (a dungeon entrance: its place after the posts). */
   travel: (to: LanternMap, post: number) => void;
+  /** The posts and dungeon entrances you've restored (CONTEXT.md Restored Lantern Post; shared postKey); the rest show
+   *  broken and take you nowhere. Null: every one works. */
+  restored?: ReadonlySet<string> | null;
   onClose?: () => void;
 }
 
@@ -297,11 +306,13 @@ export class MapMenu {
       const [x, y] = post.at;
       const mine = id === this.o?.here?.map && index === this.o.here.post;
       const where = post.name ? `${PLACE[id].name} (${post.name})` : PLACE[id].name;
+      // (Not restored yet: its broken icon, and it takes you nowhere: CONTEXT.md Restored Lantern Post.)
+      const broken = !mine && !!this.o?.restored && !this.o.restored.has(`${id}:${index}`);
       const icon = el('button', 'mm-post');
-      icon.setAttribute('aria-label', mine ? 'Lantern Post: you are here' : `Lantern Post in ${where}`);
+      icon.setAttribute('aria-label', mine ? 'Lantern Post: you are here' : `Lantern Post in ${where}${broken ? ': not restored yet' : ''}`);
       icon.style.left = `${x * k - aw * ik}px`;
       icon.style.top = `${y * k - ah * ik}px`;
-      icon.style.backgroundImage = `url("${this.art.teleporter}")`;
+      icon.style.backgroundImage = `url("${broken && this.art.teleporterBroken ? this.art.teleporterBroken : this.art.teleporter}")`;
       const frame = (f: keyof typeof FRAME) => (icon.style.backgroundPositionX = `${-FRAME[f] * ICON_W * ik}px`);
       frame(mine ? 'here' : 'normal');
       view.append(icon);
@@ -316,13 +327,13 @@ export class MapMenu {
         if (here) this.clearOf(view, here, x * k - 9 * ik);
         return;
       }
-      const tag = el('span', 'mm-label mm-post-tag', post.name ? `Lantern Post · ${post.name}` : 'Lantern Post');
+      const tag = el('span', 'mm-label mm-post-tag', `${post.name ? `Lantern Post · ${post.name}` : 'Lantern Post'}${broken ? ' · not restored yet' : ''}`);
       tag.style.left = `${x * k}px`;
       tag.style.top = `${y * k - (ah + 5) * ik}px`;
       tag.hidden = true;
       view.append(tag);
       this.hoverable(icon, tag, frame);
-      icon.addEventListener('click', () => this.pick(id, index));
+      icon.addEventListener('click', () => (broken ? this.notRestored() : this.pick(id, index)));
     });
     // Not at a post: the pin on your own spot (the map's formula: map-layout.json).
     const me = this.o?.here;
@@ -347,12 +358,35 @@ export class MapMenu {
       const at = px(e.tile[0] + 1, e.tile[1] + 1);
       if (!at) return;
       const gate = el('button', 'mm-gate');
-      gate.setAttribute('aria-label', `${e.name}: teleport there`);
-      gate.style.left = `${at[0] * k}px`;
-      gate.style.top = `${at[1] * k}px`;
+      // (Not reached on foot yet: still and dim, nothing to click: CONTEXT.md Restored Lantern Post.)
+      const off = !!this.o?.restored && !!e.entrance && !this.o.restored.has(`${id}:${e.entrance}`);
+      gate.setAttribute('aria-label', off ? `${e.name}: not restored yet` : `${e.name}: teleport there`);
+      if (off) {
+        gate.classList.add('mm-gate-off');
+        gate.disabled = true;
+      }
+      // Its own art (the sheet at the icons' scale, its foot on the entrance's point), its name under its foot; an
+      // entrance without art: the old gold diamond centred there.
+      const art = e.entrance ? this.art.dungeons?.[e.entrance] : undefined;
+      let below = 7;
+      if (art) {
+        const [fw, fh] = art.frame;
+        gate.classList.add('mm-gate-art');
+        gate.style.backgroundImage = `url("${art.url}")`;
+        gate.style.backgroundSize = `${fw * art.frames * ik}px ${fh * ik}px`;
+        gate.style.setProperty('--fw', `${fw * ik}px`);
+        gate.style.width = `${fw * ik}px`;
+        gate.style.height = `${fh * ik}px`;
+        gate.style.left = `${at[0] * k - art.anchor[0] * ik}px`;
+        gate.style.top = `${at[1] * k - art.anchor[1] * ik}px`;
+        below = fh - art.anchor[1] + 5;
+      } else {
+        gate.style.left = `${at[0] * k}px`;
+        gate.style.top = `${at[1] * k}px`;
+      }
       view.append(gate);
-      label(e.name ?? 'Dungeon', at, 'mm-gate-tag', false, 0, 7);
-      gate.addEventListener('click', () => this.pick(id, index));
+      label(`${e.name ?? 'Dungeon'}${off ? ' · not restored yet' : ''}`, at, `mm-gate-tag${off ? ' mm-off' : ''}`, false, 0, below);
+      if (!off) gate.addEventListener('click', () => this.pick(id, index));
     });
     this.footText();
   }
@@ -409,6 +443,12 @@ export class MapMenu {
     });
     icon.addEventListener('focus', () => icon.dispatchEvent(new PointerEvent('pointerenter')));
     icon.addEventListener('blur', () => icon.dispatchEvent(new PointerEvent('pointerleave')));
+  }
+
+  /** A post not restored yet clicked: why it takes you nowhere. */
+  private notRestored(): void {
+    playSound('error');
+    toast(NOT_RESTORED, 2800, 'bad');
   }
 
   /** A post or entrance clicked: the Teleport box (from a post), else why not. */

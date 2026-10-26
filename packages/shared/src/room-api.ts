@@ -3,6 +3,7 @@
 
 import type { AdventureState, QuestReward } from './adventure.js';
 import type { Item } from './items.js';
+import type { ResumeArea } from './resume.js';
 
 /** One row of `GET /leaderboard`. */
 export interface LeaderboardRow {
@@ -84,6 +85,12 @@ export interface MeResponse {
   preregistered: boolean;
   /** Has a house in the neighbourhood (the game starts there, at its door). */
   house?: boolean;
+  /** The area they were last in (CONTEXT.md Resume spot: a fresh visit starts there; shared resume.ts), when kept. */
+  lastArea?: ResumeArea;
+  /** A guided quest is under way (a fresh visit from the neighbourhood starts in town then: the guide runs there). */
+  guided?: boolean;
+  /** The Old Market isn't open to them yet (CONTEXT.md Opening time): a fresh visit from it starts in the Slums. */
+  palengkeClosed?: boolean;
   /** Has the Tester role (or no Tester role is set up): may cross into the slums once they're built. */
   tester?: boolean;
   /** Their saved character look, or null if they haven't made one. */
@@ -116,6 +123,8 @@ export interface MeResponse {
   questPieces?: Item[];
   /** Their hotbars, one per class they've arranged (saved by POST /town/hotbar; the same on every device). */
   hotbars?: Record<string, HotbarLayout>;
+  /** Their hotbar locked (CONTEXT.md Hotbar lock; POST /town/hotbar-lock, every class and device); left out: never set. */
+  hotbarLocked?: boolean;
   /** Their keybinds: only the actions changed from the defaults, each its two keys (null = none); saved by
    *  POST /town/keybinds, the same on every device. */
   keybinds?: KeybindMap;

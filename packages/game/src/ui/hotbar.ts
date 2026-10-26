@@ -1,4 +1,5 @@
-import { actionOf, keyLabel, matches, onKeybinds } from './keybinds';
+import { actionOf, keyLabel, matches, onKeybinds, shortKeyLabel } from './keybinds';
+import { hotbarLocked, onHotbarLock, setHotbarLocked } from './hotbar-lock';
 import type { ClassInfo, HotbarEntry, HotbarLayout } from '@mikazuki/shared';
 import { playSound } from '../audio/sound';
 import { MOBILITY_PREVIEWS, SKILL_PREVIEWS, buffPreview } from '../combat/skill-previews';
@@ -11,9 +12,14 @@ import { toast } from './toast';
 import { buffText } from './buff-text';
 
 // ⚔️ The hotbar, bottom centre (members, not on phones): two rows of slots in the bag's slot art.
-//   Bottom row: 10 skill slots (keys 1–0), then 3 for potions and other usables (keys - = `).
-//   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…), for skills or usables.
-//   (Those are the default keys: each slot's key is a keybind, ui/keybinds.ts, and its label follows it.)
+//   Bottom row: 10 slots (keys 1–0), then 3 more (keys - = `).
+//   Top row: 13 more (Alt+1–0, Alt+- Alt+= Alt+`; each labelled "Alt+1"…).
+//   Any slot takes a skill or a usable (CONTEXT.md Hotbar: open slots since 26 Oct 2026; a class's first bar still has
+//   its skills in the first ten).
+//   (Those are the default keys: each slot's key is a keybind, ui/keybinds.ts, and its label follows it: a mouse
+//   button's as "M4", "Sh+M4".)
+// The padlock beside ▲ (and Settings → Game) locks it (ui/hotbar-lock.ts, CONTEXT.md Hotbar lock): nothing on it can be
+// dragged off or moved then, but an empty slot still takes a skill or potion (dropped, put, or a skill as it unlocks).
 // Skills come from the Skills panel on the right of the screen (the K button at the bar's left, or K): your skill
 // points, then each skill in unlock order with its description, "Lv N / cap" and cooldown, played on a small stage while
 // hovered (the class choice's preview, combat/skill-stage.ts); a + raises an unlocked skill below its cap (a skill point,
@@ -21,7 +27,7 @@ import { buffText } from './buff-text';
 // too, with a padlock: they can't be used until then). Drag one onto a slot, or click it and then a slot. Potions are
 // dragged in from the bag: HP and MP Potions from the combat bag (onItem uses one: the town asks the server, which
 // keeps their cooldown (each kind its own: stats.json potions.separateCooldowns), shown as a pie on that kind's slots; the count you carry in the corner);
-// sari-sari potions never go on it (they're drunk from the bag). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it). Per class, kept on the server when logged in (/me `hotbars`, POST /town/hotbar through `onSave`: the same bar on every device; this browser's copy, localStorage `mk_hotbar`, stands in offline, in dev, and seeds the server once) ; a class's first bar has
+// sari-sari potions never go on it (they're drunk from the bag). Drag a slot onto another to swap them; drag it off the bar to empty it (right-click leaves it; locked: neither). Per class, kept on the server when logged in (/me `hotbars`, POST /town/hotbar through `onSave`: the same bar on every device; this browser's copy, localStorage `mk_hotbar`, stands in offline, in dev, and seeds the server once) ; a class's first bar has
 // its skills in order. Skills show their icon (manifest ui.skillIcons) where there is one, else their initials over the
 // class badge. Move skills work in town (onSkill: world/mobility.ts) and their slots show the cooldown as a
 // shrinking pie with the seconds left; the rest wait for combat. Skills have no icons yet: their
@@ -68,12 +74,11 @@ type Layout = HotbarLayout;
 const SIZE: Record<Row, number> = { top: 13, main: 10, util: 3 };
 /** Each slot's keybind action (ui/keybinds.ts: main1–10, util1–3, top1–13). */
 const slotAction = (row: Row, i: number) => `${row}${i + 1}`;
+/** The rows in key order (1–0, - = ~, then the Alt row): a new skill's first empty slot, the auto-cast's order. */
+const KEY_ORDER: Row[] = ['main', 'util', 'top'];
 const SLOT_ACTIONS = (['main', 'util', 'top'] as Row[]).flatMap((row) => Array.from({ length: SIZE[row] }, (_, i) => slotAction(row, i)));
 const DRAG = 'application/x-mk-hotbar';
 const STORE = 'mk_hotbar';
-
-/** What a row takes: the bottom row's first ten are for skills, its last three for usables, the top row either. */
-const fits = (row: Row, e: Entry) => !e || row === 'top' || (row === 'main' ? e.t === 'skill' : e.t === 'item');
 
 /** The cooldown HP and MP Potions share (one key for every slot holding one). */
 export const potionCooldownKey = 'hp-mp-potion';
@@ -95,6 +100,8 @@ export class Hotbar {
   readonly root = el('div');
   private readonly book = el('button', 'hb-book');
   private readonly expandBtn = el('button', 'hb-expand');
+  /** The lock (beside ▲): ui/hotbar-lock.ts. */
+  private readonly lockBtn = el('button', 'hb-lockbtn');
   private readonly list = el('div');
   private readonly rows = el('div', 'sb-rows');
   private readonly stageBox = el('div', 'sb-stage');
@@ -116,6 +123,8 @@ export class Hotbar {
   /** A skill clicked in the list (or a potion's Put on hotbar in the bag), waiting for a slot click. */
   private picked: SkillEntry | ItemEntry | null = null;
   private nagged = 0;
+  /** When "Your hotbar is locked." was last said (once every few seconds). */
+  private lockedSaid = 0;
 
   private raising = false;
 
@@ -159,12 +168,24 @@ export class Hotbar {
     this.expandBtn.setAttribute('aria-label', 'Alt-key row');
     this.expandBtn.setAttribute('aria-expanded', 'false');
     this.expandBtn.addEventListener('click', () => this.toggleTop());
-    this.root.append(top, bottom, this.expandBtn);
+    this.lockBtn.addEventListener('click', () => {
+      setHotbarLocked(!hotbarLocked());
+      playSound('click', 0.15);
+    });
+    onHotbarLock((on) => {
+      this.lockBtn.innerHTML = lockSvg(on);
+      this.lockBtn.title = on ? 'Unlock hotbar' : 'Lock hotbar';
+      this.lockBtn.setAttribute('aria-label', this.lockBtn.title);
+      this.lockBtn.setAttribute('aria-pressed', String(on));
+      this.root.classList.toggle('hb-locked-bar', on);
+      this.draw();
+    });
+    this.root.append(top, bottom, this.expandBtn, this.lockBtn);
     document.body.append(this.root, this.list);
-    // Dropped off the bar: that slot empties.
+    // Dropped off the bar: that slot empties (never while it's locked).
     this.root.addEventListener('dragend', (e) => {
       const from = (e.target as HTMLElement).dataset;
-      if (e.dataTransfer?.dropEffect === 'none' && from.row) this.put(from.row as Row, Number(from.i), null);
+      if (e.dataTransfer?.dropEffect === 'none' && from.row && !hotbarLocked()) this.put(from.row as Row, Number(from.i), null);
     });
     document.addEventListener('keydown', (e) => this.key(e), true);
     document.addEventListener('keyup', (e) => this.keyUp(e), true);
@@ -242,7 +263,7 @@ export class Hotbar {
     b.addEventListener('pointerdown', () => this.skillTip.hide());
     b.addEventListener('click', () => {
       if (this.picked) {
-        if (!fits(row, this.picked)) return toast(this.picked.t === 'item' ? 'Potions go in the - = ~ slots or the top row.' : 'Skills go in the first ten slots or the top row.', 2400);
+        if (this.layout[row][i] && hotbarLocked()) return this.saidLocked();
         this.put(row, i, this.picked);
         this.picked = null;
         this.root.classList.remove('hb-picking');
@@ -253,7 +274,7 @@ export class Hotbar {
     });
     b.addEventListener('dragstart', (e) => {
       const entry = this.layout[row][i];
-      if (!entry) return e.preventDefault();
+      if (!entry || hotbarLocked()) return e.preventDefault();
       e.dataTransfer?.setData(DRAG, JSON.stringify({ entry, from: [row, i] }));
       if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
     });
@@ -269,13 +290,12 @@ export class Hotbar {
       if (!raw) return;
       e.preventDefault();
       const { entry, from } = JSON.parse(raw) as { entry: Entry; from?: [Row, number] };
-      if (!fits(row, entry)) return toast(entry?.t === 'item' ? 'Potions go in the - = ~ slots or the top row.' : 'Skills go in the first ten slots or the top row.', 2400);
+      // Locked: only an empty slot takes something (from the Skills panel or the bag), and nothing moves.
+      if (hotbarLocked() && (from || this.layout[row][i])) return this.saidLocked();
       if (from) {
         const [fr, fi] = from;
         if (fr === row && fi === i) return;
-        const here = this.layout[row][i];
-        // A swap where both fit; else the one moved in pushes the other out.
-        this.layout[fr][fi] = fits(fr, here) ? here : null;
+        this.layout[fr][fi] = this.layout[row][i]; // (a plain swap: any slot takes either)
       }
       this.put(row, i, entry);
     });
@@ -302,16 +322,22 @@ export class Hotbar {
     window.dispatchEvent(new Event('mk-hotbar'));
   }
 
-  /** A skill just unlocked onto the bar (the Lv 21-40 ones): the first empty slot that takes it, the first ten then the
-   *  top row, unless it's on the bar already; nothing already there ever moves, and a full bar stays as it is. */
+  /** "Your hotbar is locked." (once every few seconds). */
+  private saidLocked(): void {
+    const now = performance.now();
+    if (now - this.lockedSaid < 3000) return;
+    this.lockedSaid = now;
+    playSound('error');
+    toast('Your hotbar is locked.', 1800);
+  }
+
+  /** A skill just unlocked onto the bar (the Lv 21-40 ones): the first empty slot in key order (1–0, - = ~, then the Alt
+   *  row), unless it's on the bar already; nothing already there ever moves (locked or not), and a full bar stays. */
   placeNew(name: string): void {
-    if (!this.cls) return;
-    const rows: Row[] = ['main', 'top'];
-    if (rows.some((row) => this.layout[row].some((e) => e?.t === 'skill' && e.name === name))) return;
-    const entry: Entry = { t: 'skill', name };
-    for (const row of rows) {
+    if (!this.cls || this.onBar(name)) return;
+    for (const row of KEY_ORDER) {
       const i = this.layout[row].findIndex((e) => !e);
-      if (i >= 0 && fits(row, entry)) return this.put(row, i, entry);
+      if (i >= 0) return this.put(row, i, { t: 'skill', name });
     }
   }
 
@@ -330,13 +356,14 @@ export class Hotbar {
       this.cells[row].forEach((b, i) => {
         const entry = this.layout[row][i];
         b.replaceChildren();
-        b.draggable = !!entry;
+        b.draggable = !!entry && !hotbarLocked();
         const icon = entry?.t === 'skill' && this.cls ? this.iconOf(entry.name) : null;
         const s = entry?.t === 'skill' ? this.skill(entry.name) : undefined;
         b.classList.toggle('hb-skill', entry?.t === 'skill' && !icon);
         b.classList.toggle('hb-off', entry?.t === 'skill' && !!this.o.usable && !this.o.usable(entry.name)); // damage skills: no combat in town
         b.classList.toggle('hb-locked', !!s?.locked);
         const key = keyLabel(slotAction(row, i));
+        const short = shortKeyLabel(slotAction(row, i));
         const named = key ? ` (${key})` : '';
         if (entry?.t === 'skill') {
           b.append(icon ?? el('span', 'hb-initials', initials(entry.name)));
@@ -350,7 +377,7 @@ export class Hotbar {
           b.classList.toggle('hb-empty', n === 0);
         } else b.title = `Empty${named}`;
         b.classList.toggle('hb-free', !entry);
-        if (key) b.append(el('span', key.length > 2 ? 'hb-key hb-key-alt' : 'hb-key', key));
+        if (short) b.append(el('span', short.length > 2 ? 'hb-key hb-key-alt' : 'hb-key', short));
         b.setAttribute('aria-label', b.title.replace(/\n/g, ' '));
       });
     }
@@ -551,10 +578,10 @@ export class Hotbar {
   }
 
   /** Every slot holding that skill gets a dark pie that shrinks round clockwise, with the seconds left on it. */
-  /** The skills on the bar in key order (1–0, then the Alt row), each once. */
+  /** The skills on the bar in key order (1–0, - = ~, then the Alt row), each once. */
   skillOrder(): string[] {
     const seen = new Set<string>();
-    for (const e of [...this.layout.main, ...this.layout.top]) if (e?.t === 'skill') seen.add(e.name);
+    for (const row of KEY_ORDER) for (const e of this.layout[row]) if (e?.t === 'skill') seen.add(e.name);
     return [...seen];
   }
 
@@ -653,6 +680,14 @@ function skillsOf(c: ClassInfo | null): { level: number; name: string; desc: str
   return c ? [...c.skills, ...(c.mobility ?? [])] : [];
 }
 
+/** The bar's lock button: a padlock in pixel art (7 × 8), its shackle shut (locked) or open (unlocked). */
+function lockSvg(locked: boolean): string {
+  // Shut: the shackle's two legs down into the body. Open: it's raised, its left leg clear of the body (a gap under it).
+  const shackle = locked ? '<path fill="#A9B1D6" d="M2 1h3v1h1v2H5V2H2v2H1V2h1z"/>' : '<path fill="#A9B1D6" d="M2 0h4v1H2zM2 1h1v1H2zM5 1h1v2H5z"/>';
+  const outline = locked ? '<path fill="#0B0A1A" d="M1 0h5v1h1v3H0V1h1z"/>' : '<path fill="#0B0A1A" d="M1 0h1v2H1zM3 1h2v2H3zM6 0h1v3H6z"/>';
+  return `<svg viewBox="0 0 8 8" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">${outline}${shackle}<path fill="#0B0A1A" d="M0 3h7v5H0z"/><path fill="#F8BF27" d="M1 4h5v3H1z"/><path fill="#0B0A1A" d="M3 5h1v1H3z"/></svg>`;
+}
+
 /** A locked slot's padlock (pixel art, 7 × 8) with the level it unlocks at. */
 function padlock(level: number): HTMLElement {
   const box = el('span', 'hb-lock');
@@ -688,7 +723,8 @@ const initials = (name: string) =>
 
 const blank = (): Layout => ({ top: Array(SIZE.top).fill(null), main: Array(SIZE.main).fill(null), util: Array(SIZE.util).fill(null) });
 
-/** A saved bar, trimmed to the slots there are and the skills the class still has. */
+/** A saved bar, trimmed to the slots there are and the skills the class still has (anything else where it was: any slot
+ *  takes either, so a bar saved under the old rows loads as it was). */
 function tidy(saved: Partial<Layout>, c: ClassInfo): Layout {
   // (Buffs too: they go on the bar like skills, mostly in the Alt row.)
   const names = new Set([...skillsOf(c), ...(c.buffs ?? [])].map((s) => s.name));
@@ -696,7 +732,7 @@ function tidy(saved: Partial<Layout>, c: ClassInfo): Layout {
   for (const row of ['top', 'main', 'util'] as Row[]) {
     (saved[row] ?? []).slice(0, SIZE[row]).forEach((e, i) => {
       // (Sari-sari potions, 'potion-tago' …, once went on the bar too: they're drunk from the bag now.)
-      if (e && fits(row, e) && (e.t !== 'skill' || names.has(e.name)) && (e.t !== 'item' || !e.id.startsWith('potion-'))) out[row][i] = e;
+      if (e && (e.t !== 'skill' || names.has(e.name)) && (e.t !== 'item' || !e.id.startsWith('potion-'))) out[row][i] = e;
     });
   }
   return out;

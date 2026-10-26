@@ -14563,6 +14563,18 @@
         "loop": true,
         "note": "same anchor and footprint as the still (the fallback)"
       },
+      "broken": {
+        "file": "props/prop-town-lantern-post-broken.png",
+        "note": "Not restored yet (CONTEXT.md Restored Lantern Post): the post snapped off its stump, the lantern unlit at its foot; same size, anchor and footprint as the still"
+      },
+      "restore": {
+        "file": "props/prop-town-lantern-post-restore.png",
+        "frames": 16,
+        "frameSize": [64, 96],
+        "fps": 12,
+        "loop": false,
+        "note": "Restored on foot: the crescents light, the pieces float up and fit back (frames 2-10), a flash as the lantern lights (11-13), the last frame the still post; then the idle animation. The art folder's props/lantern-restore"
+      },
       "note": "A Lantern Post (the Town's plaza, the middle of the Slums): click it, or E beside it, for the Map menu (ui/map-menu.ts); teleports with a Return Lantern"
     },
     "fence": {
@@ -24288,6 +24300,41 @@
         15
       ],
       "note": "A Lantern Post's icon on the Map menu"
+    },
+    "mapTeleporterBroken": {
+      "file": "ui/map/ui-map-teleporter-broken.png",
+      "size": [15, 18],
+      "frames": ["normal", "hover"],
+      "anchor": [7, 15],
+      "note": "A Lantern Post not restored yet on the Map menu (CONTEXT.md Restored Lantern Post)"
+    },
+    "minimapIcons": {
+      "note": "The minimap's Lantern Posts and dungeon entrance, drawn 1:1 with their anchor (bottom middle) on the spot (the art folder's props/lantern-restore/ui/map)",
+      "post": { "file": "ui/map/ui-minimap-post.png", "size": [12, 17], "anchor": [6, 16] },
+      "postBroken": { "file": "ui/map/ui-minimap-post-broken.png", "size": [12, 17], "anchor": [6, 16] },
+      "warrens": { "file": "ui/map/ui-minimap-dungeon-warrens.png", "size": [16, 14], "anchor": [8, 13] },
+      "silong": { "file": "ui/map/ui-minimap-dungeon-silong.png", "size": [16, 11], "anchor": [8, 10] }
+    },
+    "mapDungeons": {
+      "note": "The Map menu's dungeon entrances (CONTEXT.md Dungeon entrance): each entrance's own art, shrunk from its prop (the art folder's ui/map/dungeon-markers, build_dungeon_map_icons.py), a row of frames: 0 to glowFrames - 1 its gold glow pulsing at fps, hoverFrame lit up; anchor = the entrance's foot (its tile goes there).",
+      "warrens": {
+        "file": "ui/map/ui-map-dungeon-warrens.png",
+        "frame": [38, 36],
+        "frames": 9,
+        "glowFrames": 8,
+        "hoverFrame": 8,
+        "fps": 8,
+        "anchor": [19, 29]
+      },
+      "silong": {
+        "file": "ui/map/ui-map-dungeon-silong.png",
+        "frame": [40, 31],
+        "frames": 9,
+        "glowFrames": 8,
+        "hoverFrame": 8,
+        "fps": 8,
+        "anchor": [20, 24]
+      }
     },
     "mapPin": {
       "file": "ui/map/ui-map-pin.png",

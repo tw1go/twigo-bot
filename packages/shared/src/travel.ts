@@ -4,7 +4,9 @@
 // landing worked out here: the nearest walkable tile in front of it). A teleport can also land at a dungeon's way in (the
 // Warren Gate, the Cellar Hatch: DUNGEON_ENTRANCES), listed after a map's posts, but never leave from one. The Map menu's
 // picture of the maps is the game's ui/map/map-layout.json. The rules both sides check: how near a post you must be, and
-// why not.
+// why not. Each player restores a post on foot before it takes them anywhere (CONTEXT.md Restored Lantern Post): every
+// post starts broken; walking up to it and using it puts it back together (`postKey`: '<map>:<index>', a dungeon
+// entrance '<map>:<dungeon>', restored by reaching it on foot).
 
 /** The maps with Lantern Posts. */
 export const LANTERN_MAPS = ['town', 'slums', 'palengke'] as const;
@@ -119,8 +121,20 @@ export function postAt(posts: LanternPost[], col: number, row: number, tiles = L
   return best;
 }
 
+/** A post's key in a player's restored posts: '<map>:<index>' (its place in lanternPostsOf), a dungeon entrance
+ *  '<map>:<dungeon>' ('slums:warrens', 'palengke:silong'). */
+export function postKey(map: string, posts: readonly LanternPost[], index: number): string {
+  const e = posts[index]?.entrance;
+  return e ? `${map}:${e}` : `${map}:${index}`;
+}
+
+/** What a teleport refused to a post not restored yet says. */
+export const NOT_RESTORED = "You haven't restored that Lantern Post yet. Find it on foot first.";
+
 /** Why a teleport can't go (null: it can). `from` and `posts`: the map they're on and its posts; `to` and `toPost`: where
- *  to (its first post when not given); `toPosts`: how many posts that map has. */
+ *  to (its first post when not given); `toPosts`: how many posts that map has. `restored` (the player's restored posts,
+ *  postKey) and `toKey` (where to's): both the post they're at and where to must be restored; without `restored`, every
+ *  post works. */
 export function lanternRefusal(o: {
   from: string;
   to: unknown;
@@ -131,6 +145,8 @@ export function lanternRefusal(o: {
   inCombat: boolean;
   out: boolean;
   lanterns: number;
+  restored?: ReadonlySet<string>;
+  toKey?: string;
 }): string | null {
   if (!isLanternMap(o.to)) return "There's no Lantern Post there.";
   const toPost = o.toPost ?? 0;
@@ -138,6 +154,8 @@ export function lanternRefusal(o: {
   const here = postAt(o.posts, o.at[0], o.at[1]);
   if (here < 0) return 'Walk up to a Lantern Post first.';
   if (o.to === o.from && toPost === here) return "You're already there.";
+  if (o.restored && !o.restored.has(postKey(o.from, o.posts, here))) return 'Restore this Lantern Post first.';
+  if (o.restored && o.toKey && !o.restored.has(o.toKey)) return NOT_RESTORED;
   if (o.out) return "You can't travel while you're knocked out.";
   if (o.inCombat) return "Can't travel during a fight.";
   if (o.lanterns < 1) return 'You need a Return Lantern.';

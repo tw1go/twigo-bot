@@ -491,7 +491,7 @@ export class Inventory {
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-cosmetic', it.uid));
         cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void this.equipment?.wearCosmetic(it.uid));
       } else if (def?.kind === 'potion') {
-        // HP and MP Potions go on the hotbar (its - = ~ slots or the top row).
+        // HP and MP Potions go on the hotbar (any slot).
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => {
           hotbarDragItem(e, { id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey });
@@ -578,12 +578,12 @@ export class Inventory {
     } else if (def?.kind === 'pet') {
       row.append(this.action('Send out', 'iv-flex', () => this.equipment?.sendOutPet(it.uid)));
     } else if (def?.kind === 'potion') {
-      parts.push(el('div', 'iv-about', 'Drag it onto your hotbar (the - = ~ slots), or press Put on hotbar and tap a slot. Use it in the Slums.'));
+      parts.push(el('div', 'iv-about', 'Drag it onto any hotbar slot, or press Put on hotbar and tap a slot. Use it in the Slums.'));
       // (A touch screen can't drag: picked here, a hotbar slot tapped next.)
       row.append(this.action('Put on hotbar', 'iv-flex iv-to-bar', () => {
         pickForHotbar({ id: it.defId, name: def.name, emoji: '🧪', rarity: it.rarity, cooldown: potionCooldownKey });
         // (A lesson's tip says it already.)
-        if (document.getElementById('guide-tip')?.hidden !== false) toast('Now tap a slot on your hotbar (the - = ~ slots or the top row).', 2600);
+        if (document.getElementById('guide-tip')?.hidden !== false) toast('Now tap any slot on your hotbar.', 2600);
       }));
       const price = this.priceOf(it);
       if (price !== null) row.append(this.action(`Sell · ${(price / it.count).toLocaleString()} Kusing each`, 'iv-sell', () => void this.sell(it, null, price)));

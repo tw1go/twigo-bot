@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobRules, mobStartSpots, mobStats, skillCooldown, skillPct, targetPriority } from '@mikazuki/shared';
+import { type Hitter, type TownServerMessage, baseCooldown, baseStats, derivedStats, hitDamage, levelGap, mobRules, mobStartSpots, mobStats, skillCooldown, skillPct } from '@mikazuki/shared';
 import { type SavedProgress, freshProgress, killXp } from './progress.js';
 import { loadGear, loadStats } from './stats-data.js';
 import { type AttackResult, type MobEvent, MobRoom, facingTo, loadMobKinds, loadMobMap, loadSkillShapes, packSize } from './town-mobs.js';
@@ -221,11 +221,12 @@ test('a slow halves a mob\'s pace for a while; a root keeps it still; both wear 
   const slowed = room.attack('p1', beside(a), 'slingshot', a.id, 0, 0);
   assert.ok(slowed.ok && slowed.hits[0].slow?.factor === 0.5);
   // It goes after p1 (who has moved off), at half pace.
-  const moves = room.tick(100, new Map([['p1', near(room, a, 6)]])).filter((e) => e.t === 'mob-move' && e.id === a.id);
+  // (Within its target range, stats.json aggro.keepTiles: further off it would let them go.)
+  const moves = room.tick(100, new Map([['p1', near(room, a, 4)]])).filter((e) => e.t === 'mob-move' && e.id === a.id);
   assert.ok(moves.length && moves.every((e) => e.t === 'mob-move' && e.speed === 1.2), 'half of 2.4');
   const rooted = room.attack('p2', [b.col + 1, b.row], 'hilot', b.id, 0, 0); // (the Hilot is melee)
   assert.ok(rooted.ok && rooted.hits[0].slow?.factor === 0);
-  const away = new Map([['p2', near(room, b, 6)]]);
+  const away = new Map([['p2', near(room, b, 4)]]);
   for (let t = 100; t < 1900; t += 250) assert.ok(!room.tick(t, away).some((e) => e.t === 'mob-move' && e.id === b.id), 'rooted: no hop');
   let freed = false;
   for (let t = 2100; t < 6000 && !freed; t += 250) freed = room.tick(t, away).some((e) => e.t === 'mob-move' && e.id === b.id && !('speed' in e && e.speed));
@@ -741,42 +742,141 @@ test('Boiling Splash leaves a burning puddle: 3 ticks 300 ms apart from 700 ms, 
   assert.deepEqual(room.burnTick(now + 5000).ticks, [], 'three, then gone');
 });
 
-test('who mobs go for first (stats.json mobBehaviour.targetPriority): the tank over a nearer Slingshot; a fight turns to a tank who comes near; the same priority never steals it', () => {
-  const P = (cls: string) => targetPriority(stats, cls);
-  assert.deepEqual(['potlid', 'greatstick', 'stick', 'hilot', 'slingshot', 'broom'].map(P), [4, 3, 2, 2, 1, 1]);
-  const guard = (cls: string) => ({ def: 0, level: 1, priority: P(cls) });
-  const firstTarget = (room: MobRoom, id: string, players: Map<string, [number, number]>, guards: Map<string, ReturnType<typeof guard>>, from = 0) => {
-    for (let t = from; t < from + 10_000; t += 250) {
-      const hit = room.tick(t, players, guards).find((e) => e.t === 'mob-attack' && e.id === id);
-      if (hit && hit.t === 'mob-attack') return hit.target;
-    }
-    return null;
-  };
-  // An aggressive Tire Roller: a Slingshot right next to it, a Pot lid 3 tiles off: it goes for the Pot lid.
-  {
-    const room = new MobRoom(map, lcg(41), {}, { shapes: {} }, kinds);
-    const tire = room.snapshot(0).find((x) => x.id.startsWith('tire-yard:'))!;
-    const players = new Map([['sling', near(room, tire, 1)], ['pot', near(room, tire, 3)]]);
-    assert.equal(firstTarget(room, tire.id, players, new Map([['sling', guard('slingshot')], ['pot', guard('potlid')]])), 'pot');
+// Sticky aggro (CONTEXT.md Aggro; stats.json mobBehaviour.aggro): a mob's target is the first player to step within its
+// aggro range (aggressive) or to hit it (passive); hits never switch it; it lets them go past keepTiles (or gone, out of
+// its zone, past its leash) and takes the next one within its aggro range; a taunt takes it over and keeps it.
+
+/** Every open tile on a mob's zone level `d` tiles from it (along the eight ways). */
+function around(room: MobRoom, m: { id: string; col: number; row: number }, d: number): [number, number][] {
+  const zone = zoneOf(m.id);
+  return [[d, 0], [0, d], [-d, 0], [0, -d], [d, d], [-d, -d], [d, -d], [-d, d]]
+    .map(([dc, dr]) => [m.col + dc, m.row + dr] as [number, number])
+    .filter(([c, r]) => room.canStand({ zone, spawn: [m.col, m.row] }, c, r, 10));
+}
+/** Every attack by mob `id` while ticking from `from` to `to` (a quarter second at a time), and who it went at. */
+function swingsAt(room: MobRoom, id: string, players: ReadonlyMap<string, [number, number]>, from: number, to: number, each?: (t: number) => void): string[] {
+  const out: string[] = [];
+  for (let t = from; t < to; t += 250) {
+    each?.(t);
+    for (const e of room.tick(t, players)) if (e.t === 'mob-attack' && e.id === id) out.push(e.target);
   }
-  // A passive Tin Can hit by a Slingshot: it fights back, until a Pot lid comes within aggroTiles: then the Pot lid.
-  {
-    const room = new MobRoom(map, lcg(42), {}, { shapes: {} }, kinds);
-    const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
-    const slingAt = near(room, can, 1);
-    const guards = new Map([['sling', guard('slingshot')], ['pot', guard('potlid')], ['stick', guard('stick')], ['hilot', guard('hilot')]]);
-    room.attack('sling', slingAt, { cls: 'slingshot', level: 1 }, can.id, 0, 0);
-    assert.equal(firstTarget(room, can.id, new Map([['sling', slingAt]]), guards, 250), 'sling', 'fights back');
-    const potAt = near(room, can, 3);
-    assert.equal(firstTarget(room, can.id, new Map([['sling', slingAt], ['pot', potAt]]), guards, 11_000), 'pot', 'the Pot lid takes it over');
+  return out;
+}
+/** A hit that always misses (it still counts as a hit: the mob fights back, it's noted as a hitter). */
+const miss = (cls: string) => ({ cls, level: 1, blinded: true });
+const KEEP = stats.mobBehaviour.aggro!.keepTiles;
+
+test('sticky aggro: stats.json has aggro.keepTiles 6 and no targetPriority; mobRules carries it', () => {
+  assert.equal(KEEP, 6);
+  assert.equal((stats.mobBehaviour as { targetPriority?: unknown }).targetPriority, undefined);
+  assert.equal(mobRules(stats, 'tireRoller').keepTiles, 6);
+});
+
+test('an aggressive Tire Roller goes for the first player to step within its aggro range, and keeps them when a nearer Pot lid comes after', () => {
+  const room = new MobRoom(map, lcg(41), {}, { shapes: {} }, kinds);
+  const tire = room.snapshot(0).find((x) => x.id.startsWith('tire-yard:'))!;
+  const a = around(room, tire, 3)[0];
+  const b = around(room, tire, 1).find((p) => p[0] !== a[0] || p[1] !== a[1])!;
+  // A first; a moment later B (a Pot lid, nearer) too.
+  swingsAt(room, tire.id, new Map([['A', a]]), 0, 500);
+  const swings = swingsAt(room, tire.id, new Map([['A', a], ['B', b]]), 500, 12_000);
+  assert.ok(swings.length && swings.every((x) => x === 'A'), swings.join());
+});
+
+test('a passive Tin Can hit by A keeps attacking A however often B hits it', () => {
+  const room = new MobRoom(map, lcg(42), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+  const [a, b] = around(room, can, 1);
+  assert.ok(room.attack('A', a, miss('stick'), can.id, 0, 0).ok);
+  const players = new Map([['A', a], ['B', b]]);
+  const swings = swingsAt(room, can.id, players, 250, 12_000, (t) => void (t % 1000 === 0 && room.attack('B', b, miss('stick'), can.id, t, 0)));
+  assert.ok(swings.length >= 3 && swings.every((x) => x === 'A'), swings.join());
+});
+
+test('its target more than keepTiles away: on to the next player within its aggro range; nobody: home', () => {
+  const room = new MobRoom(map, lcg(41), {}, { shapes: {} }, kinds);
+  const tire = room.snapshot(0).find((x) => x.id.startsWith('tire-yard:'))!;
+  const zone = zoneOf(tire.id);
+  const a = around(room, tire, 2)[0];
+  const b = around(room, tire, 2).find((p) => p[0] !== a[0] || p[1] !== a[1])!;
+  swingsAt(room, tire.id, new Map([['A', a]]), 0, 500);
+  assert.ok(swingsAt(room, tire.id, new Map([['A', a], ['B', b]]), 500, 6000).every((x) => x === 'A'));
+  // A walks off past its target range (still in its zone and within its leash): B, at once.
+  const now = room.snapshot(6000).find((x) => x.id === tire.id)!;
+  const off = around(room, { id: tire.id, col: now.col, row: now.row }, KEEP + 1).find((p) => Math.max(Math.abs(p[0] - tire.col), Math.abs(p[1] - tire.row)) <= (zone.leash ?? 10))!;
+  assert.ok(off, 'a tile past keepTiles inside its leash');
+  const swings = swingsAt(room, tire.id, new Map([['A', off], ['B', b]]), 6000, 12_000);
+  assert.ok(swings.length && swings.every((x) => x === 'B'), swings.join());
+  // Both gone: it walks home.
+  const moves: MobEvent[] = [];
+  for (let t = 12_000; t < 14_000; t += 250) moves.push(...room.tick(t, new Map()).filter((e) => e.t === 'mob-move' && e.id === tire.id));
+  const home = moves[0];
+  assert.ok(home && home.t === 'mob-move' && home.path.at(-1)![0] === tire.col && home.path.at(-1)![1] === tire.row, 'walked home');
+});
+
+test('a passive mob\'s hand-off: its target gone, the earliest hitter still within its aggro range, never one who never hit it', () => {
+  const room = new MobRoom(map, lcg(43), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+  const [a, c] = around(room, can, 1);
+  const b = around(room, can, 2)[0];
+  assert.ok(room.attack('A', a, miss('stick'), can.id, 0, 0).ok);
+  assert.ok(room.attack('C', c, miss('stick'), can.id, 100, 0).ok);
+  assert.ok(swingsAt(room, can.id, new Map([['A', a], ['B', b], ['C', c]]), 250, 4000).every((x) => x === 'A'));
+  // A leaves: C (who hit it), not B (nearer to some of its steps, never hit it).
+  const swings = swingsAt(room, can.id, new Map([['B', b], ['C', c]]), 4000, 9000, (t) => void (t % 2000 === 0 && room.attack('C', c, miss('stick'), can.id, t, 0)));
+  assert.ok(swings.length && swings.every((x) => x === 'C'), swings.join());
+});
+
+test('a taunt takes a mob over at once and the taunter keeps it after it ends; a second Pot lid\'s taunt takes it off the first', () => {
+  const room = new MobRoom(map, lcg(44), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+  const [a, pot, pot2] = around(room, can, 1);
+  const players = new Map([['A', a], ['pot', pot], ['pot2', pot2]]);
+  assert.ok(room.attack('A', a, miss('stick'), can.id, 0, 0).ok);
+  assert.ok(swingsAt(room, can.id, players, 250, 3000).every((x) => x === 'A'));
+  // Provoke for 2 s; A keeps hitting it all along.
+  assert.deepEqual(room.debuff('pot', pot, 'provoke', { taunt: 2 }, 2000, can.id, 6, 3000), [can.id]);
+  const hitting = (t: number) => void (t % 1000 === 0 && room.attack('A', a, miss('stick'), can.id, t, 0));
+  const during = swingsAt(room, can.id, players, 3000, 5000, hitting);
+  const after = swingsAt(room, can.id, players, 5000, 11_000, hitting);
+  assert.ok(during.length && during.every((x) => x === 'pot'), during.join());
+  assert.ok(after.length && after.every((x) => x === 'pot'), `still the Pot lid once it's over: ${after.join()}`);
+  // The second Pot lid's taunt: theirs now.
+  room.debuff('pot2', pot2, 'provoke', { taunt: 2 }, 2000, can.id, 6, 11_000);
+  const second = swingsAt(room, can.id, players, 11_000, 16_000, hitting);
+  assert.ok(second.length && second.every((x) => x === 'pot2'), second.join());
+});
+
+test('a pack: the first hit pulls every cap onto that player; a cap already fighting keeps its target', () => {
+  const room = new MobRoom(map, lcg(3), {}, { shapes: {} }, kinds);
+  const caps = room.snapshot(0).filter((m) => m.id.startsWith('bottle-cap-lot:1:'));
+  const [a, b] = around(room, caps[0], 2);
+  assert.ok(room.attack('A', a, miss('slingshot'), caps[caps.length - 1].id, 0, 0).ok);
+  const fought = new Map<string, Set<string>>();
+  for (let t = 250; t < 10_000; t += 250) {
+    if (t % 1000 === 0) room.attack('B', b, miss('slingshot'), caps[0].id, t, 0);
+    for (const e of room.tick(t, new Map([['A', a], ['B', b]]))) if (e.t === 'mob-attack') fought.set(e.id, (fought.get(e.id) ?? new Set()).add(e.target));
   }
-  // Same priority (a Stick hit it, a Hilot comes near): it stays on the Stick.
-  {
-    const room = new MobRoom(map, lcg(43), {}, { shapes: {} }, kinds);
-    const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
-    const stickAt = near(room, can, 1);
-    const guards = new Map([['stick', guard('stick')], ['hilot', guard('hilot')]]);
-    room.attack('stick', stickAt, { cls: 'stick', level: 1 }, can.id, 0, 0);
-    assert.equal(firstTarget(room, can.id, new Map([['stick', stickAt], ['hilot', near(room, can, 2)]]), guards, 250), 'stick');
+  assert.deepEqual([...fought.keys()].sort(), caps.map((c) => c.id).sort(), 'every cap fought');
+  assert.ok([...fought.values()].every((who) => who.size === 1 && who.has('A')), JSON.stringify([...fought].map(([k, v]) => [k, [...v]])));
+});
+
+test('a passive mob held by a player who stopped hitting doesn\'t give up while someone else keeps hitting it', () => {
+  const room = new MobRoom(map, lcg(45), {}, { shapes: {} }, kinds);
+  const can = room.snapshot(0).find((x) => x.id.startsWith('tin-can-alley:') && !x.mini)!;
+  const [a, b] = around(room, can, 1);
+  assert.ok(room.attack('A', a, miss('stick'), can.id, 0, 0).ok);
+  const players = new Map([['A', a], ['B', b]]);
+  const events: MobEvent[] = [];
+  for (let t = 250; t < 25_000; t += 250) {
+    if (t % 3000 === 0) room.attack('B', b, miss('stick'), can.id, t, 0);
+    events.push(...room.tick(t, players).filter((e) => (e.t === 'mob-attack' || e.t === 'mob-heal') && e.id === can.id));
   }
+  const late = events.filter((e) => e.t === 'mob-attack');
+  assert.ok(late.length && late.every((e) => e.t === 'mob-attack' && e.target === 'A'), 'still on A');
+  assert.ok(late.some((e) => e.t === 'mob-attack') && events.at(-1)!.t === 'mob-attack', 'still fighting past GIVE_UP_MS');
+  // Nobody hitting it for GIVE_UP_MS: bored, home.
+  const after: MobEvent[] = [];
+  for (let t = 25_000; t < 40_000; t += 250) after.push(...room.tick(t, players).filter((e) => (e.t === 'mob-move' || e.t === 'mob-heal') && e.id === can.id));
+  assert.ok(after.some((e) => e.t === 'mob-move'), 'walked home');
 });

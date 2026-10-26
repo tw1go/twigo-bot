@@ -97,21 +97,31 @@ function resolveArea(): Area {
   return area;
 }
 
-/** A fresh visit: not through a gate and not a reload (a house owner starts at their door then). */
+/** A fresh visit: not through a gate and not a reload (it starts at the resume spot then: CONTEXT.md Resume spot). */
 export const freshVisit = () => (resolveArea(), fresh);
 
-/** This page is the neighbourhood from now on (a fresh visit with a house), so its gates know where they lead from. */
-export function markHood(): void {
+/** A fresh visit's start, out of a dungeon (CONTEXT.md Resume spot): the way in it lands at, as walking out of it does. */
+let resumedFrom: Area | null = null;
+
+/** A fresh visit starts where they last were (CONTEXT.md Resume spot; shared resumeStart): this page is that area from
+ *  now on (a reload stays there), and out of a dungeon (`from`) it lands at its way out, as if through it. */
+export function markResume(to: Area, from?: Area): void {
   resolveArea();
-  area = 'hood';
-  remember('hood');
+  area = to;
+  remember(to);
+  resumedFrom = from ?? null;
 }
 
-/** Where you came from (?from=, set by a gate), read once: then tidied out of the address, so a reload starts fresh. */
+/** Where you came from (?from=, set by a gate; or a fresh visit's resume spot out of a dungeon), read once: then tidied
+ *  out of the address, so a reload starts fresh. */
 export function cameFrom(): Area | null {
   const url = new URL(location.href);
   const from = url.searchParams.get('from');
-  if (!from) return null;
+  if (!from) {
+    const resumed = resumedFrom;
+    resumedFrom = null;
+    return resumed;
+  }
   url.searchParams.delete('from');
   history.replaceState(null, '', url.pathname + url.search + url.hash);
   return isArea(from) ? from : null;

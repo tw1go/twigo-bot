@@ -45,6 +45,12 @@ function fakeStatus(): PresenceStatus {
   return s === 'idle' || s === 'busy' || s === 'offline' || s === 'jailed' ? s : 'online';
 }
 
+/** Dev only: ?lastarea= (the resume spot's last area). */
+function devLastArea(): MeResponse['lastArea'] {
+  const a = new URLSearchParams(location.search).get('lastarea');
+  return a === 'hood' || a === 'slums' || a === 'palengke' || a === 'warrens' || a === 'silong' ? a : undefined;
+}
+
 function fakeMe(fake: string): MeResult {
   if (fake === 'anon') return { status: 'anon' };
   let outfit: MeResponse['outfit'] = null;
@@ -59,6 +65,11 @@ function fakeMe(fake: string): MeResult {
       newTitle: null,
       welcomeGift: new URLSearchParams(location.search).has('welcome') ? 50 : null, // dev: &welcome=1 shows the welcome gift
       house: new URLSearchParams(location.search).has('house'), // dev: &house=1 starts you at your door in the neighbourhood
+      // dev: &lastarea=hood|slums|palengke|warrens|silong is where a fresh visit starts (CONTEXT.md Resume spot), with
+      // &guided=1 a guided quest under way, &palengkeclosed=1 the Old Market not open yet
+      ...(devLastArea() ? { lastArea: devLastArea() } : {}),
+      ...(new URLSearchParams(location.search).has('guided') ? { guided: true } : {}),
+      ...(new URLSearchParams(location.search).has('palengkeclosed') ? { palengkeClosed: true } : {}),
       tester: new URLSearchParams(location.search).get('tester') !== '0', // dev: &tester=0 = without the Tester role
       dig: { shovel: devNumber('shovels', 6), digsLeft: devNumber('digs', 7), digsPerDay: 9, shovelsLeft: 2, shovelCost: 2, shovelUses: 3, streak: devNumber('streak', 14), swerte: devPotions.swerte },
       tagoUntil: devTago(),

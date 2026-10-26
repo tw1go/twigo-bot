@@ -102,14 +102,8 @@ export interface MobBehaviour {
   /** Mob name colours by level gap: "mob 5+ levels below" (grey), "mob 3+ levels above" (red). */
   nameColour: { grey: string; white: string; red: string };
   golem: { leavesPit: boolean; resetAfterSecondsEmpty: number, hpMin:number };
-  /** Who mobs go for first, by class (higher first; a repo addition): `note` says how. */
-  targetPriority?: Record<string, number | string>;
-}
-
-/** How much mobs want a player of this class (stats.json mobBehaviour.targetPriority; 0 without a class or a number). */
-export function targetPriority(data: StatsData, cls: string | null | undefined): number {
-  const v = cls ? data.mobBehaviour.targetPriority?.[cls] : undefined;
-  return typeof v === 'number' ? v : 0;
+  /** Sticky aggro (a repo addition, CONTEXT.md Aggro): `keepTiles`, how far its target can get before a mob lets them go. */
+  aggro?: { keepTiles: number };
 }
 
 /** The numbers in a formula string, in order ("100 * 1.3^(tier-1)" → 100, 1.3, 1). */
@@ -661,12 +655,11 @@ export interface Hitter {
 }
 
 /** Who's hit: their DEF and level, and their DEF rate (gear and buffs, held to caps.defRate): that share less damage,
- *  after DEF. A player's `priority`: how much mobs want them (targetPriority). */
+ *  after DEF. */
 export interface Target {
   def: number;
   level: number;
   defRate?: number;
-  priority?: number;
   /** Their share of their HP left (0–1; the Timbangan Sentinel's Weigh). */
   hpShare?: number;
   /** Points added to the miss chance of hits on them (Mist Veil), after the hitter's accuracy. */
@@ -752,11 +745,16 @@ export interface MobRules {
   reach: number;
   attackMs: number;
   aggroTiles: number;
+  /** Target range: a mob lets its target go once they're further than this from it (CONTEXT.md Aggro). */
+  keepTiles: number;
   leashTiles: number;
   wanderTiles: number;
   respawnMs: number;
   alive: number;
 }
+
+/** Target range without stats.json's aggro.keepTiles: ranged classes hit from 5, so a mob they pull keeps them. */
+const KEEP_TILES = 6;
 
 export function mobRules(data: StatsData, kind: string, area?: string): MobRules {
   const B = data.mobBehaviour;
@@ -768,6 +766,8 @@ export function mobRules(data: StatsData, kind: string, area?: string): MobRules
     reach: B.rangeTiles[key] ?? B.rangeTiles.melee,
     attackMs: B.attackEverySeconds * 1000,
     aggroTiles: B.aggroTiles,
+    // (Target range: how far its target can get before it lets them go; stats.json aggro.keepTiles, a repo addition.)
+    keepTiles: B.aggro?.keepTiles ?? KEEP_TILES,
     leashTiles: B.leashTiles,
     wanderTiles: B.wanderTiles,
     respawnMs: B.respawnSeconds * 1000,

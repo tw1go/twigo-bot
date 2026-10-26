@@ -6,7 +6,8 @@ import { loadCursors } from '../ui/cursor';
 import { TitleScreen, introDue, playIntro } from '../ui/title-screen';
 import { setMuted, soundSettings, startTitleMusic, stopTitleMusic } from '../audio/sound';
 import { loadHouseArt } from '../houses/art';
-import { currentArea, freshVisit, markHood, markPalengke, markSlums, markTown, palengkeTownMap, silongTownMap, slumsTownMap } from '../net/hood';
+import { resumeStart } from '@mikazuki/shared';
+import { currentArea, freshVisit, markPalengke, markResume, markSlums, markTown, palengkeTownMap, silongTownMap, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 import { isDesktopApp } from '../net/platform';
 import { enteredGame } from '../net/pwa';
@@ -109,9 +110,13 @@ export class BootScene extends Phaser.Scene {
     enteredGame(); // (a newer build waits for Reload now from here on: net/pwa.ts)
     if (debug === 'wardrobe') return void this.scene.start('wardrobe', { manifest });
     if (me?.status === 'ok' && (!me.me.outfit || !me.me.nickname)) return void this.scene.start('create', { manifest, town, me });
-    // A fresh visit with a house of your own: the neighbourhood, at your door (not after a gate, which led to the town,
-    // nor on a reload, which stays where you were).
-    if (currentArea() === 'town' && freshVisit() && me?.status === 'ok' && me.me.house) markHood();
+    // A fresh visit (not after a gate, which led to the town, nor on a reload, which stays where you were): where they
+    // last were (CONTEXT.md Resume spot: /me's lastArea; shared resumeStart), out of a dungeon at its way out; nothing
+    // kept: the neighbourhood at your door with a house of your own, else the town.
+    if (currentArea() === 'town' && freshVisit() && me?.status === 'ok') {
+      const start = resumeStart({ lastArea: me.me.lastArea, house: !!me.me.house, guided: !!me.me.guided, palengkeOpen: !me.me.palengkeClosed });
+      if (start.area !== 'town') markResume(start.area, start.from);
+    }
     // ?area=hood: the neighbourhood (members only; the town if it can't be reached).
     if (currentArea() === 'hood' && me?.status === 'ok') {
       void loadHouseArt(manifest).then(async (art) => (await bootHood(this, { manifest, town, me }, art)) || this.scene.start('town', { manifest, town, me }));

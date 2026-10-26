@@ -1842,6 +1842,10 @@
       #hotbar .hb-book:hover, #hotbar .hb-book[aria-expanded='true'] { background: #7C2AE8; color: #fff; }
       #hotbar .hb-book { position: relative; }
       #hotbar .hb-expand { display: none; } /* portrait-phone only; shown in the media block below */
+      /* The lock (ui/hotbar-lock.ts): a small tab over the bar's right edge, the ▲ tab's look; left of ▲ where that shows. */
+      body.hotbar-on #hotbar .hb-lockbtn { position: absolute; top: -26px; right: 0; padding: 4px 10px 3px; line-height: 0; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; cursor: var(--cur-hand, pointer); }
+      body.hotbar-on #hotbar .hb-lockbtn:hover { background: #1E1B3A; }
+      body.hotbar-on #hotbar .hb-lockbtn svg { image-rendering: pixelated; }
       #hotbar .hb-book.hb-new::after { content: ''; position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: #FCDA4A; box-shadow: 0 0 0 2px #0B0A1A; }
       #skill-book { position: fixed; right: 12px; top: 50%; z-index: 3; display: flex; flex-direction: column; width: 336px; max-height: calc(100vh - 220px); box-sizing: border-box; padding: 10px 12px 12px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); transform: translateY(-50%); }
       #skill-book[hidden] { display: none; }
@@ -1899,6 +1903,7 @@
         /* Expand toggle: small tab above the hotbar's right edge */
         body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
         body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #hotbar .hb-lockbtn { right: 48px; }
         body.hotbar-on #hotbar .hb-slot, body.hotbar-on #hotbar .hb-book { width: 100%; height: 40px; box-sizing: border-box; }
         body.hotbar-on #hotbar .hb-slot { border-width: 4px; border-image-width: 4px; }
         body.hotbar-on #hotbar .hb-slot .it-frame { margin: -4px; }
@@ -1926,6 +1931,7 @@
         body.hotbar-on #hotbar .hb-key { display: none; }
         body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
         body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #hotbar .hb-lockbtn { right: 48px; }
         body.hotbar-on #skill-book:not([hidden]) { display: flex; top: 8px; bottom: 52px; transform: none; max-height: none; }
         body.hotbar-on #skill-book .sb-stage { height: 100px; overflow: hidden; }
         body.hotbar-on #skill-book .sb-stage > * { transform: translateY(-76px); }
@@ -2249,6 +2255,16 @@
       #map-menu .mm-gate { position: absolute; width: calc(9px * var(--ik, var(--k))); height: calc(9px * var(--ik, var(--k))); padding: 0; transform: translate(-50%, -50%) rotate(45deg); border: calc(1px * var(--ik, var(--k))) solid #1E1B3A; background: #F59E0B; box-shadow: 0 0 0 calc(1px * var(--ik, var(--k))) #FCD34D inset; cursor: var(--cur-hand, pointer); }
       #map-menu .mm-gate:hover, #map-menu .mm-gate:focus-visible { background: #FCD34D; outline: none; }
       #map-menu .mm-gate-tag { color: #FCD34D; }
+      /* A dungeon entrance's own art (manifest ui.mapDungeons): its glow frames 0-7 at 8 fps, frame 8 lit on hover; still
+         (its brightest, frame 4) under reduced motion. */
+      #map-menu .mm-gate.mm-gate-art { transform: none; border: 0; background-color: transparent; box-shadow: none; background-repeat: no-repeat; image-rendering: pixelated; animation: mm-gate-glow 1s steps(8) infinite; }
+      #map-menu .mm-gate.mm-gate-art:hover, #map-menu .mm-gate.mm-gate-art:focus-visible { animation: none; background-color: transparent; background-position-x: calc(var(--fw) * -8); }
+      /* Not reached on foot yet (CONTEXT.md Restored Lantern Post): still, dim and not to be clicked. */
+      #map-menu .mm-gate.mm-gate-art.mm-gate-off, #map-menu .mm-gate.mm-gate-art.mm-gate-off:hover { animation: none; background-position-x: calc(var(--fw) * -4); filter: grayscale(0.7) brightness(0.7); cursor: default; }
+      #map-menu .mm-gate-off:not(.mm-gate-art) { filter: grayscale(0.7) brightness(0.7); cursor: default; }
+      #map-menu .mm-gate-tag.mm-off { color: #9AA0B8; }
+      @keyframes mm-gate-glow { from { background-position-x: 0; } to { background-position-x: calc(var(--fw) * -8); } }
+      @media (prefers-reduced-motion: reduce) { #map-menu .mm-gate.mm-gate-art:not(:hover):not(:focus-visible) { animation: none; background-position-x: calc(var(--fw) * -4); } }
       #map-menu .mm-where-gate { flex: none; width: 22px; height: 22px; margin: 7px 4px; transform: rotate(45deg); border: 2px solid #1E1B3A; background: #F59E0B; box-shadow: 0 0 0 2px #FCD34D inset; }
       /* Quest marks on the world map's picture (ui/quest-marks.ts: the Map menu and the quest map): the hunting areas, their
          pins (13 × 18 at the picture's scale, 2 frames at 3 fps) and names with the count. */
@@ -2270,7 +2286,7 @@
       @keyframes qm-bob { 0% { background-position-x: calc(var(--f) * var(--pw) * var(--k) * -1); } 50% { background-position-x: calc((var(--f) + 1) * var(--pw) * var(--k) * -1); } }
       .qm-label { position: absolute; transform: translateX(-50%); white-space: nowrap; pointer-events: none; font: 700 calc(7px * var(--k, 1))/1 var(--ui-font); text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
       @media (prefers-reduced-motion: reduce) { .qm-edge { animation: none; } }
-      #map-menu .mm-label { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; font: calc(6px * var(--ik, var(--k)))/1 'Pixelify Sans', var(--ui-font); color: #9AA0B8; text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
+      #map-menu .mm-label { position: absolute; z-index: 1; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; font: calc(6px * var(--ik, var(--k)))/1 'Pixelify Sans', var(--ui-font); color: #9AA0B8; text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
       #map-menu .mm-left { transform: translate(0, -50%); }
       #map-menu .mm-right { transform: translate(-100%, -50%); }
       #map-menu .mm-map { font-size: calc(10px * var(--ik, var(--k))); font-weight: 700; color: #F1EEFB; }

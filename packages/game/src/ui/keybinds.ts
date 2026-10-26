@@ -5,6 +5,12 @@
 // Escape and the arena's 1–3 stay as they are (Tab, the quest map's, can be rebound; main.ts still keeps it from moving
 // the focus round the page's buttons). Everything that listens for a key asks here (`matches`,
 // `held`), and every label showing a key reads `keyLabel` again on the 'mk-keys' event.
+// Mouse buttons bind like keys: the middle button ('MouseMiddle', shown "Mouse 3"), back ('Mouse4') and forward
+// ('Mouse5'), with Ctrl/Alt/Shift too (`comboOfMouse`). Their presses reach every listener as keys: each is handed on as a
+// keydown with its name for a code, its release as a keyup (the press hub below), so whatever answers a key answers it
+// (a walk on Mouse 4 walks while it's held, a charge-up charges). Left and right click stay as they are (left uses
+// things, right walks) and can't be bound. The browser never acts on the extra buttons: back and forward would leave
+// the game, the middle button scrolls (on the game).
 
 export interface ActionDef {
   id: string;
@@ -24,7 +30,7 @@ export const ACTIONS: ActionDef[] = [
   { id: 'right', label: 'Walk right', group: 'Movement', keys: ['KeyD', 'ArrowRight'] },
   { id: 'interact', label: 'Enter, sit, talk', group: 'Actions', keys: ['KeyE', 'Space'] },
   { id: 'pickup', label: 'Pick up', group: 'Actions', keys: ['KeyF'] },
-  { id: 'target', label: 'Target the nearest mob', group: 'Actions', keys: ['KeyZ'] },
+  { id: 'target', label: 'Target the nearest mob', group: 'Actions', keys: ['KeyZ', 'MouseMiddle'] },
   { id: 'skills', label: 'Skills', group: 'Actions', keys: ['KeyK'] },
   { id: 'bag', label: 'Bag and equipment', group: 'Actions', keys: ['KeyB', 'KeyI'] },
   { id: 'quests', label: 'Quest log', group: 'Actions', keys: ['KeyJ'] },
@@ -90,8 +96,38 @@ export function comboOf(e: KeyboardEvent): string | null {
   return `${e.ctrlKey ? 'Ctrl+' : ''}${e.altKey ? 'Alt+' : ''}${e.shiftKey ? 'Shift+' : ''}${e.code}`;
 }
 
+/** The mouse buttons that bind like keys (by MouseEvent.button): the middle one, back and forward. */
+const MOUSE: Record<number, string> = { 1: 'MouseMiddle', 3: 'Mouse4', 4: 'Mouse5' };
+
+/** The key a mouse press makes ("Shift+Mouse4"), or null for a button that can't be bound (left, right) or one with
+ *  ⌘/Win. */
+export function comboOfMouse(e: MouseEvent): string | null {
+  const code = MOUSE[e.button];
+  if (!code || e.metaKey) return null;
+  return `${e.ctrlKey ? 'Ctrl+' : ''}${e.altKey ? 'Alt+' : ''}${e.shiftKey ? 'Shift+' : ''}${code}`;
+}
+
+// The press hub: a bindable mouse button handed on as a key (its name for a code), so every keydown and keyup listener
+// answers it; the browser's own use of it stopped (back and forward never leave the page; the middle button's autoscroll
+// never starts on the game). Before anything else on the page hears the press (window, capture).
+const onGame = (e: MouseEvent) => e.target instanceof HTMLCanvasElement;
+for (const [type, as] of [['mousedown', 'keydown'], ['mouseup', 'keyup']] as const) {
+  window.addEventListener(
+    type,
+    (e) => {
+      const code = MOUSE[e.button];
+      if (!code) return;
+      if (e.button !== 1 || onGame(e)) e.preventDefault();
+      const key = { code, key: code, ctrlKey: e.ctrlKey, altKey: e.altKey, shiftKey: e.shiftKey, metaKey: e.metaKey, bubbles: true, cancelable: true };
+      document.dispatchEvent(new KeyboardEvent(as, key));
+    },
+    true,
+  );
+}
+window.addEventListener('auxclick', (e) => (e.button !== 1 || onGame(e)) && MOUSE[e.button] && e.preventDefault(), true);
+
 /** Whether a keydown is one of the action's keys. (Shift is let through for keys bound without it, so walking with
- *  Shift held still walks.) */
+ *  Shift held still walks.) A mouse press (its button handed on as a key by the press hub) answers too. */
 export function matches(id: string, e: KeyboardEvent): boolean {
   const c = comboOf(e);
   if (!c) return false;
@@ -152,6 +188,7 @@ function tidy(): void {
 }
 
 const NAMES: Record<string, string> = {
+  MouseMiddle: 'Mouse 3', Mouse4: 'Mouse 4', Mouse5: 'Mouse 5',
   Minus: '-', Equal: '=', Backquote: '~', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'",
   Comma: ',', Period: '.', Slash: '/', Space: 'Space', ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
   Backspace: 'Bksp', Delete: 'Del', Insert: 'Ins', PageUp: 'PgUp', PageDown: 'PgDn', Home: 'Home', End: 'End',
@@ -163,6 +200,20 @@ export function keyName(key: string): string {
     .split('+')
     .map((p) => NAMES[p] ?? p.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Num '))
     .join('+');
+}
+
+/** A key as a hotbar slot's small label shows it: "1", "Alt+1", "M4", "Sh+M4". */
+export function shortKeyName(key: string): string {
+  const name = keyName(key);
+  if (!key.includes('Mouse')) return name;
+  return name.replace(/Mouse (\d)$/, 'M$1').replace(/^Shift\+/, 'Sh+').replace(/^Ctrl\+/, 'Ct+');
+}
+
+/** An action's first key as a hotbar slot shows it ('' when it has none). */
+export function shortKeyLabel(id: string): string {
+  const [a, b] = bindings(id);
+  const k = a ?? b;
+  return k ? shortKeyName(k) : '';
 }
 
 /** An action's first key as shown ('' when it has none). */

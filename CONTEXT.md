@@ -43,10 +43,34 @@ When a new map opens to everyone. Before it, its gate says when it opens, and no
 follows a link in, except Game Masters (to check it).
 _Avoid_: launch, release (those are a whole game's), unlock (a skill or a dish unlocks)
 
+**Resume spot**:
+Where a fresh visit (a new tab, the app opened again, the next day) starts: by the area the player was last in.
+
+| Last in | Starts at |
+| --- | --- |
+| The Town or the neighbourhood | The neighbourhood, at their door (no house, or a guided quest under way: the Town) |
+| The Slums | The Slums' way in from the Town (its spawn) |
+| The Old Market | Its way in by the east gate (its spawn) |
+| A Scrap Warrens run | The Slums, at the Warren Gate |
+| A Cellar floor | The Old Market, beside the Cellar Hatch |
+
+The Old Market not open to them yet: the Slums. Nothing kept (a new player): the neighbourhood with a house, else the
+Town. A reload, a gate or a teleport goes where it always did; a run still open is rejoined from its gate, never on its
+own.
+_Avoid_: last position, save point, checkpoint (that's a Scrap Warrens area's)
+
 **Lantern Post**:
-A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
-teleport to another map's Lantern Post.
+A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums (the Old Market has four);
+standing by one you've restored, you can teleport to another map's Lantern Post you've restored.
 _Avoid_: teleporter, waypoint (the map shows a teleporter icon on it, but the thing is a Lantern Post)
+
+**Restored Lantern Post**:
+A Lantern Post a player has put back together on foot. Every post starts broken for each player (snapped off its stump,
+its lantern out), the Town's too; walking up to one and using it restores it for them, for good: it lights up, and from
+then on it can take them anywhere they've restored, and be teleported to. Each player sees the posts as they are for
+them. A dungeon entrance is restored by reaching it on foot (or going into the dungeon). Restoring isn't travel: it
+works in a fight.
+_Avoid_: unlocked, discovered, activated (it's restored: the post is broken until then)
 
 **Return Lantern**:
 The item a teleport costs: one is used up each time, at a Lantern Post.
@@ -57,7 +81,8 @@ a post it travels, opened anywhere else (M) it's only to look at.
 
 **Dungeon entrance**:
 A dungeon's way in (the Warren Gate in the Slums, the Cellar Hatch in the Old Market) as a teleport's destination: from
-any Lantern Post you can land beside one, for a Return Lantern; you can't teleport from one.
+any Lantern Post you can land beside one you've reached on foot (a Restored Lantern Post's rule), for a Return Lantern;
+you can't teleport from one. The Map menu and the minimap show it as a small picture of itself.
 _Avoid_: post (it isn't one), portal
 
 **Teleport**:
@@ -193,6 +218,17 @@ _Avoid_: group, squad
 
 **Aggressive**:
 A mob that comes after a player who walks within its aggro range; a **passive** mob only fights back.
+
+**Aggro**:
+Who a mob is after (its **target**), and how it keeps them. An aggressive mob takes the first player to step within its
+**aggro range** (4 tiles; several at once, the nearest); a passive one the first to hit it (a miss counts). The target
+sticks: hits from anyone else do damage and count for the kill, but never pull it off. It lets its target go once they
+are past its **target range** (6 tiles), gone, knocked out, out of its zone or past its leash, and at once takes the next
+player within its aggro range: an aggressive mob the one who has been there longest, a passive one whoever hit it
+earliest in this fight (never someone who never touched it). Nobody: it gives up, heals and walks home. A pack's first hit
+pulls every cap that isn't fighting yet onto that player. Only a taunt takes a target away. The field bosses keep
+theirs while they're in their fight. Class plays no part.
+_Avoid_: threat, hate, priority
 
 **Leash**:
 How far a mob follows a player from home before it gives up and walks back; for the field boss, the pit floor itself.
@@ -458,6 +494,23 @@ _Avoid_: drop (the act), item (once picked up)
 Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the
 sari-sari potions.
 
+**Hotbar**:
+The two rows of slots at the bottom of the screen (1–0 and - = ~, then the Alt row), each slot's key a keybind. Any slot
+holds a skill or an HP / MP Potion (sari-sari potions never go on it); a class's first bar has its skills in the first
+ten.
+_Avoid_: action bar, skill bar
+
+**Hotbar lock**:
+A player's switch (the padlock on the bar, or Settings → Game) that keeps everything on their hotbar where it is: nothing
+dragged off, moved or swapped, nothing dropped onto a filled slot. Empty slots still fill (a skill or potion put there, a
+new skill as it unlocks), and every slot still works. One switch for every class and device.
+_Avoid_: freeze, pin
+
+**Keybind**:
+An action's keys (two at most): a key, or the middle, back or forward mouse button, with Ctrl, Alt or Shift if held. Left
+and right click are never keybinds (left uses things, right walks). Kept for every device.
+_Avoid_: hotkey, shortcut
+
 **Potion tier**:
 Low, Medium or Large: how much an HP or MP Potion heals and from what level it's sold and can be drunk (Large from Lv
 25). In data the Large tier is `high`.
@@ -565,9 +618,10 @@ timer. Works on mini bosses and field bosses too.
 _Avoid_: curse, hex, status effect
 
 **Taunt**:
-A mob made to fight a player (the taunter) for a while, whatever it would have chosen: Gong Wave, Searing Lid, Provoke,
-Iron Kitchen. Works on every mob, bosses too, but a boss's special moves still pick their own victims. The latest taunt
-wins.
+A mob made to take a player (the taunter) as its target at once, whoever had it: Gong Wave, Searing Lid, Provoke, Iron
+Kitchen. While it lasts, the target range doesn't let them go (leaving, the leash and a knock-out still do); once it's
+over, the taunter stays its target (it never goes back to the old one). Works on every mob, bosses too, but a boss's
+special moves still pick their own victims. The latest taunt wins, so two Pot lids can pass a mob between them.
 
 **Stun**:
 A mob that can't move or attack for a while (Thunder Tap, Thunder Sweep). Mini bosses take half; the field bosses none.

@@ -71,15 +71,18 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // next tile with a melee class or up to RANGED tiles with a ranged one (each skill's own: skill-hits.json range). A Scrap
 // Crab's shell blocks every hit (0, `blocked`) except for a moment after each of its own attacks (shell down: mobs.json
 // shellOpenMs, SHELL_OPEN_MS if not given), from any side. A mob that's hit (or missed) fights back (a `packAssist` kind's
-// whole pack together): it goes after whoever hit it last, and within its reach of them (`rangeTiles`: melee 1, the Wire
-// Tangle's zap 4) attacks every `attackEverySeconds` (the Scrap Crab its own rhythm: mobs.json attackMs, its shell down
+// whole pack together, each cap not already fighting): its target sticks (CONTEXT.md Aggro: hits from others never switch
+// it), and within its reach of them (`rangeTiles`: melee 1, the Wire Tangle's zap 4) attacks every `attackEverySeconds` (the Scrap Crab its own rhythm: mobs.json attackMs, its shell down
 // shellOpenMs from each): the stats rules' hit with its ATK as Power against the player's DEF and level (`guards`, from
 // the host each tick; a miss by the level gap), sent with the attack (`hit`) and landing as its art does (its attack
 // frame: `landed` hands the host what to take off their HP then; the Bag's also slows them for `slow` ms). An aggressive
-// kind (Tire Roller, Wire Tangle, Scrap Crab) goes after a player who comes within `aggroTiles` of it (in its zone, on its
-// level) the same way; passive ones (Tin Can, Bottle Caps, Plastic Bag Spook) only fight back. It gives up when they're
-// gone, out of its zone or more than `leashTiles` from its spawn (it can't follow further), or (a passive one) haven't
-// hit it for GIVE_UP_MS: it heals to full (`mob-heal`) and walks home. At 0 HP it dies (its XP to whoever killed it:
+// kind (Tire Roller, Wire Tangle, Scrap Crab) goes after the first player who comes within `aggroTiles` of it (in its
+// zone, on its level; several at once: the nearest); passive ones (Tin Can, Bottle Caps, Plastic Bag Spook) only fight
+// back, the first to hit them. It lets its target go when they're gone, knocked out, out of its zone, more than
+// `leashTiles` from its spawn (it can't follow further) or more than its target range (stats.json aggro.keepTiles) from
+// it, and takes the next player within its aggro range at once (aggressive: the one there longest; passive: whoever hit
+// it earliest this fight); nobody, or (a passive one) no hit on it from anyone for GIVE_UP_MS: it heals to full
+// (`mob-heal`) and walks home. A taunt takes it over at once, and the taunter stays its target after (the latest wins). At 0 HP it dies (its XP to whoever killed it:
 // `kills`, which the town turns into levels). A skill can only be used from its unlock level (classes.json; refused
 // 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared, stats.json
 // skills.cooldownByUnlock: Lv 1 the quickest),
@@ -473,8 +476,14 @@ interface Mob {
   hp: number;
   /** Dead until then (ms), or 0. */
   respawnAt: number;
-  /** Who it's after, and when they last hit it. */
+  /** Who it's after (its target: CONTEXT.md Aggro), and since when. Only losing them or a taunt changes it. */
   foe: { id: string; at: number } | null;
+  /** The last hit on it by anyone in this fight (a passive one gives up GIVE_UP_MS after it). */
+  fightAt?: number;
+  /** Who has hit it this fight and when each first did (town id → ms): a passive one's next target is the earliest. */
+  hitters?: Map<string, number>;
+  /** An aggressive one: who is within its aggro range and since when (town id → ms); the first there is its target. */
+  seen?: Map<string, number>;
   nextAttack: number;
   /** A shell's down until then (its last attack + shellOpenMs). */
   openUntil: number;
@@ -672,7 +681,6 @@ export class MobRoom {
         callAdds: (spots, now) => this.callAdds(boss, level, spots, now),
         dropAdds: () => this.dropAdds(),
         roll: (player, mult) => this.rollOn(player, this.statsOf(boss.id), mult, this.debuffOf('golem', Date.now())),
-        priority: (player) => this.priority(player),
       }, random);
     }
   }
@@ -858,7 +866,7 @@ export class MobRoom {
       m.spawn = [at[0], at[1]];
     }
     m.home = [at[0], at[1]];
-    Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: at[0], row: at[1], path: [], foe: null, slow: null, nextAttack: 0, restUntil: now + REST_MS[0], chairsLost: 0, ambushHit: false, hideAt: undefined });
+    Object.assign(m, { respawnAt: 0, hp: m.maxHp, col: at[0], row: at[1], path: [], foe: null, fightAt: undefined, hitters: undefined, seen: undefined, slow: null, nextAttack: 0, restUntil: now + REST_MS[0], chairsLost: 0, ambushHit: false, hideAt: undefined });
     if (m.kind.ambush) Object.assign(m, { hidden: true, untargetable: true });
     this.claim(m, m.col, m.row);
   }
@@ -1028,31 +1036,97 @@ export class MobRoom {
     return m.pack?.find((x) => !x.respawnAt) ?? null;
   }
 
-  /** How much mobs want a player (their guard's targetPriority; 0 unknown). */
-  private priority(player: string): number {
-    return this.guards.get(player)?.priority ?? 0;
+  /** How far a player is from it: from its body's edge for a boss with one, else tiles (Chebyshev). */
+  private away(m: Mob, p: [number, number]): number {
+    return m.radius ? Math.max(0, Math.hypot(p[0] - m.col, p[1] - m.row) - m.radius) : cheb(p, [m.col, m.row]);
   }
 
-  /** Among `near` (its zone's players), the one within its aggroRange it wants most, then the nearest; or null. */
-  private wanted(m: Mob, near: [string, [number, number]][] | undefined): { id: string; priority: number } | null {
-    let best: { id: string; priority: number; d: number } | null = null;
-    for (const [id, p] of near ?? []) {
-      const d = cheb(p, [m.col, m.row]);
-      if (d > m.zone.aggroRange!) continue;
-      const priority = this.priority(id);
-      if (!best || priority > best.priority || (priority === best.priority && d < best.d)) best = { id, priority, d };
+  /** An aggressive one notes who is within its aggro range and since when (`seen`; anyone who leaves it is let go). */
+  private watch(m: Mob, near: [string, [number, number]][] | undefined, now: number): void {
+    const range = m.zone.aggroRange ?? m.rules.aggroTiles;
+    const here = (near ?? []).filter(([, p]) => this.away(m, p) <= range);
+    if (!here.length) return void m.seen?.clear();
+    const seen = (m.seen ??= new Map());
+    const ids = new Set(here.map(([id]) => id));
+    for (const id of [...seen.keys()]) if (!ids.has(id)) seen.delete(id);
+    for (const id of ids) if (!seen.has(id)) seen.set(id, now);
+  }
+
+  /**
+   * Its next target (CONTEXT.md Aggro), or null: a player in its zone and within its leash, within its aggro range: an
+   * aggressive one the one who has been there longest (`seen`), a passive one the one who hit it earliest this fight
+   * (`hitters`: never one who hasn't); a field boss (it fights in its arena) the earliest hitter there, else the nearest
+   * there. Ties: the nearest. `flies`: no zone (the Manananggal's upper half).
+   */
+  private nextFoe(m: Mob, players: ReadonlyMap<string, [number, number]>, now: number, flies = false): string | null {
+    const range = m.zone.aggroRange ?? m.rules.aggroTiles;
+    const leash = m.zone.leash ?? m.rules.leashTiles;
+    let best: { id: string; first: number; d: number } | null = null;
+    // (An aggressive one only looks at who it has seen within its aggro range; a passive one at who has hit it.)
+    const aggressive = m.zone.aggro === 'aggressive' && !m.field;
+    const who = m.field ? [...players.keys()] : [...((aggressive ? m.seen : m.hitters)?.keys() ?? [])];
+    for (const id of who) {
+      const p = players.get(id);
+      if (!p || (!flies && !this.inZone(m.zone, p)) || cheb(p, m.spawn) > leash) continue;
+      const d = this.away(m, p);
+      if (!m.field && d > range) continue;
+      const first = m.field ? (m.hitters?.get(id) ?? Infinity) : aggressive ? m.seen!.get(id)! : m.hitters!.get(id)!;
+      if (!best || first < best.first || (first === best.first && d < best.d)) best = { id, first, d };
     }
-    return best;
+    return best?.id ?? null;
   }
 
-  /** Someone it should fight: it (and a `packAssist` kind's whole pack) goes after them. */
+  /** Whether it keeps `id` as its target: still here, in its zone (unless it `flies`), within its leash, and within its
+   *  target range (keepTiles; not while they taunt it; a field boss: anywhere in its arena). */
+  private keeps(m: Mob, id: string, p: [number, number] | undefined, now: number, flies = false): p is [number, number] {
+    if (!p || cheb(p, m.spawn) > (m.zone.leash ?? m.rules.leashTiles) || (!flies && !this.inZone(m.zone, p))) return false;
+    if (m.field || (m.taunt?.id === id && now < m.taunt.until)) return true;
+    return this.away(m, p) <= m.rules.keepTiles;
+  }
+
+  /** Someone it should fight: it (and a `packAssist` kind's whole pack) goes after them, each one that isn't after someone
+   *  already (a target sticks: CONTEXT.md Aggro). */
   private rally(m: Mob, player: string, now: number): void {
     for (const x of (m.rules.packAssist && m.pack) || [m]) {
-      if (x.respawnAt) continue;
-      if (x.taunt && now < x.taunt.until && x.taunt.id !== player) continue; // (taunted: its taunter keeps it)
+      if (x.respawnAt || x.foe) continue;
       x.foe = { id: player, at: now };
+      x.fightAt = now;
+      if (x.zone.aggro !== 'aggressive') (x.hitters ??= new Map()).set(player, x.hitters.get(player) ?? now);
       if (x.hidden) this.surface(x, now);
     }
+  }
+
+  /** A hit on it (or a miss, or one its shell blocked): noted (who hit it first, the fight's last hit, its pack's too), and
+   *  if it isn't fighting yet it (and its pack) goes after them. Never a switch: its target stays its target. */
+  private struck(m: Mob, player: string, now: number): void {
+    const hitters = (m.hitters ??= new Map());
+    if (!hitters.has(player)) hitters.set(player, now);
+    for (const x of (m.rules.packAssist && m.pack) || [m]) if (x.foe) x.fightAt = now;
+    this.rally(m, player, now);
+  }
+
+  /** Its fight is over: no target, nobody's hits remembered. */
+  private endFight(m: Mob): void {
+    Object.assign(m, { foe: null, fightAt: undefined });
+    m.hitters?.clear();
+  }
+
+  /**
+   * A director's mob that moves on its own (`still` to the room: the Manananggal's upper half): its target as the room's
+   * rules keep it (CONTEXT.md Aggro), or the next one if it lost them; null: nobody (its fight is over: it gives up).
+   * `flies`: no zone for it.
+   */
+  retarget(id: string, players: ReadonlyMap<string, [number, number]>, now: number, flies = false): string | null {
+    const m = this.byId.get(id);
+    if (!m?.foe || m.respawnAt) return null;
+    if (m.taunt && now >= m.taunt.until) m.taunt = null;
+    if (m.taunt && players.has(m.taunt.id) && m.foe.id !== m.taunt.id) m.foe = { id: m.taunt.id, at: now };
+    if (this.keeps(m, m.foe.id, players.get(m.foe.id), now, flies)) return m.foe.id;
+    if (m.taunt?.id === m.foe.id) m.taunt = null;
+    const next = this.nextFoe(m, players, now, flies);
+    if (next) m.foe = { id: next, at: now };
+    else this.endFight(m);
+    return next;
   }
 
   /** A Lurker rises out of the water: seen and targetable, its first attack after it's up (`riseMs`) and harder. */
@@ -1087,7 +1161,7 @@ export class MobRoom {
     }
     if (this.opts.director) events.push(...this.opts.director.tick(now, players));
     // Who each zone's mobs could notice (a few players at most: looked up once a tick, not per mob): an aggressive one
-    // goes for them; any one in a fight may turn to someone it wants more (mobBehaviour.targetPriority).
+    // notes who comes within its aggro range, and goes for the first there.
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
     for (const zone of [...this.zones, ...this.addZones.values()]) {
       if (!zone.active || !zone.aggroRange) continue;
@@ -1109,6 +1183,8 @@ export class MobRoom {
         const rest = m.kind.drift?.rest ?? REST_MS;
         m.restUntil = now + rest[0] + this.random() * (rest[1] - rest[0]);
       }
+      // (Who stepped within its aggro range when: noted mid-hop too, so the first there stays first.)
+      if (m.zone.aggro === 'aggressive' && !m.still) this.watch(m, watched.get(m.zone), now);
       if (m.path.length) continue;
       // A Lurker home after its fight: back under the water.
       if (m.hideAt && now >= m.hideAt && !m.foe) {
@@ -1118,19 +1194,15 @@ export class MobRoom {
       if (m.still) continue; // (Barong-Barong: its moves are the director's)
       if (m.castUntil && now < m.castUntil) continue; // (a boss mid-move holds still)
       if (m.stunUntil && now < m.stunUntil) continue; // (stunned: it stands there)
-      // Taunted: it fights its taunter while it lasts (and while they're here), whoever it would have chosen.
+      // Taunted: it fights its taunter while it lasts (and while they're here); once it's over they're still its target.
       if (m.taunt) {
         if (now >= m.taunt.until) m.taunt = null;
-        else if (players.has(m.taunt.id)) m.foe = { id: m.taunt.id, at: now };
+        else if (players.has(m.taunt.id) && m.foe?.id !== m.taunt.id) m.foe = { id: m.taunt.id, at: now };
       }
       if (!m.foe && m.zone.aggro === 'aggressive') {
-        // The player it wants most within its aggroRange (the tanks first: targetPriority), then the nearest.
-        const near = this.wanted(m, watched.get(m.zone));
-        if (near) this.rally(m, near.id, now);
-      } else if (m.foe && !m.taunt) {
-        // In a fight: someone it wants more who comes within its aggroRange takes it over (never one it wants as much).
-        const near = this.wanted(m, watched.get(m.zone));
-        if (near && near.priority > this.priority(m.foe.id)) this.rally(m, near.id, now);
+        // The first player to step within its aggro range (several at once: the nearest).
+        const first = this.nextFoe(m, players, now);
+        if (first) this.rally(m, first, now);
       }
       if (m.foe) {
         this.fight(m, now, players, events);
@@ -1144,20 +1216,30 @@ export class MobRoom {
     return events;
   }
 
-  /** After its foe: next to them (within its reach), it attacks; else closer, two steps at a time; or home. */
+  /** After its target: next to them (within its reach), it attacks; else closer, two steps at a time. Lost them: the
+   *  next one (CONTEXT.md Aggro), or it gives up and goes home. */
   private fight(m: Mob, now: number, players: ReadonlyMap<string, [number, number]>, events: MobEvent[]): void {
-    const foe = m.foe!;
     const leash = m.zone.leash ?? m.rules.leashTiles;
-    const p = players.get(foe.id);
-    const bored = m.zone.aggro !== 'aggressive' && now - foe.at > GIVE_UP_MS;
-    if (m.field && (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p))) {
-      // A field boss: on to whoever else is in its fight (its director resets it once nobody is).
-      m.foe = null;
-      return;
+    let p = players.get(m.foe!.id);
+    if (!this.keeps(m, m.foe!.id, p, now)) {
+      // Gone, knocked out, out of its zone, pulled past its leash or too far away (its target range): on to the next
+      // player within its aggro range, the same tick.
+      if (m.taunt?.id === m.foe!.id) m.taunt = null;
+      const next = this.nextFoe(m, players, now);
+      if (next) {
+        m.foe = { id: next, at: now };
+        p = players.get(next);
+      } else if (m.field) {
+        // A field boss with nobody in its arena: its director resets it.
+        return this.endFight(m);
+      } else p = undefined;
     }
-    if (!p || cheb(p, m.spawn) > leash || !this.inZone(m.zone, p) || bored) {
-      // Gone, pulled past its leash, or done with it: healed to full, home.
-      m.foe = null;
+    const foe = m.foe!;
+    // (A passive one gets bored GIVE_UP_MS after the last hit on it by anyone: a tank holding it needn't keep hitting.)
+    const bored = m.zone.aggro !== 'aggressive' && now - (m.fightAt ?? foe.at) > GIVE_UP_MS;
+    if (!p || bored) {
+      // Nobody left to fight, or done with it: healed to full, home.
+      this.endFight(m);
       m.dealt?.clear();
       m.chairsLost = 0; // (healed: its chairs back)
       if (m.kind.ambush) m.hideAt = now + m.kind.ambush.hideMs;
@@ -1377,8 +1459,10 @@ export class MobRoom {
         Object.assign(x, { col: c, row: r, path: [], stunUntil: now + ms, nextAttack: Math.max(x.nextAttack, now + ms) });
         this.pending.push({ t: 'mob-stun', id: x.id, ms, col: c, row: r });
       } else if (e.kind === 'taunt') {
+        // (The latest taunt wins; once it's over the taunter stays its target.)
         x.taunt = { id: player, until: now + e.ms };
         x.foe = { id: player, at: now };
+        x.fightAt = now;
         this.pending.push({ t: 'mob-debuff', id: x.id, name: 'taunt', ms: e.ms });
       }
     }
@@ -1555,6 +1639,7 @@ export class MobRoom {
       if (tauntMs) {
         x.taunt = { id: caster, until: now + tauntMs };
         x.foe = { id: caster, at: now };
+        x.fightAt = now;
       }
       if (rest.slow) x.slow = { factor: rest.slow, until: now + ms }; // (Hamstring: on every mob)
       this.pending.push({ t: 'mob-debuff', id: x.id, name, ms });
@@ -1575,7 +1660,7 @@ export class MobRoom {
       [m.col, m.row] = this.at(m, now);
       m.hp = 0;
       m.respawnAt = m.add || m.zone.dungeon ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
-      m.foe = null;
+      this.endFight(m);
       m.path = [];
       hits.push({ id: m.id, damage, crit: false, hp: 0, dead: true });
       kills.push(this.killOf(m, member));
@@ -1624,11 +1709,11 @@ export class MobRoom {
     return { ticks, kills };
   }
 
-  /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; it (and its pack) goes after
-   *  the player either way; at 0 it dies. */
+  /** One hit on a mob (the stats rules' damage, or a miss), none through a shell that's up; either way it starts its
+   *  fight if it hasn't one (it and its pack go after the player: `struck`), never switching a target; at 0 it dies. */
   private damage(m: Mob, player: string, by: Hitter & { blinded?: boolean }, pct: number, now: number, member = player, from?: [number, number]): MobHit {
     const [mc, mr] = this.at(m, now);
-    this.rally(m, player, now);
+    this.struck(m, player, now);
     if (this.opts.director?.hit) this.pending.push(...this.opts.director.hit(m.id, by.level, now));
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     // A director's front block (its shell): all of a hit from its front, unless it's open.
@@ -1649,7 +1734,7 @@ export class MobRoom {
     if (m.hp === 0) {
       [m.col, m.row] = [mc, mr];
       m.respawnAt = m.add || m.zone.dungeon || m.field ? Infinity : now + (m.mini && this.minis ? this.minis.respawnMs : m.rules.respawnMs);
-      m.foe = null;
+      this.endFight(m);
       m.path = [];
     }
     if (this.opts.director && damage > 0) this.pending.push(...this.opts.director.hurt(m.id, now));
@@ -1743,10 +1828,10 @@ export class MobRoom {
     return out;
   }
 
-  /** A player left the room: no mob (nor the golem) is after them any more, and nothing still on its way lands on them.
-   *  `keepSwings`: their cooldowns stay (knocked out: they're still here). */
+  /** A player left the room: nothing still on its way lands on them, and the golem lets them go (a mob after them does on
+   *  its next tick, which they're not in: on to its next target). `keepSwings`: their cooldowns stay (knocked out:
+   *  they're still here). */
   forget(player: string, keepSwings = false): void {
-    for (const m of this.mobs) if (m.foe?.id === player) m.foe.at = -Infinity;
     if (!keepSwings) for (const k of [...this.swings.keys()]) if (k === player || k.startsWith(`${player}:`)) this.swings.delete(k);
     this.landings = this.landings.filter((l) => l.player !== player);
     this.casts = this.casts.filter((c) => c.player !== player);
@@ -1897,7 +1982,7 @@ export class MobRoom {
     const m = this.byId.get(id);
     if (!m || m.respawnAt) return [];
     m.hp = m.maxHp;
-    m.foe = null;
+    this.endFight(m);
     m.dealt?.clear();
     return [{ t: 'mob-heal', id, hp: m.hp }];
   }

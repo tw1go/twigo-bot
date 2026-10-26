@@ -4,7 +4,9 @@ import { kvLoad, kvSave } from '../db/db.js';
 // 🎛️ Members' hotbars (POST /town/hotbar, /me `hotbars`): one layout per class a member has arranged, kept in kv
 // 'hotbar:<userId>' so the same bar comes back on every device (it lived only in the browser before). The game decides
 // what goes where; the bot only keeps it within bounds (`cleanHotbar`: the rows' sizes, each entry's shape, short
-// strings), so a bad client can't store anything else.
+// strings), so a bad client can't store anything else. Any slot may hold a skill or an item (the game's open slots).
+// The hotbar lock (CONTEXT.md Hotbar lock; POST /town/hotbar-lock, /me `hotbarLocked`): one switch per member, every
+// class, kv 'hotbarLock:<userId>'.
 
 /** The rows' sizes (ui/hotbar.ts SIZE). */
 export const HOTBAR_ROWS: Record<keyof HotbarLayout, number> = { top: 13, main: 10, util: 3 };
@@ -59,4 +61,16 @@ export function saveHotbar(userId: string, cls: string, layout: unknown): Hotbar
   all[cls] = clean;
   kvSave(key(userId), all);
   return clean;
+}
+
+const lockKey = (userId: string) => `hotbarLock:${userId}`;
+
+/** Whether their hotbar is locked (undefined: never set: the game keeps this browser's). */
+export const hotbarLockOf = (userId: string): boolean | undefined => kvLoad<boolean | null>(lockKey(userId), null) ?? undefined;
+
+/** Locks or unlocks their hotbar (`locked` a boolean only). False: not a boolean. */
+export function saveHotbarLock(userId: string, locked: unknown): boolean {
+  if (typeof locked !== 'boolean') return false;
+  kvSave(lockKey(userId), locked);
+  return true;
 }

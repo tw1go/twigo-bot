@@ -162,7 +162,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `combatRating` (the CP weights; toughness 0.4 and `reach` since 11 Oct 2026), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
-  `potions.separateCooldowns`, `potions.sellShare` (13 Oct 2026), `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
+  `potions.separateCooldowns`, `potions.sellShare` (13 Oct 2026), `trainingGear.noSell` / `sellKusing`, `mobBehaviour.aggro` (keepTiles 6, sticky aggro; replaced `targetPriority`, 26 Oct 2026),
   `mobBehaviour.golem.hpPerPlayer`, `mobBehaviour.golem.hpMin` (the least HP it has, whoever is in the Slums; 13 Oct
   2026).
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
@@ -608,7 +608,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   what differs from the defaults); Settings → Keybinds: click a key, press the new one (Esc never mind, Backspace none; a
   key another action had moves over, with a toast), Reset all. Everything listening asks `matches` / `actionOf` /
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
-  Enter (chat), Escape, Tab and the arena's 1–3 stay fixed.
+  Enter (chat), Escape, Tab and the arena's 1–3 stay fixed. Mouse buttons (26 Oct 2026; CONTEXT.md Keybind): the middle,
+  back and forward buttons bind like keys ('MouseMiddle', 'Mouse4', 'Mouse5', with Ctrl+/Alt+/Shift+: `comboOfMouse`;
+  shown "Mouse 3/4/5"); the press hub (window capture mousedown / mouseup) hands each on as a keydown / keyup with that
+  code, so every listener answers it (walking held, charge-ups) and Settings' capture binds it (a left or right click
+  still cancels); back / forward never navigate (mousedown, mouseup and auxclick prevented everywhere), the middle
+  button's autoscroll prevented on the game. Target's second key is MouseMiddle by default (TownScene's hard-wired
+  middle button is gone). Left and right click can't be bound. Safari on a Mac sends no back / forward button events.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited; its sound yours
   always, someone else's only within hearing (`playFrom`: 12 tiles, a little quieter).
@@ -667,8 +673,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
   it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
   Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
-- Where you start: a fresh visit (a new tab: no `?from=`, nothing remembered) with a house (`/me` house) goes to the
-  neighbourhood at your door (BootScene `markHood`); without one, the town's spawn, in front of the plaza fountain. A
+- Where you start (CONTEXT.md Resume spot; 26 Oct 2026): a fresh visit (a new tab: no `?from=`, nothing remembered) starts
+  by the area the member was last in (bot `web/last-area.ts`, schema v25 `last_area`, saved by town.ts on every arrival
+  through `TownOptions.resume`: shared `resumeAreaOf`, the town and the neighbourhood as 'hood', a run's rooms as
+  'warrens' / 'silong'; `/me` `lastArea`, with `guided` (a guided quest under way) and `palengkeClosed`; tested in
+  `web/resume.test.ts`): BootScene.route asks shared `resumeStart` and `markResume`s the area, out of a dungeon with
+  `from` (`cameFrom` hands it over once: the Warren Gate's or the Cellar Hatch's way out, as if walked out). 'hood':
+  the neighbourhood at your door, the town without a house or with a guided quest under way (the guide's arrow and
+  trail run in town and the Slums); 'slums' / 'palengke' their spawns; the Old Market closed to them: the Slums. No
+  `lastArea`: with a house (`/me` house) the neighbourhood at your door; without one, the town's spawn, in front of the
+  plaza fountain. Dev: `&lastarea=hood|slums|palengke|warrens|silong`, `&guided=1`, `&palengkeclosed=1` (session.ts). A
   reload stays in the area you were in: the tab remembers it (sessionStorage `mk_area`, `net/hood.ts` resolveArea), so
   the address stays plain `/play/` (a gate's `?area=hood` and `?from=` are read once and tidied away). Through a gate you arrive
   at its way in (`arrive`). Dev: `&house=1`.
@@ -784,7 +798,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it keeps its own rhythm, mobs.json `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (a `packAssist` kind's whole pack: Bottle Caps) chases its foe; an aggressive kind
   (`mobBehaviour.aggressive`: Tire Roller, Wire Tangle, Scrap Crab; passive: Tin Can, Bottle Caps, Plastic Bag Spook) one who comes within `aggroTiles` (4)
-  (in its zone, on its level; players are sorted per zone once a tick; the one it wants most first: stats.json mobBehaviour.targetPriority, a repo addition, Pot lid 4 > Greatstick 3 > Stick/Hilot 2 > Slingshot/Broom 1, then the nearest: `MobRoom.wanted`, the guard's `priority` from town.ts; any mob in a fight turns to a higher one within aggroTiles, never the same; the golem the highest in its fight, then the last to hit it, then the nearest: GolemHost `priority`), to the nearest free tile within
+  (in its zone, on its level; players are sorted per zone once a tick). Sticky aggro (CONTEXT.md Aggro; stats.json mobBehaviour.aggro, a repo change 26 Oct 2026 that replaced targetPriority; tested in town-mobs.test.ts and town-golem.test.ts): an aggressive mob's target is the first player to step within its aggro range (`MobRoom.watch` notes when each did: `seen`; several at once, the nearest), a passive one's the first to hit it (`struck` → `rally`; `hitters` by first hit); hits never switch it; it lets them go past `keepTiles` (6, from its body's edge for a boss: `away`), gone, knocked out, out of its zone or past its leash (`keeps`) and takes the next within its aggro range at once (`nextFoe`: aggressive the longest there, passive the earliest hitter, a field boss the earliest hitter in its arena, then the nearest), else gives up; a passive one gets bored GIVE_UP_MS after the last hit by anyone (`fightAt`); a taunt sets the target and it stays after; a director's flying mob asks `retarget` (the Manananggal's upper half); the golem's target is its first hitter while they're in its fight, then the earliest other hitter there (`firstHits`), then the nearest, a taunter kept after. It goes to the nearest free tile within
   its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
   rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
   hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
@@ -813,8 +827,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
   5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
   body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); the stats rules' hit (its
-  DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
-  there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
+  DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the first to hit it while they're in its fight (sticky aggro: hits never switch it; lost, the earliest other hitter there, else the nearest; a taunter kept after), within `leash` (8, Chebyshev from home);
+  it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
   every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
   (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
   tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, with `hits` (Player HP, below). ≤ 50% once: `golem` change 'call' with
@@ -1215,6 +1229,20 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   refused 'cutscene'; the room sees `cutscene` { id, on } (others.ts says "..." over them every few seconds;
   `TownPlayer.cutscene` for arrivals; tested in town-vitals.test.ts). Dev: `?cutscene=<id>` and `__town.cutscene(id)`
   play one where you are (its map), changing nothing.
+- Restored Lantern Posts (CONTEXT.md Restored Lantern Post; 26 Oct 2026): every post starts broken for each player, the
+  Town's too (schema v26 `lantern_posts`, empty at the update: one fresh start; bot `web/lantern-posts.ts`; shared
+  `postKey`: '<map>:<index>', a dungeon entrance '<map>:<dungeon>'). Using one beside it (`lantern-restore` {post}, the
+  server's `postAt` check) restores it: `lantern-restored` {key, fresh, restored}; the welcome carries `restored`;
+  `TownOptions.lanterns.restored` / `restore` (without them every post works, as the tests' old towns). A dungeon
+  entrance is restored by its gate's panel asked for from beside it (`warrens-gate` / `silong-gate` atGate) or a run's
+  room joined (town.ts `reachedEntrance`). `lanternRefusal`'s `restored` / `toKey`: both ends restored, else
+  `NOT_RESTORED` ("You haven't restored that Lantern Post yet. Find it on foot first."). Game: WorldObjects
+  `lanternBroken` / `refreshLanterns` / `restoreLantern` (manifest props['lantern-post'].broken still, .restore 16
+  frames at 12 fps, then the idle), TownScene `toLanternPost` (a broken one restored first, even in a fight: `restorePost`,
+  `lanternRestored`: the anim, the Repair Kit's sound, a toast, then the Map menu out of a fight), the Map menu
+  (`MapOpen.restored`: ui.mapTeleporterBroken and "· not restored yet", a click only says why; an entrance not reached
+  dim (frame 4, grayscale) and disabled), the minimap (`Minimap.setMarks`, manifest ui.minimapIcons drawn 1:1 under the
+  dots). Tested in `web/travel.test.ts`. Dev: `?lanterns=all` (every one restored for you), `?lanterns=none`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat, Dungeon entrance; the dungeon entrances, shared travel.ts DUNGEON_ENTRANCES: the Warren Gate's and the Cellar
   Hatch's object and `arrive` (warrens, silong), listed after a map's posts by `lanternPostsOf` with `entrance`, so a
@@ -1235,8 +1263,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`; no scrollbars: bigger than its box (a phone), it's
   dragged, `dragToScroll`: a press moving 4 px is a drag and its click is swallowed), with the Slums'
   zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
-  maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
-  diamond `.mm-gate` and its name: a stand-in until there's an icon) and a teleporter icon per post
+  maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; `.mm-gate`: its own
+  art, manifest ui.mapDungeons, the art folder's ui/map/dungeon-markers: frames 0-7 a gold glow pulsing at 8 fps as a CSS
+  steps(8) animation, frame 8 on hover, frame 4 held under reduced motion, its foot on the entrance; an entrance without
+  art the old gold diamond; its name under it; the map's writing drawn over the icons) and a teleporter icon per post
   (ui.mapTeleporter: normal / hover with "Lantern Post" / here with ui.mapPin and "You are here", flipped left if it would
   overlap a label), the bar "Return Lanterns: N"; closes with Esc, ×, or walking more than 3 tiles from the post. The
   other post's icon → the Teleport box (Travel to the Slums?, its cost; 0 lanterns: "You need a Return Lantern", Teleport
@@ -1826,8 +1856,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`pickForHotbar`), and the hotbar rises over the panels while one is carried (`hb-dragging`, `hb-picking`,
   `hb-lesson`). Forge answers reach listeners (`onForge`). Dev: each pretend login has its own id (`dev:<name>`);
   `?quest=tanod-01`, `?give=rough-whetstone-fragment::10`, `__town.scene.trail`.
-- Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
-  (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
+- Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena; CONTEXT.md Hotbar): bottom
+  row 10 slots (keys 1–0) and 3 more (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled
+  "Alt+1"…). Any slot takes a skill or a usable (26 Oct 2026: the rows' old rule, skills in 1–0 and potions in - = ~, is
+  gone; saved bars load as they were; a slot dragged onto another is a plain swap); a class's first bar has its skills
+  in the first ten; a new Lv 21-40 skill takes the first empty slot in key order (main, util, top: `KEY_ORDER`, the
+  auto-cast's order too). The hotbar lock (CONTEXT.md Hotbar lock; `ui/hotbar-lock.ts`: localStorage `mk_hotbar_lock`,
+  the server's wins: bot `web/hotbar.ts` kv `hotbarLock:<userId>`, `/me` `hotbarLocked`, `POST /town/hotbar-lock
+  { locked }`, tested in hotbar.test.ts): the padlock tab over the bar's right edge (`.hb-lockbtn`, inline pixel SVG;
+  left of ▲ where that shows) and Settings → Game's "Lock hotbar" are one switch; locked, slots aren't draggable, nothing
+  is dropped off, swapped or put on a filled slot ("Your hotbar is locked.", once every 3 s), empty slots still fill.
+  Slot key labels follow `shortKeyLabel` (a mouse button "M4", "Sh+M4").
   A level-up that unlocks skills (the town's `progress`, TownScene `newSkills`): a toast each with its icon ("New skill
   unlocked: Dash! Open Skills (K) …"), one after another, and a gold dot on the K button until the panel opens (`markNew`).
   Hovering a skill (a hotbar slot, a Skills panel row) shows its details card (`ui/skill-tip.ts`, the item tooltip's

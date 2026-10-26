@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClassesFile, GearRarity, HoodHouse, HouseLook, OutfitData, PrivacySettings, RogueState, TestingSettings, TownHoodActionResponse, TownHoodResponse, TownItems, TownRace, TownRaceResponse } from '@mikazuki/shared';
-import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, wornItems, blockedWithPosts, lanternPostsOf, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
+import { type LanternPost, type TownMail, DEFAULT_PRIVACY, expireItems, MAIL_RULES, claimInto, hasAttachments, parseMailAction, RETURN_LANTERN, gainPetXp, parsePetAction, petAction, petIdOf, petRules, setPetLevel, addToBag, isGearDef, wornItems, blockedWithPosts, lanternPostsOf, postKey, newItem, rollGear, buyCosmetic, rollWorthy, takeKind, buffSkillLevels, classBuffs, classSkills, damageSkillLevels, moveUnlock, type PalengkeData, dishOf, dishRefusal, mobName, palengkeQuests, questItemDrops } from '@mikazuki/shared';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { doorSpot, hoodMap, lotTile } from '../../bot/src/web/hood-map.ts';
 import type { Plugin } from 'vite';
@@ -106,6 +106,15 @@ export function devTown(): Plugin {
       const privacy = new Map<string, PrivacySettings>(); // Settings → Privacy, by name
       const testing = new Map<string, TestingSettings>(); // Settings → Testing (Game Masters: names starting "GM"), by name
       const kits = new Map<string, { cls: string | null; weapon: string | null }>(); // class and worn weapon (the pretend quests and equipment)
+      /** The Lantern Posts each player has restored (in memory; the page's ?lanterns=all|none sets them as it connects). */
+      const restoredBy = new Map<string, Set<string>>();
+      /** Every post and dungeon entrance there is (shared postKey), for ?lanterns=all. */
+      const allPosts = () =>
+        ['town', 'slums', 'palengke'].flatMap((m) => {
+          const j = JSON.parse(readFileSync(join(server.config.publicDir, `assets/maps/${m}.json`), 'utf8'));
+          const posts = lanternPostsOf({ ...j, blocked: blockedWithPosts(j.blocked, j.teleporters) });
+          return posts.map((_, i) => postKey(m, posts, i));
+        });
       /** Each player's pretend quests (the page sends them: on connect with &kit=, then /__quests), for the Warren Gate. */
       const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[] }>();
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
@@ -554,10 +563,16 @@ export function devTown(): Plugin {
           },
           saved: (runs) => server.config.logger.info(`[silong] open runs: ${runs.map((r) => `${r.id} (${r.opener}${r.spent ? ', key spent' : ''})`).join(', ') || 'none'}`, { timestamp: true }),
         },
-        // Lantern Posts: the dev town's kept items (?give=return-lantern::5).
+        // Lantern Posts: the dev town's kept items (?give=return-lantern::5); the posts each player has restored in memory
+        // (?lanterns=all: every one, ?lanterns=none: none again; CONTEXT.md Restored Lantern Post).
         lanterns: {
           count: (name) => gearOf(name).bag.reduce((n, i) => n + (i?.defId === RETURN_LANTERN ? (i.count ?? 1) : 0), 0),
           use: (name) => takeKind(gearOf(name).bag, RETURN_LANTERN, 1),
+          restored: (name) => [...(restoredBy.get(name) ?? [])],
+          restore: (name, post) => {
+            const mine = restoredBy.get(name) ?? restoredBy.set(name, new Set()).get(name)!;
+            return !mine.has(post) && !!mine.add(post);
+          },
         },
         moveLevel: (cls, move) => moveUnlock(classes.find((c) => c.id === cls), move),
         // Friends in memory (a restart forgets them); a request by name finds anyone who has logged in since it started.
@@ -590,6 +605,9 @@ export function devTown(): Plugin {
           const name = q.get('dev')?.slice(0, 16);
           if (!name) return null;
           try {
+            const lanterns = q.get('lanterns');
+            if (lanterns === 'all') restoredBy.set(name, new Set(allPosts()));
+            else if (lanterns === 'none') restoredBy.delete(name);
             const kit = (JSON.parse(q.get('kit') ?? 'null') ?? {}) as { cls?: string | null; weapon?: string | null; progress?: SavedProgress; quests?: { active: { id: string; step: number }[]; done: string[] } };
             kits.set(name, { cls: kit.cls ?? null, weapon: kit.weapon ?? null });
             if (kit.quests) questsOf.set(name, kit.quests);
