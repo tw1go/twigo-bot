@@ -7,22 +7,52 @@ import { usedSlots } from '../dig/bag.js';
 import { ITEM_BY_ID, RARITY_ORDER } from '../dig/items.js';
 import { MAX_SLOTS, capacity, inventory, masterKeys, removeItems } from '../dig/store.js';
 import { kowen } from '../kowens.js';
-import { POTIONS, drink, isDrink, ownedPotions, potionHow, swerteLeft, tagoUntil } from '../potions/potions.js';
+import { POTIONS, POTION_KUSING_PER_KOWEN, type PotionId, drink, isDrink, ownedPotions, potionHow, swerteLeft, tagoUntil, takePotions } from '../potions/potions.js';
+import { shopCatalogue } from '../games/rewards.js';
+import { townItems } from './town-feed.js';
 import { megaphones } from '../items/megaphone.js';
 import { renameCards } from '../items/rename-card.js';
 import { classTickets } from '../items/class-ticket.js';
-import { EQUIPMENT } from './adventure.js';
+import { EQUIPMENT, withItems } from './adventure.js';
 
 // 🎒 The town's inventory (GET /town/inventory, POST /town/sell, POST /town/flex): the bag as the town shows it — every
 // dug-up item, Master Key and potion, one slot each (gear and combat items are in the combat bag: /me's adventure, the
 // town's `items` messages) — and selling or flexing a
 // dug-up item with /sell's and /flex's rules (flexes are posted in the games channel like /flex, with the same
 // cooldown, and said in the town's chat), and drinking a sari-sari potion (POST /town/potion: /potion use's `drink`,
-// privately: nothing in the feed or Discord).
+// privately: nothing in the feed or Discord). A sari-sari potion sells for Kusing (into the combat bag's purse):
+// POTION_KUSING_PER_KOWEN for each Kowen of its store price (`potionKusing`).
 
 type NameOf = (id: string) => Promise<string>;
 
 const kowens = (n: number) => `${n.toLocaleString('en-US')} ${kowen(n)}`;
+const kusing = (n: number) => `${n.toLocaleString('en-US')} Kusing`;
+
+/** What one sari-sari potion sells for (Kusing): POTION_KUSING_PER_KOWEN for each Kowen of its store price now. */
+export function potionKusing(pid: PotionId): number {
+  const cost = shopCatalogue().find((r) => r.id === `potion-${pid}`)?.cost ?? POTIONS[pid].cost;
+  return Math.max(0, cost) * POTION_KUSING_PER_KOWEN;
+}
+
+/** A sari-sari potion's bag id ('potion-tago') as its potion id, or null. */
+const potionOf = (id: string): PotionId | null => {
+  const pid = id.startsWith('potion-') ? id.slice('potion-'.length) : '';
+  return pid in POTIONS ? (pid as PotionId) : null;
+};
+
+/** Sells up to `n` of a sari-sari potion: taken from the stock, its Kusing into the combat bag's purse (the town's bag
+ *  told). How many went and the Kusing. */
+function sellPotions(userId: string, pid: PotionId, n: number): { sold: number; kusing: number } {
+  const sold = takePotions(userId, pid, n);
+  const got = sold * potionKusing(pid);
+  if (got) {
+    withItems(userId, (s) => {
+      s.kusing += got;
+    });
+    townItems(userId);
+  }
+  return { sold, kusing: got };
+}
 /** Potion effects are written for Discord: drop the emoji for the town. */
 const plain = (text: string) => text.replace(/\p{Extended_Pictographic}️?\s?/gu, '').trim();
 
@@ -45,7 +75,7 @@ export function townInventory(userId: string): TownInventoryResponse {
     ...(tickets ? [{ id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: tickets, kind: 'classchange' as const, sellable: false, stacked: true,
       about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." }] : []),
     ...ownedPotions(userId).map(([pid, count]) => ({ id: `potion-${pid}`, name: POTIONS[pid].name, emoji: POTIONS[pid].emoji, rarity: 'common', value: 0, count,
-      kind: 'potion' as const, sellable: false, about: `${plain(POTIONS[pid].effect)}. ${potionHow(pid)}`, ...(isDrink(pid) ? { drink: true } : {}) })),
+      kind: 'potion' as const, sellable: true, kusing: potionKusing(pid), about: `${plain(POTIONS[pid].effect)}. ${potionHow(pid)}`, ...(isDrink(pid) ? { drink: true } : {}) })),
   ];
   return { items: [...dug, ...held], slots: capacity(userId), maxSlots: MAX_SLOTS, used: usedSlots(userId), kowens: balance(userId),
     effects: { tagoUntil: tagoUntil(userId), swerte: swerteLeft(userId) } };
@@ -69,8 +99,15 @@ export function drinkInTown(userId: string, id: string): TownPotionResponse {
   return { ...townInventory(userId), ok: true, message, ...(r.id === 'marites' ? { hint: plain(r.hint.replace(/(\d)\uFE0F?\u20E3/gu, '$1')).replace(/\*/g, '') } : {}) };
 }
 
-/** Sells `quantity` of a dug-up item (as /sell does: its value each, into the wallet). */
+/** Sells `quantity` of a dug-up item (as /sell does: its value each, into the wallet), or of a sari-sari potion (its
+ *  Kusing each, into the combat bag's purse). */
 export function sellInTown(userId: string, id: string, quantity: number): TownBagActionResponse {
+  const pid = potionOf(id);
+  if (pid) {
+    const r = sellPotions(userId, pid, quantity);
+    if (!r.sold) return { ...townInventory(userId), ok: false, message: "You don't have that potion." };
+    return { ...townInventory(userId), ok: true, message: `Sold ${r.sold > 1 ? `${r.sold}× ` : ''}${POTIONS[pid].name} for ${kusing(r.kusing)}.` };
+  }
   if (EQUIPMENT.get(id)?.training) return { ...townInventory(userId), ok: false, message: "Training gear can't be sold." };
   const item = ITEM_BY_ID.get(id);
   const have = inventory(userId).find(([itemId]) => itemId === id)?.[1] ?? 0;
@@ -85,7 +122,15 @@ export function sellInTown(userId: string, id: string, quantity: number): TownBa
 export function sellManyInTown(userId: string, picks: { id: string; quantity: number }[]): TownBagActionResponse {
   let sold = 0;
   let earned = 0;
+  let gotKusing = 0;
   for (const { id, quantity } of picks) {
+    const pid = potionOf(id);
+    if (pid) {
+      const r = sellPotions(userId, pid, quantity);
+      sold += r.sold;
+      gotKusing += r.kusing;
+      continue;
+    }
     const item = ITEM_BY_ID.get(id);
     const have = inventory(userId).find(([itemId]) => itemId === id)?.[1] ?? 0;
     if (!item || !have) continue;
@@ -94,8 +139,9 @@ export function sellManyInTown(userId: string, picks: { id: string; quantity: nu
     earned += n * item.value;
   }
   if (!sold) return { ...townInventory(userId), ok: false, message: "You don't have those items." };
-  add(userId, earned);
-  return { ...townInventory(userId), ok: true, message: `Sold ${sold} item${sold === 1 ? '' : 's'} for ${kowens(earned)}.` };
+  if (earned) add(userId, earned);
+  const paid = [earned || !gotKusing ? kowens(earned) : '', gotKusing ? kusing(gotKusing) : ''].filter(Boolean).join(' and ');
+  return { ...townInventory(userId), ok: true, message: `Sold ${sold} item${sold === 1 ? '' : 's'} for ${paid}.` };
 }
 
 /** Flexes a dug-up item: /flex's card in the games channel, and the flexer says it in the town's chat. */

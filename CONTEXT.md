@@ -452,7 +452,8 @@ sari-sari potions.
 One of the four potions sold at the sari-sari store for Kowens: Kalawang Potion (thrown at a house's Bakod to rust
 half of it away), Tago Tonic (30 minutes the Tanod can't see you gamble), Swerte Elixir (your next 3 digs reroll junk
 once) and Marites Tea (Aling Marites tells you a hint about an Easter egg you haven't found). Drunk (or thrown) in
-Discord or in town alike, privately; a Tonic or Elixir drunk twice adds up, so nothing is wasted.
+Discord or in town alike, privately; a Tonic or Elixir drunk twice adds up, so nothing is wasted. One you don't want
+sells from the town's bag for Kusing (50,000 for each Kowen of its store price), never for Kowens.
 _Avoid_: buff potion (a buff is a class skill), potion on its own
 
 **Weapon aura**:

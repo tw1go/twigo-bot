@@ -15,7 +15,10 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
 process.env.TIMEZONE = 'Asia/Manila';
 
 const { MARITES_HINTS, SWERTE_DIGS, TAGO_MINUTES, addPotions, drink, hintsLeft, potionCount, swerteLeft, tagoUntil } = await import('./potions.js');
-const { drinkInTown, townInventory } = await import('../web/town-bag.js');
+const { drinkInTown, potionKusing, sellInTown, sellManyInTown, townInventory } = await import('../web/town-bag.js');
+const { adventureOf } = await import('../web/adventure.js');
+const { setShopEntry } = await import('../games/rewards.js');
+const { POTION_KUSING_PER_KOWEN } = await import('./potions.js');
 const { closeDatabase } = await import('../db/db.js');
 
 test.after(() => {
@@ -88,4 +91,30 @@ test("the town bag: Marites Tea's hint comes back as plain text for her dialog b
     assert.ok(r.hint);
     assert.doesNotMatch(r.hint!, /\*|\p{Extended_Pictographic}|⃣/u);
   }
+});
+
+test('sari-sari potions sell from the town\'s bag for Kusing: 50,000 for each Kowen of the store price (the CMS\'s too)', () => {
+  assert.equal(POTION_KUSING_PER_KOWEN, 50_000);
+  assert.deepEqual(['kalawang', 'tago', 'swerte', 'marites'].map((p) => potionKusing(p as 'tago')), [400_000, 300_000, 250_000, 150_000]);
+  addPotions('seller', 'tago', 3);
+  addPotions('seller', 'marites', 1);
+  // Shown sellable with its Kusing price.
+  const tago = townInventory('seller').items.find((i) => i.id === 'potion-tago')!;
+  assert.deepEqual([tago.sellable, tago.kusing, tago.value], [true, 300_000, 0]);
+  // Two sold: the Kusing in the combat bag's purse, the potions gone.
+  const before = adventureOf('seller').kusing;
+  const r = sellInTown('seller', 'potion-tago', 2);
+  assert.equal(r.ok, true);
+  assert.equal(r.message, 'Sold 2× Tago Tonic for 600,000 Kusing.');
+  assert.equal(adventureOf('seller').kusing, before + 600_000);
+  assert.equal(potionCount('seller', 'tago'), 1);
+  // More than they have: only what they have; none: refused.
+  assert.equal(sellInTown('seller', 'potion-tago', 5).message, 'Sold Tago Tonic for 300,000 Kusing.');
+  assert.equal(sellInTown('seller', 'potion-tago', 1).ok, false);
+  // Several at once (the bag's multi-select); the CMS's price counts.
+  setShopEntry('potion-marites', 4, false);
+  const many = sellManyInTown('seller', [{ id: 'potion-marites', quantity: 1 }]);
+  assert.equal(many.message, 'Sold 1 item for 200,000 Kusing.');
+  assert.equal(adventureOf('seller').kusing, before + 600_000 + 300_000 + 200_000);
+  setShopEntry('potion-marites', null, false);
 });

@@ -2019,7 +2019,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   say how they're used; sari-sari potions (CONTEXT.md) are drunk from the Misc tab (`TownBagItem.drink`: Tago Tonic,
   Swerte Elixir, Marites Tea; Drink in the detail, a double-click or the right-click menu → `POST /town/potion { id }`,
   `drinkInTown` in web/town-bag.ts = /potion use's `drink` in potions/potions.ts, tested in `potions/potions.test.ts`;
-  private: nothing in the feed or Discord; never on the hotbar, old entries dropped by its `tidy`), what's working shown
+  private: nothing in the feed or Discord; never on the hotbar, old entries dropped by its `tidy`; sold for Kusing, 26 Oct 2026, the owner:
+  `potionKusing` = POTION_KUSING_PER_KOWEN 50,000 × its store price now, CMS's included, `TownBagItem.kusing`, into the
+  combat bag's purse with `townItems`, Sell 1 / Sell all and the multi-select's Kusing total; tested in potions.test.ts), what's working shown
   under them (`TownInventoryResponse.effects`); Marites Tea's hint (`hint`, plain text) opens her dialog box wherever you
   are ('mk-marites-hint' → TownScene `maritesHint`, id 'marites-tea' so walking never closes it); the Kalawang Potion
   says to throw it from a house's menu; dev: the pretend bag has all four, their effects shared with the pretend casino
