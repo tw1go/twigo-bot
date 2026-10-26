@@ -353,6 +353,8 @@ export type TownClientMessage =
   | { t: 'silong-ramon' }
   /** Mang Ramon's note to Kuya Jun (in the Lumang Palengke). */
   | { t: 'ramon-give' }
+  /** Mang Pido's Practice Cellar Key again (after a practice run that wasn't cleared). */
+  | { t: 'silong-practice-key' }
   /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
   | { t: 'lantern'; to: string; post?: number }
   /** Restore the Lantern Post you're by (CONTEXT.md Restored Lantern Post): its place in this map's lanternPostsOf. */
@@ -732,11 +734,14 @@ export type TownServerMessage =
   | { t: 'silong-invite'; run: string; from: string; ms: number }
   /** What Mang Ramon's box gave: his note, nothing (you hold it, or Kuya Jun has it), no room, or you're too far. */
   | { t: 'silong-ramon'; result: 'given' | 'have' | 'done' | 'full' | 'far' }
-  /** You were inside as Ang Makinang Yelo fell: Ang Silong cleared (SILONG_FLAGS.cleared now in your quests). */
-  | { t: 'silong-cleared' }
+  /** You were inside as Ang Makinang Yelo fell: Ang Silong cleared (SILONG_FLAGS.cleared now in your quests); in a
+   *  practice run (`practice`), its practice (SILONG_FLAGS.practiced: the real Cellar opens to you). */
+  | { t: 'silong-cleared'; practice?: boolean }
   /** Kuya Jun took Mang Ramon's note (a Mid Repair Kit for it), or why not. */
   | { t: 'ramon-thanks'; ok: boolean; message?: string }
-  | { t: 'silong-refused'; reason: 'level' | 'quest' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
+  /** Mang Pido's answer: a Practice Cellar Key given, or why not. */
+  | { t: 'silong-practice-key'; ok: boolean; message: string }
+  | { t: 'silong-refused'; reason: 'level' | 'quest' | 'practice' | 'full' | 'key' | 'party' | 'gone' | 'slow' | 'floor'; message: string }
   | { t: 'silong-out'; reason: 'left' | 'closed' | 'party'; keyBack?: boolean | 'practice' }
   | { t: 'silong-kick'; ms: number }
   /** Chill on someone on a Silong floor (their town id): its stacks now; `puff` a stack just landed. */

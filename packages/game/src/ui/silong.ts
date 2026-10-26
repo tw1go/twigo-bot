@@ -34,7 +34,7 @@ export function showSilongGate(g: TownSilongGate, act: (what: 'open' | 'join' | 
   if (g.partyRun) {
     body.push(el('p', 'wr-gate-run', `${g.partyRun.opener} opened a run for your party (${g.partyRun.inside} inside).`));
     button("Join my party's run", 'join');
-  } else if (g.blocked === 'level' || g.blocked === 'quest') why(g.questLine ?? `You need Lv ${g.minLevel} to go in.`);
+  } else if (g.blocked === 'level' || g.blocked === 'quest' || g.blocked === 'practice') why(g.questLine ?? `You need Lv ${g.minLevel} to go in.`);
   else if (g.blocked === 'full') why('The Cellar is full. Try again in a few minutes.');
   else if (g.blocked === 'key') why('You need a Cellar Key. Aling Conching sells them after the Great Scale rests.');
   else button(g.inParty ? 'Open for my party' : 'Enter', 'open');

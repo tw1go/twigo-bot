@@ -366,10 +366,20 @@ export function silongBossLoot(data: ItemData, S: SilongData, classes: (string |
   return out;
 }
 
-/** A Silong room mob's drops: a Palengke mob's (its gear chance and potions), its Kusing from its room's `kusing`, its
- *  gear at the loot's level (40). */
+/** A Silong room mob's drops: a Palengke mob's (its potions; its gear chance unless silong.loot.mobGearChance says),
+ *  its Kusing from its room's `kusing`, its gear at the loot's level (40). */
 export function silongMobDrops(data: ItemData, S: SilongData, kind: string, level: number, kusing: number, random: () => number, uid: () => string, plusRandom = random, boost = 0): LootContent[] {
   const out = mobDrops(data, kind, level, random, uid, plusRandom, boost, 'palengke');
+  // The Cellar's own gear chance (higher than the Old Market's): its roll in place of the map's.
+  const G = S.loot.mobGearChance;
+  if (G !== undefined) {
+    const at = out.findIndex((l) => 'item' in l && isGearDef(data.defs.get(l.item.defId)));
+    if (at >= 0) out.splice(at, 1);
+    if (random() < boosted(G, boost)) {
+      const kinds = dropGear(data, S.loot.gearLevel);
+      if (kinds.length) out.push({ item: dropped(data, pick(kinds, random), tier(data, itemStats(data.stats).rarity.mobGearDrop.odds, random, boost) as GearRarity, uid(), random, plusRandom, boost) });
+    }
+  }
   const [lo, hi] = itemStats(data.stats).currencies.kusingPerMobRange ?? [0.6, 1.2];
   out[0] = { kusing: Math.round(kusing * (lo + random() * (hi - lo))) };
   for (const [i, l] of out.entries()) {

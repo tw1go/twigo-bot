@@ -259,7 +259,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   places 7-12 40% less (rounded; + a sentence in its `rules`) and `skills.cooldownByUnlock` 21-40 a flat 8 s (was 15 s;
   its `note` and `unlocksAbove20` say so); the utilities unchanged.
 - `classes/dungeons.json` `silong.practiceRun`: `mobHpPct` 40 and `mobAtkPct` 35 (+ `mobPctNote`; 26 Oct 2026, the owner: a
-  practice run nerfed, as the Warrens' practice; was `mobHpAtkPct` 60).
+  practice run nerfed, as the Warrens' practice; was `mobHpAtkPct` 60); `kusingPct` 50, `retryHours` 24 (+ `gateNote`) and
+  its `loot` text (the normal loot; was XP and Kusing only); `silong.loot.mobGearChance` 0.12 (+ `mobGearNote`; was the
+  Old Market's 3%).
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -1159,8 +1161,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   elevator of the deepest floor reached (town.ts `respawn` sends `silong-go`). The key's spent once a mini boss falls
   (until then no XP or quest credit from its mobs, and a run that ends gives it back, kv 'silong-open' through
   restarts); closes when time's up, 3 min after the last boss (PR 3), or 2 min empty (`silong-out`: back beside the
-  hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
-  solo, 40% HP and 35% ATK (dungeons.json `practiceRun.mobHpPct` / `mobAtkPct`, a repo change 26 Oct 2026; was 60% both). Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
+  hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given by palengke-15's rewards):
+  solo, 40% HP and 35% ATK (dungeons.json `practiceRun.mobHpPct` / `mobAtkPct`, a repo change 26 Oct 2026; was 60% both),
+  the normal loot with half its Kusing (`kusingPct`). A real run needs a practice run cleared first (26 Oct 2026, the
+  owner: `SilongAccess.practiced` = quests.flags `silong-practice-cleared` (SILONG_FLAGS.practiced, set as the Ice Machine
+  falls in one: `cleared(team, practice)`, the page's `silong-cleared` `practice`) or `silong-cleared`; else the hatch's
+  `blocked` 'practice' and its line, open / join refused 'practice'); one failed: Mang Pido's "🔑 Practice Cellar Key"
+  (TownScene `needsPracticeKey`; `silong-practice-key` → adventure.ts `practiceKeyFor`: palengke-15 done, not practiced,
+  none held, no practice run open, `practiceRun.retryHours` (24) after the last he gave, `silong-practice-key:<ms>`). Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
   the Palengke's hatch label, click and glow after palengke-14 (the hatch and the Warren Gate: a left or right click or a tap on one is its own, `entranceBoxes` / `entranceClick`, never also the map's walk to the tile under it, and asks for the panel again even when it showed before; E beside one opens it again). Its mini bosses' moves (part 2, 21 Oct 2026: bot
   `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
@@ -1189,7 +1197,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
   bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
   `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
-  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; a practice run Kusing only) and the Great
+  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; room mobs a Lv 40 piece at `loot.mobGearChance` 12%, a
+  repo change 26 Oct 2026, was the Old Market's 3%; a practice run the same, Kusing halved) and the Great
   Scale's Susi ng Silong 1 in 4 (`fieldBossLoot`'s `key`); Chill (CONTEXT.md Chill; shared `chillRules` / `chillMove` /
   `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Freezer Breath's
   (`FloorBosses.chilled`) and the Brine Flood's 1 a second, cleared by walking 1 s (`stepped`), a lamp within 2, a
