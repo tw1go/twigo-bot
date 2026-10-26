@@ -225,7 +225,7 @@ Who a mob is after (its **target**), and how it keeps them. An aggressive mob ta
 sticks: hits from anyone else do damage and count for the kill, but never pull it off. It lets its target go once they
 are past its **target range** (6 tiles), gone, knocked out, out of its zone or past its leash, and at once takes the next
 player within its aggro range: an aggressive mob the one who has been there longest, a passive one whoever hit it
-earliest in this fight (never someone who never touched it). Nobody: it gives up, heals and walks home. A pack's first hit
+earliest in this fight (never someone who never touched it). Nobody: it gives up and walks home, keeping the HP it has left (it never heals back up; only a boss resets). A pack's first hit
 pulls every cap that isn't fighting yet onto that player. Only a taunt takes a target away. The field bosses keep
 theirs while they're in their fight. Class plays no part.
 _Avoid_: threat, hate, priority

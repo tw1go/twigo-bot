@@ -565,13 +565,13 @@ test('passive kinds (stats.json) only fight back; aggressive ones come for a pla
   for (let t = 0; t < 4000; t += 250) assert.ok(!room.tick(t, far).some((e) => e.t === 'mob-attack' && e.id === tire.id));
 });
 
-test('pulled more than leashTiles from its spawn, a mob heals to full and walks home', () => {
+test('pulled more than leashTiles from its spawn, a mob walks home keeping the HP it has left (never healed back up)', () => {
   const room = new MobRoom(map, lcg(41), {}, { shapes: {} }, kinds);
   const tire = room.snapshot(0).find((x) => x.id.startsWith('tire-yard:'))!;
   const L = mobRules(stats, 'tire-roller').leashTiles;
   const hit = room.attack('p1', near(room, tire, 2), { cls: 'slingshot', level: tire.level }, tire.id, 0);
   assert.ok(hit.ok && hit.hits[0].hp < tire.maxHp && !hit.hits[0].dead, 'hurt');
-  // Its foe runs off, past its leash: it stops, heals and goes home.
+  // Its foe runs off, past its leash: it stops and goes home, as hurt as it was.
   let p = near(room, tire, 3);
   let t = 250;
   for (; t < 3000; t += 250) room.tick(t, new Map([['p1', p]]));
@@ -582,13 +582,12 @@ test('pulled more than leashTiles from its spawn, a mob heals to full and walks 
   assert.ok(p, 'a tile past its leash');
   const events: MobEvent[] = [];
   for (const end = t + 2000; t < end; t += 250) events.push(...room.tick(t, new Map([['p1', p]])).filter((e) => 'id' in e && e.id === tire.id));
-  const heal = events.find((e) => e.t === 'mob-heal');
-  assert.deepEqual(heal, { t: 'mob-heal', id: tire.id, hp: tire.maxHp });
-  for (const e of events.slice(events.indexOf(heal!) + 1)) assert.notEqual(e.t, 'mob-attack', 'no more attacks');
-  const home = events.find((e, i) => i > events.indexOf(heal!) && e.t === 'mob-move') as Extract<TownServerMessage, { t: 'mob-move' }> | undefined;
+  assert.ok(!events.some((e) => e.t === 'mob-heal'), 'never healed');
+  const lastAttack = events.map((e) => e.t).lastIndexOf('mob-attack');
+  const home = events.find((e, i) => i > lastAttack && e.t === 'mob-move') as Extract<TownServerMessage, { t: 'mob-move' }> | undefined;
   const now = room.snapshot(t).find((m) => m.id === tire.id)!;
   assert.deepEqual(home ? home.path.at(-1) : [now.col, now.row], [tire.col, tire.row], 'home');
-  assert.equal(now.hp, tire.maxHp);
+  assert.equal(now.hp, hit.hits[0].hp, 'the HP it had left');
 });
 
 test('reach and pace: melee next to you every attackEverySeconds, the Wire Tangle from rangeTiles, the Scrap Crab its own rhythm', () => {
