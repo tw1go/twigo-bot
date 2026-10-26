@@ -248,7 +248,7 @@ export function equipStep(s: AdventureState, a: TownEquipAction): Result {
   return unequipToBag(loadItemData(), s, a.place);
 }
 
-/** One stat point into the class's main or second stat, or every stat point back (free). */
+/** One stat point into STR, DEX or INT, or every stat point back (free). */
 export function pointsStep(s: AdventureState, a: TownPointsAction): Result {
   if (a.action === 'reset') {
     if (!Object.values(s.progress.points).some((n) => n)) return { ok: false, message: 'No stat points spent.' };

@@ -419,6 +419,37 @@ test('schema v12: every worn and carried training piece becomes an item in the s
   mem.close();
 });
 
+const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+/** Waits until `find` has something (at most `ms`): a slow machine, as CI's, takes longer than any fixed wait. */
+async function until<T>(find: () => T | undefined, what: string, ms = 5000): Promise<T> {
+  for (const end = Date.now() + ms; Date.now() < end; await wait(25)) {
+    const x = find();
+    if (x !== undefined) return x;
+  }
+  throw new Error(`no ${what} within ${ms} ms`);
+}
+/** A walk on a map's own level round its blocked tiles (8 ways), from one tile to another (not the first): a straight
+ *  line can cross a blocked tile, and the server refuses that step. Throws if there's none. */
+function pathOn(map: { size: [number, number]; blocked: number[][]; height?: number[][] }, from: [number, number], to: [number, number]): [number, number][] {
+  const level = (c: number, r: number) => map.height?.[r]?.[c] ?? 0;
+  const open = (c: number, r: number) => r >= 0 && c >= 0 && r < map.size[1] && c < map.size[0] && !map.blocked[r]?.[c] && level(c, r) === level(from[0], from[1]);
+  const key = (c: number, r: number) => `${c},${r}`;
+  const prev = new Map<string, string>([[key(from[0], from[1]), '']]);
+  const queue: [number, number][] = [from];
+  for (let i = 0; i < queue.length && !prev.has(key(to[0], to[1])); i++) {
+    const [c, r] = queue[i];
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      if (prev.has(key(c + dc, r + dr)) || !open(c + dc, r + dr)) continue;
+      prev.set(key(c + dc, r + dr), key(c, r));
+      queue.push([c + dc, r + dr]);
+    }
+  }
+  assert.ok(prev.has(key(to[0], to[1])), `${to} can be walked to from ${from}`);
+  const path: [number, number][] = [];
+  for (let k = key(to[0], to[1]); k && k !== key(from[0], from[1]); k = prev.get(k)!) path.unshift(k.split(',').map(Number) as [number, number]);
+  return path;
+}
+
 test('over the town\'s socket: a kill drops Kusing (faint for others), nothing picks itself up (not even walking onto it), `pick` takes it within reach; a potion heals, then waits out its kind\'s cooldown (HP and MP each their own)', async () => {
   const map = loadMobMap('slums');
   const room = new MobRoom(map, lcg(16), {}, { shapes: {} }, loadMobKinds());
@@ -452,16 +483,18 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
       ws.on('message', (d) => got.push(JSON.parse(String(d))));
       ws.on('open', () => ok({ ws, got }));
     });
-  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
+  const conns: { ws: WebSocket }[] = [];
+  // (Whatever happens, the sockets and the server close: left open, a failure here hung the whole run.)
+  try {
   const a = await open('Mara');
   const b = await open('Bob');
-  await wait(100);
-  const welcome = a.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>;
+  conns.push(a, b);
+  const welcome = (await until(() => a.got.find((m) => m.t === 'welcome'), 'welcome')) as Extract<TownServerMessage, { t: 'welcome' }>;
+  await until(() => b.got.find((m) => m.t === 'welcome'), 'welcome');
   const [sc, sr] = welcome.spawn;
   a.ws.send(JSON.stringify({ t: 'attack', mob: can.id, skill: 0 }));
-  await wait(200);
-  const mine = a.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>;
-  const theirs = b.got.find((m) => m.t === 'loot-drop') as Extract<TownServerMessage, { t: 'loot-drop' }>;
+  const mine = (await until(() => a.got.find((m) => m.t === 'loot-drop'), 'the drop')) as Extract<TownServerMessage, { t: 'loot-drop' }>;
+  const theirs = (await until(() => b.got.find((m) => m.t === 'loot-drop'), 'the drop for Bob')) as Extract<TownServerMessage, { t: 'loot-drop' }>;
   assert.ok(mine && theirs, 'both see it fall');
   const coin = mine.loot.find((l) => l.kusing)!;
   assert.ok(coin.mine && coin.kusing! >= 60 && coin.kusing! <= 120);
@@ -470,14 +503,12 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
   await wait(900);
   assert.ok(!a.got.some((m) => m.t === 'items'), 'nothing picked up on its own');
   // Two tiles away: `pick` is refused (silently); walking onto it picks nothing up either.
-  const walkTo = async (to: [number, number], [col, row]: [number, number]) => {
-    while (col !== to[0] || row !== to[1]) {
-      col += Math.sign(to[0] - col);
-      row += Math.sign(to[1] - row);
+  const walkTo = async (to: [number, number], from: [number, number]) => {
+    for (const [col, row] of pathOn(map, from, to)) {
       a.ws.send(JSON.stringify({ t: 'step', col, row }));
       await wait(180);
     }
-    return [col, row] as [number, number];
+    return to;
   };
   const blocked = (c: number, r: number) => c < 0 || r < 0 || !!map.blocked[r]?.[c];
   const away = ([[2, 0], [-2, 0], [0, 2], [0, -2]] as const).map(([dc, dr]): [number, number] => [coin.col + dc, coin.row + dr]).find(([c, r]) => !blocked(c, r));
@@ -492,25 +523,22 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
   assert.ok(!a.got.some((m) => m.t === 'snap'), 'walked there');
   assert.ok(!a.got.some((m) => m.t === 'items'), 'walking onto it picks nothing up');
   a.ws.send(JSON.stringify({ t: 'pick' })); // F / Space: the nearest within reach
-  await wait(100);
-  const got = a.got.find((m) => m.t === 'items' && m.got?.kusing) as Extract<TownServerMessage, { t: 'items' }>;
+  const got = (await until(() => a.got.find((m) => m.t === 'items' && m.got?.kusing), 'the pickup')) as Extract<TownServerMessage, { t: 'items' }>;
   assert.ok(got, JSON.stringify(a.got.filter((m) => m.t === 'snap')));
   assert.equal(got.items.kusing, coin.kusing);
   assert.ok(b.got.some((m) => m.t === 'loot-gone' && m.ids.includes(coin.id)), 'gone for Bob too');
   // A potion at full HP: refused, none used.
   a.ws.send(JSON.stringify({ t: 'potion', item: 'low-hp-potion' }));
-  await wait(100);
-  assert.ok(a.got.some((m) => m.t === 'potion-refused' && m.reason === 'full'));
+  await until(() => a.got.find((m) => m.t === 'potion-refused' && m.reason === 'full'), 'the full refusal');
   // Hurt (her most HP grows with a level, what she has stays), then two potions: one heals, the next waits.
   maraLevel = 10;
   town.kit('Mara', 'slingshot', null);
-  await wait(50);
-  const hurt = a.got.filter((m) => m.t === 'vitals' && m.id === welcome.you).at(-1) as Extract<TownServerMessage, { t: 'vitals' }>;
+  const hurt = (await until(() => a.got.filter((m): m is Extract<TownServerMessage, { t: 'vitals' }> => m.t === 'vitals' && m.id === welcome.you).find((m) => m.hp < m.maxHp), 'her HP short of her most')) as Extract<TownServerMessage, { t: 'vitals' }>;
   assert.ok(hurt.hp < hurt.maxHp);
   a.ws.send(JSON.stringify({ t: 'potion', item: 'low-hp-potion' }));
   a.ws.send(JSON.stringify({ t: 'potion', item: 'low-hp-potion' }));
-  await wait(150);
-  const drank = a.got.find((m) => m.t === 'potion') as Extract<TownServerMessage, { t: 'potion' }>;
+  const drank = (await until(() => a.got.find((m) => m.t === 'potion'), 'the potion')) as Extract<TownServerMessage, { t: 'potion' }>;
+  await until(() => a.got.find((m) => m.t === 'potion-refused' && m.reason === 'cooldown'), 'the cooldown refusal');
   assert.deepEqual([drank.heals, drank.amount, drank.cooldown], ['hp', Math.min(150, hurt.maxHp - hurt.hp), 10_000]); // what it restored
   const cd = a.got.find((m) => m.t === 'potion-refused' && m.reason === 'cooldown') as Extract<TownServerMessage, { t: 'potion-refused' }>;
   assert.ok(cd && (cd.ms ?? 0) > 9000 && cd.heals === 'hp');
@@ -518,13 +546,14 @@ test('over the town\'s socket: a kill drops Kusing (faint for others), nothing p
   // An MP Potion right after: its own cooldown (stats.json potions.separateCooldowns), so it goes.
   if (hurt.mp !== undefined && hurt.maxMp !== undefined && hurt.mp < hurt.maxMp) {
     a.ws.send(JSON.stringify({ t: 'potion', item: 'low-mp-potion' }));
-    await wait(150);
-    assert.ok(a.got.some((m) => m.t === 'potion' && m.heals === 'mp'), 'the MP Potion isn\'t held back by the HP one');
+    await until(() => a.got.find((m) => m.t === 'potion' && m.heals === 'mp'), "the MP Potion (it isn't held back by the HP one)");
     assert.equal(bagOf('Mara').bag.find((i) => i.defId === 'low-mp-potion')!.count, 1);
   } else assert.fail(`not short of MP to try it: ${JSON.stringify(hurt)}`);
-  assert.ok(b.got.some((m) => m.t === 'potion' && m.id === welcome.you), 'Bob sees her heal');
-  for (const c of [a, b]) c.ws.close();
-  await new Promise((ok) => server.close(ok));
+  await until(() => b.got.find((m) => m.t === 'potion' && m.id === welcome.you), 'Bob seeing her heal');
+  } finally {
+    for (const c of conns) c.ws.close();
+    await new Promise((ok) => server.close(ok));
+  }
 });
 
 test.after(() => rmSync(dir, { recursive: true, force: true }));
@@ -569,15 +598,6 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
       ws.on('message', (d) => got.push(JSON.parse(String(d))));
       ws.on('open', () => ok({ ws, got }));
     });
-  const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
-  /** Waits until `find` has something (at most `ms`; a slow machine, as CI's, takes longer than a fixed wait). */
-  const until = async <T>(find: () => T | undefined, what: string, ms = 5000): Promise<T> => {
-    for (const end = Date.now() + ms; Date.now() < end; await wait(25)) {
-      const x = find();
-      if (x !== undefined) return x;
-    }
-    throw new Error(`no ${what} within ${ms} ms`);
-  };
   const conns: { ws: WebSocket; got: TownServerMessage[] }[] = [];
   // (Whatever happens, the sockets and the server close: left open, a failure here hung the whole run.)
   try {
@@ -598,22 +618,7 @@ test('over the town\'s socket: a party member picks up Kusing and everyone in th
   // Mara walks onto it and picks it up.
   const [sc, sr] = (mara.got.find((m) => m.t === 'welcome') as Extract<TownServerMessage, { t: 'welcome' }>).spawn;
   // (A path round blocked tiles, on her own level: a straight line can cross one, and the server refuses that step.)
-  const level = (c: number, r: number) => map.height?.[r]?.[c] ?? 0;
-  const open_ = (c: number, r: number) => r >= 0 && c >= 0 && r < map.size[1] && c < map.size[0] && !map.blocked[r]?.[c] && level(c, r) === level(sc, sr);
-  const from = new Map<string, string>([[`${sc},${sr}`, '']]);
-  const queue: [number, number][] = [[sc, sr]];
-  for (let i = 0; i < queue.length && !from.has(`${coin.col},${coin.row}`); i++) {
-    const [c, r] = queue[i];
-    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-      const k = `${c + dc},${r + dr}`;
-      if (from.has(k) || !open_(c + dc, r + dr)) continue;
-      from.set(k, `${c},${r}`);
-      queue.push([c + dc, r + dr]);
-    }
-  }
-  const path: [number, number][] = [];
-  for (let k = `${coin.col},${coin.row}`; k && k !== `${sc},${sr}`; k = from.get(k)!) path.unshift(k.split(',').map(Number) as [number, number]);
-  assert.ok(from.has(`${coin.col},${coin.row}`), `the coin at ${coin.col},${coin.row} can be walked to`);
+  const path = pathOn(map, [sc, sr], [coin.col, coin.row]);
   for (const [col, row] of path) {
     mara.ws.send(JSON.stringify({ t: 'step', col, row }));
     await wait(180);
