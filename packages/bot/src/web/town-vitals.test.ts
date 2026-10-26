@@ -302,7 +302,7 @@ async function townWithSlums(extra: Partial<Parameters<typeof attachTown>[1]> = 
   });
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const port = (server.address() as AddressInfo).port;
-  const open = (as: string, roomName?: string) =>
+  const open = (as: string, roomName?: string, ready = true) =>
     new Promise<{ ws: WebSocket; got: TownServerMessage[]; id: string; spawn: [number, number] }>((ok) => {
       const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}${roomName ? `&room=${roomName}` : ''}`);
       const c = { ws, got: [] as TownServerMessage[], id: '', spawn: [0, 0] as [number, number] };
@@ -311,6 +311,7 @@ async function townWithSlums(extra: Partial<Parameters<typeof attachTown>[1]> = 
         c.got.push(m);
         if (m.t === 'welcome') {
           Object.assign(c, { id: m.you, spawn: m.spawn });
+          if (ready) ws.send(JSON.stringify({ t: 'ready' })); // (as the page does once its loading cover lifts: Arrival safety)
           ok(c);
         }
       });
@@ -413,6 +414,31 @@ test('a reload in the Slums keeps their HP; the town fills it up again', async (
   assert.ok(welcome);
   town.ws.close();
   await close();
+});
+
+test('arrival safety: until their page says it has loaded, nothing lands on them (nor after LOADING_MS); then hits land', async () => {
+  const { room, open, close } = await townWithSlums();
+  const a = await open('Mara', 'slums', false);
+  await wait(100);
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 30 });
+  await wait(250);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp, 'loading: nothing lands');
+  send(a.ws, { t: 'ready' });
+  await wait(100);
+  room.queue.push({ player: a.id, by: 'tin-can-alley:0', damage: 30 });
+  await wait(250);
+  assert.equal(lastVitals(a.got, a.id)?.hp, MAX.hp - 30, 'loaded: it lands');
+  a.ws.close();
+  await close();
+  // A page that never says so (an old build): safe for loadingMs at most.
+  const t = await townWithSlums({ loadingMs: 200 });
+  const c = await t.open('Bob', 'slums', false);
+  await wait(300);
+  t.room.queue.push({ player: c.id, by: 'tin-can-alley:0', damage: 30 });
+  await wait(250);
+  assert.equal(lastVitals(c.got, c.id)?.hp, MAX.hp - 30, 'past loadingMs: it lands');
+  c.ws.close();
+  await t.close();
 });
 
 test('the Bag\'s slow holds their steps to half: 3 at once instead of 6, then back', async () => {

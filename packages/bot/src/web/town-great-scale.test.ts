@@ -251,7 +251,11 @@ test("over the town's socket: arrivals hear its state; held, attacks are refused
       const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=palengke`);
       sockets.push(ws);
       const got: Msg[] = [];
-      ws.on('message', (d) => got.push(JSON.parse(String(d))));
+      ws.on('message', (d) => {
+        const m = JSON.parse(String(d)) as Msg;
+        got.push(m);
+        if (m.t === 'welcome') ws.send(JSON.stringify({ t: 'ready' })); // (as the page does once it has loaded: Arrival safety)
+      });
       ws.on('open', () => ok({ ws, got }));
     });
   const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms));

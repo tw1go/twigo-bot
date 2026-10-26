@@ -566,6 +566,7 @@ export class TownScene extends Phaser.Scene {
   /** The cover lifts: the title card and the opening zoom, then whatever waited. */
   private reveal(): void {
     this.revealed = true;
+    this.link?.send({ t: 'ready' }); // (Arrival safety: mobs leave you be until now)
     this.cover?.hide();
     this.cover = null;
     this.zoomIntro();
@@ -3322,6 +3323,7 @@ export class TownScene extends Phaser.Scene {
         this.closedAreas = m.closed ?? {}; // (maps not open yet: their gates say when)
         this.setRestored(m.restored ?? null); // (the Lantern Posts you've restored: the rest drawn broken)
         this.gotWelcome = true;
+        if (this.revealed) link.send({ t: 'ready' }); // (a reconnect: loaded already, so no arrival safety)
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
           this.knockedOut = false;
