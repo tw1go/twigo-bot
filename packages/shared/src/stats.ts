@@ -789,6 +789,10 @@ export const golemHpMin = (data: StatsData): number => (data.mobBehaviour.golem 
  *  is the mob table's × this ^ players. 1 without it. */
 export const golemHpPerPlayer = (data: StatsData): number => (data.mobBehaviour.golem as { hpPerPlayer?: number }).hpPerPlayer ?? 1;
 
+/** The Great Scale's HP multiplier per player in the Old Market (stats.json mobBehaviour.greatScale.hpPerPlayer, a repo
+ *  addition, as the golem's): its HP is the mob table's × this ^ players, never under the table's. 1 without it. */
+export const greatScaleHpPerPlayer = (data: StatsData): number => ((data.mobBehaviour as { greatScale?: { hpPerPlayer?: number } }).greatScale?.hpPerPlayer ?? 1);
+
 /** A small seeded number (0–1) from a string, so a mob's look, pack and first spot are the same on every restart and in
  *  the game before the server answers. */
 export function seeded(s: string): number {

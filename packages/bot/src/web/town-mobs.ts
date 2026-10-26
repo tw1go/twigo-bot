@@ -2013,6 +2013,18 @@ export class MobRoom {
     return changed.length ? [{ t: 'mob-scale', mobs: changed }] : [];
   }
 
+  /** One mob's most HP to `max` (a field boss growing with the players about: the Great Scale), its HP keeping its share.
+   *  The `mob-scale` to send (empty if nothing changed, or it's dead). */
+  setMaxHp(id: string, max: number): MobEvent[] {
+    const m = this.mobs.find((x) => x.id === id);
+    max = Math.max(1, Math.round(max));
+    if (!m || m.respawnAt || m.hp <= 0 || m.maxHp === max) return [];
+    const share = m.hp / m.maxHp;
+    m.maxHp = max;
+    m.hp = Math.max(1, Math.round(share * max));
+    return [{ t: 'mob-scale', mobs: [{ id: m.id, hp: m.hp, maxHp: m.maxHp }] }];
+  }
+
   /** Dev (?minibosses=now): every mini boss that's down comes back on the next tick. How many. */
   respawnMinis(): number {
     const down = this.mobs.filter((m) => m.mini && m.respawnAt);

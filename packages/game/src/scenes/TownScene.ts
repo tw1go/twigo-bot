@@ -5312,12 +5312,11 @@ export class TownScene extends Phaser.Scene {
       });
       onAdventure(() => this.mapView?.refresh());
     }
-    // You're at (or else nearest) one of this map's posts: "You are here" on it.
+    // You're at one of this map's posts: "You are here" on it; else on your own spot.
     const t = this.player.tile;
     const at = postAt(this.lanternPosts, t.col, t.row);
-    const nearest = this.lanternPosts.reduce((b, p, i) => (!p.entrance && Math.hypot(t.col - p.tile[0], t.row - p.tile[1]) < Math.hypot(t.col - this.lanternPosts[b].tile[0], t.row - this.lanternPosts[b].tile[1]) ? i : b), 0);
     void this.mapView.open({
-      here: isLanternMap(this.area) && this.lanternPosts.length ? { map: this.area, post: at >= 0 ? at : nearest } : null,
+      here: isLanternMap(this.area) ? { map: this.area, post: at, tile: [t.col, t.row] } : null,
       fromPost: fromPost && at >= 0,
       lanterns: () => countOf(adventure()?.bag ?? [], RETURN_LANTERN),
       travel: (to, post) => this.lanternTo(to, post),
