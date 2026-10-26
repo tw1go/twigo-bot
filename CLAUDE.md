@@ -491,7 +491,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
   under it; on phones (≤560 px wide, or ≤500 px tall = landscape phones, which get every phone rule) those buttons stack in
   a column under the map with the bag button under them, and the stay box sits beside the Chat button): the map round you, centred on you and moving with you (26 Oct 2026; it was the whole
-  map, too small to read): ZOOMS 20 / 30 / 40 / 60 / 90 tiles across, + and − at its corner (`.mm-mini-zoom`, localStorage
+  map, too small to read): ZOOMS 20 / 30 / 40 / 60 / 90 tiles across, then WHOLE (the whole map fitted, your dot where you are on it), + and − at its corner (`.mm-mini-zoom`, localStorage
   `mk_minimap_zoom`, 40 to start); the whole map's ground (tile colours, buildings, a map's picture) drawn once at the
   40-tile scale and the part round you copied out (`draw`'s `at`: your feet between tiles, Character `groundAt`); green
   dots for everyone else (your party's pink, over the others: `inParty`), gold for you in the middle, a faint box for the
@@ -1159,7 +1159,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
   solo, 60% HP and ATK. Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
-  the Palengke's hatch label, click and glow after palengke-14. Its mini bosses' moves (part 2, 21 Oct 2026: bot
+  the Palengke's hatch label, click and glow after palengke-14 (the hatch and the Warren Gate: a left or right click or a tap on one is its own, `entranceBoxes` / `entranceClick`, never also the map's walk to the tile under it, and asks for the panel again even when it showed before; E beside one opens it again). Its mini bosses' moves (part 2, 21 Oct 2026: bot
   `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
   Delemon's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
   too) and Lid Spin (out and back along its line), Sakristan's Rice Rain (each circle's spilled rice:
@@ -1967,6 +1967,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   asked: the art folder's docs/skills-21-40/build_slingshot_extra_fx.py, its fx/slingshot/_sheets_scripted.csv; a PixelLab
   piece of the same name and cell can replace any). Hailstorm's area is 2 tiles
   (`area:6`, Mac's ring, 22 Oct 2026). Dev: `?switch&level=40`.
+- Combo counter (`ui/combo-counter.ts`, CONTEXT.md Combo; 26 Oct 2026; page only, battle maps): your own hits in a row,
+  "N HITS" (Jersey 10, white → gold at 10 → orange at 25 → purple at 50) and under it "N KILLS" once one dies, a 3 px bar
+  draining over COMBO_MS (2 s): a hit counts as its number pops (TownScene `showHit` with `mine`, and your Boiling Splash
+  ticks: `mob-burn`'s `by`), never a miss or a blocked one; a kill only if that mob was alive here before the hit
+  (`Mobs.hit` returns it, so several hits carrying `dead` count once). No new hit for 2 s: a 300 ms fade, then 0;
+  a knock-out, the tab hidden, leaving the map: at once. Placed as a streak starts (`place`): the right edge 38% down,
+  else under whatever HUD piece is in the way (buff tray, stay box, feed, minimap…; no lower than 60%), else left of
+  them; pointer-events none; pops off under reduced motion. Settings → Game → Combo counter (localStorage `mk_combo`).
 - Buff tray (`ui/buff-tray.ts`, the HUD's `.th-buffs` slot under News/Settings): the server's `buffs`: a row each with icon,
   name, what it gives (`buffStatLines`), time left (Jersey 10; amber under 30 s, the icon fading under 10 s, gone at 0;
   a stance "On"); past four (and on phones) icons with their time only, the rest in a card on hover or tap (`.bt-tip`, name, stats,

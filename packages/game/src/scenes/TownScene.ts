@@ -139,6 +139,7 @@ import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
 import { showArenaMenu } from '../arena/menu';
 import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
+import { ComboCounter } from '../ui/combo-counter';
 import { Minimap, type MinimapQuestMark } from '../ui/minimap';
 import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
@@ -658,6 +659,12 @@ export class TownScene extends Phaser.Scene {
     };
     // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
     this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
+    // Your hits in a row (ui/combo-counter.ts): battle maps only; leaving the map ends it with the scene.
+    if (this.battleMap) {
+      const combo = new ComboCounter();
+      this.combo = combo;
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => combo.destroy());
+    }
     lagContext({ area: this.area, battle: this.battleMap });
     lagEvent(`entered ${this.area}`);
     if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
@@ -1444,9 +1451,13 @@ export class TownScene extends Phaser.Scene {
   }
   private worldSkills: WorldSkills | null = null;
 
-  /** A skill hit's number and HP on its mob (and your hit's sound). */
+  /** The combo counter (battle maps): your hits in a row as they land. */
+  private combo: ComboCounter | null = null;
+
+  /** A skill hit's number and HP on its mob (and your hit's sound, and the combo counter's tick). */
   private showHit(h: MobHitView, mine: boolean): void {
-    this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
+    const killed = this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced) ?? false;
+    if (mine) this.combo?.hit(h, killed);
     if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
   }
 
@@ -3036,7 +3047,11 @@ export class TownScene extends Phaser.Scene {
       }
       // A burning puddle's tick (Boiling Splash): each mob in it, an orange number.
       if (m.t === 'mob-burn') {
-        for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true);
+        // (Your puddle's ticks keep your combo going, and their kills count.)
+        for (const h of m.hits) {
+          const killed = this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true) ?? false;
+          if (m.by === myId) this.combo?.hit(h, killed);
+        }
         return;
       }
       if (m.t === 'mob-attack') {
@@ -3059,6 +3074,7 @@ export class TownScene extends Phaser.Scene {
       // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
       if (m.t === 'knocked-out' && m.id === myId) {
         this.knockedOut = true;
+        this.combo?.end(); // (knocked out: the streak's over)
         this.stopFight();
         this.pending = null;
         const down = this.player.setKnockedOut(true);
@@ -3740,6 +3756,7 @@ export class TownScene extends Phaser.Scene {
         const wasHold = this.touchHoldTile !== null;
         this.touchHoldTile = null;
         if (wasHold) return; // hold ended: stop walking, no tap action
+        if (over.some((o) => this.entranceBoxes.has(o))) return; // (a dungeon entrance's own tap)
         // Quick tap: act on whatever is under the finger (no distance filter — time is the discriminator).
         const lootHit = this.loot?.pick(over);
         if (lootHit) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
@@ -3758,6 +3775,7 @@ export class TownScene extends Phaser.Scene {
       }
       // Mouse: keep the existing 8px drag filter to distinguish a click from a pan.
       if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
+      if (over.some((o) => this.entranceBoxes.has(o))) return; // (a dungeon entrance's own click, left or right)
       const lootHit = this.loot?.pick(over);
       if (lootHit && p.leftButtonReleased()) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
       const other = this.others.pick(over);
@@ -3978,6 +3996,9 @@ export class TownScene extends Phaser.Scene {
   private warrensTracker: WarrensTracker | null = null;
   private gateCheckAt = 0;
   private gateAsked = false;
+  /** The dungeon entrances' click boxes (the Warren Gate, the Cellar Hatch): a click or tap on one is theirs alone, never
+   *  also a walk to the tile under it (the map's POINTER_UP leaves it). */
+  private readonly entranceBoxes = new Set<Phaser.GameObjects.GameObject>();
 
   /** The Silong Hatch (the Palengke's Market Hall, its middle tile and use range: dungeons.json silong.entry): walking up
    *  to it asks for its panel, once each time. */
@@ -4061,7 +4082,12 @@ export class TownScene extends Phaser.Scene {
     if (bench) return this.sitOn(bench);
     // Beside a Lantern Post: its Map menu.
     const post = postAt(this.lanternPosts, t.col, t.row, LANTERN_WALK_TILES);
-    if (post >= 0) this.toLanternPost(post);
+    if (post >= 0) return this.toLanternPost(post);
+    // By a dungeon entrance: its panel again (closed once, it only came back after walking away).
+    this.gateAsked = false;
+    this.hatchAsked = false;
+    if (this.area === 'slums') this.nearWarrenGate();
+    if (this.area === 'palengke') this.nearHatch();
   }
 
   /** The town's NPCs: on the walkable tiles away from doors, gates, benches and the spawn (world/npcs.ts), with the
@@ -5137,6 +5163,15 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
+  /** A click or tap on a dungeon entrance that counts: on the canvas itself, a left or right click (players walk with the
+   *  right button, so a right click on the hatch is the usual one) or a tap, not a drag to peek, not in a cutscene or
+   *  knocked out. */
+  private entranceClick(p: Phaser.Input.Pointer): boolean {
+    if (!onMap(p, this.game.canvas) || this.watching || this.knockedOut) return false;
+    if (p.wasTouch) return this.touchHoldTile === null;
+    return (p.leftButtonReleased() || p.rightButtonReleased()) && Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) <= 8;
+  }
+
   /** The Warren Gate (the Slums): "Warren Gate" over it on hover; a click walks up to it (its panel opens there). */
   private warrenGateLabel(): void {
     const o = this.map.objects.find((x) => x.id === 'slums-warren-gate');
@@ -5152,12 +5187,14 @@ export class TownScene extends Phaser.Scene {
     box.setInteractive({ cursor: 'pointer' });
     box.on('pointerover', () => label.show(top.y - lift - def.anchor[1] - 2));
     box.on('pointerout', () => label.show(null));
+    this.entranceBoxes.add(box);
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
+      if (!this.entranceClick(p)) return;
       const at = this.map.arrive?.warrens;
       if (!at) return;
       this.gateAsked = false; // (asked again when you get there, or now if you're there)
       this.goToTile({ col: at[0], row: at[1] });
+      this.nearWarrenGate();
     });
   }
 
@@ -5181,12 +5218,14 @@ export class TownScene extends Phaser.Scene {
     box.setInteractive({ cursor: 'pointer' });
     box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
     box.on('pointerout', () => label.show(null));
+    this.entranceBoxes.add(box);
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
+      if (!this.entranceClick(p)) return;
       const at = (this.map.arrive as Record<string, [number, number]> | undefined)?.silong;
       if (!at) return;
-      this.hatchAsked = false;
+      this.hatchAsked = false; // (asked again when you get there, or now if you're there)
       this.goToTile({ col: at[0], row: at[1] });
+      this.nearHatch();
     });
     // Its glow (fx-silong-hatch-glow) once the finale is done (ask again as quests change).
     let glow: FxHandle | null = null;

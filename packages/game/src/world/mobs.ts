@@ -959,12 +959,17 @@ export class Mobs {
   }
 
   /** A hit (the server's word): the hit pose (or its death), a damage number ("Blocked" off a shell, "Miss" for a miss),
-   *  the HP bar. */
-  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false, reduced = false): void {
+   *  the HP bar. Whether this hit killed it (it was alive here till now: the combo counter's kills). */
+  hit(id: string, damage: number, crit: boolean, hp: number, dead: boolean, slow?: { factor: number; ms: number }, blocked = false, miss = false, burn = false, reduced = false): boolean {
     const m = this.byId.get(id);
     const u = !m && this.unmade.get(id);
-    if (u) Object.assign(u, { hp, ...(dead ? { dead: true } : {}) });
-    if (!m || m.dead) return;
+    if (u) {
+      // (Not drawn yet: its HP kept, and a kill only if it was alive till now.)
+      const alive = !u.dead;
+      Object.assign(u, { hp, ...(dead ? { dead: true } : {}) });
+      return dead && alive;
+    }
+    if (!m || m.dead) return false;
     m.hp = hp;
     const now = this.scene.time.now;
     m.fightUntil = now + FIGHT_MS;
@@ -984,6 +989,7 @@ export class Mobs {
     else if (!blocked && !miss && !(m.radius && m.pose)) this.pose(m, 'hit'); // (a hit never cuts the golem's attack short)
     this.drawBar(m);
     if (m === this.target) this.onTarget?.(m);
+    return dead;
   }
 
   /** A grey "blocked" arc in front of a mob, the way it faces (a front block took a share of a hit: fx-sangkalan-block,
