@@ -259,7 +259,7 @@ _Avoid_: exp, points
 The three of STR, DEX and INT in the order a class grows them: the main grows most, the third not at all.
 
 **Stat point**:
-One a level-up; the player puts it into their class's main or second stat.
+Two a level-up; the player puts each into any of STR, DEX and INT (a weapon still needs its main stat highest).
 _Avoid_: attribute point
 
 **Skill point**:

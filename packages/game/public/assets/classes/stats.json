@@ -58,11 +58,9 @@
       "base": 4,
       "perLevel": 0
     },
-    "pointsPerLevelUp": 1,
-    "pointsGoTo": [
-      "main",
-      "second"
-    ]
+    "pointsPerLevelUp": 2,
+    "pointsGoTo": ["main", "second", "third"],
+    "pointsNote": "A repo change (25 Oct 2026, the owner): 2 stat points a level-up (was 1) and any of the three stats takes them (was the main and second only), so a player can build as they like; points already spent stay, the new ones wait unspent."
   },
   "gearTypeStats": {
     "heavy": [
