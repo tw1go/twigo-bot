@@ -346,6 +346,11 @@ _Avoid_: dead, killed (mobs die; players are knocked out)
 **Respawn**:
 Coming back after being knocked out, at the gate of the map you came in through.
 
+**Arrival safety**:
+Coming into a map (through a gate, a Lantern Post, a reload), you're nobody's target and nothing lands on you until your
+game has finished loading it (the loading screen lifts), or you attack, or 30 seconds have passed.
+_Avoid_: spawn protection, invulnerability (it ends as soon as you can play)
+
 **Unkillable**:
 A Game Master's testing switch (Settings → Testing): hits still land, but their HP never goes below 1, so they're never
 knocked out and can play on through quests and levels. Kept until they turn it off; nobody else can have it.

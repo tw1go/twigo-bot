@@ -1708,7 +1708,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   golem's `hitMs`: slam frame, toss frame + 600 ms flight, glare frame) on town.ts's 100 ms clock: off HP, the Bag's
   slow (`Vitals.slow`: the step budget halved, rate and burst), the glare's blindness (`Attacker.blinded`: every hit a
   Miss). In combat = hit, missed or hitting within 5 s; regen in the Slums by stats.json `regen` (HP 2%/s out of combat,
-  MP mpRegen all along; skills spend MP: below). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
+  MP mpRegen all along; skills spend MP: below). Arrival safety (CONTEXT.md; 26 Oct 2026, the owner: players were hit
+  while their page still loaded): every join sets `Conn.loadingUntil` (LOADING_MS 30 s, `TownOptions.loadingMs`), so
+  `watching` holds for them as for a cutscene (left out of the mobs' tick, nothing lands) until the page sends `ready`
+  (TownScene `reveal`, and again on a reconnect's welcome; handled before `fresh`, so it's never taken for their `here`)
+  or they attack; `ready` also `forget`s hits rolled meanwhile; tested in town-vitals.test.ts (its pretend page sends
+  `ready` on welcome). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
   `attack-refused` 'out'; left out of the mobs' tick, so mobs walk home and the golem looks elsewhere; `forget` drops
   hits on their way), after `RESPAWN_MS` 3 s `respawn` at the room's arrival tile (the Slums' spawn = `arrive.town`),
   full. `vitals` (id, hp, maxHp; mp/maxMp to yourself) to you, your room and your party elsewhere; `TownPlayer.hp/maxHp/

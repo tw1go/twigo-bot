@@ -265,6 +265,8 @@ export type TownClientMessage =
   /** A cutscene started (`on`) or ended (CONTEXT.md Cutscene): meanwhile the town treats you as away (no mob goes after
    *  you or hits you, nothing lands on you, you can't attack; others see "..."), for 60 s at most. */
   | { t: 'cutscene'; on: boolean }
+  /** The page's loading cover has lifted (every arrival, and again after a reconnect): its arrival safety ends. */
+  | { t: 'ready' }
   /** Use an HP or MP Potion of this kind (its item id) from your combat bag (battle maps; one shared cooldown). */
   | { t: 'potion'; item: string }
   /** Cast one of your class's buffs (stats.json skills.buffs, by name; battle maps only). `target`: the party member's

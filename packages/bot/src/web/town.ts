@@ -298,6 +298,8 @@ export interface TownOptions {
   testing?: { get(userId: string): TestingSettings; set(userId: string, change: Partial<TestingSettings>): TestingSettings };
   /** How long a cutscene keeps someone away from fights at most (ms; tests): CUTSCENE_MS. */
   cutsceneMs?: number;
+  /** Arrival safety's longest (ms; LOADING_MS): tests set it 0. */
+  loadingMs?: number;
   /** The Halloween event (web/halloween.ts: its window, Mikko Kalabasa, Biikko Kalabasa, the Manananggal; its director
    *  runs on the Slums' mob room), and giving a find's or reunite's reward (Kowens, Kusing, Low Repair Kits by mail when
    *  the bag is full, a potion): whether the kits went by mail. Without it, no event. */
@@ -489,7 +491,13 @@ interface Conn {
   dodgeUntil?: number;
   /** Watching a cutscene until (ms; CONTEXT.md Cutscene): away from fights meanwhile. */
   cutsceneUntil?: number;
+  /** Still loading the map until (ms; CONTEXT.md Arrival safety): nobody's target, nothing lands, until the page says
+   *  `ready`, they attack, or LOADING_MS is up. */
+  loadingUntil?: number;
 }
+
+/** The longest an arrival stays out of fights while its page loads (a page that never says `ready`: an old build). */
+export const LOADING_MS = 30_000;
 
 /** The longest a cutscene keeps someone away from fights (its end, or Skip, ends it sooner). */
 export const CUTSCENE_MS = 60_000;
@@ -515,7 +523,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   const send = (c: Conn, m: TownServerMessage) => c.ws.readyState === WebSocket.OPEN && c.ws.send(JSON.stringify(m));
   /** To everyone in `c`'s room but `c` (the message is turned into text once). */
   /** Watching a cutscene: nobody's target, nothing lands on them, no attacks (CONTEXT.md Cutscene). */
-  const watching = (o: Conn, now = Date.now()) => (o.cutsceneUntil ?? 0) > now;
+  /** Away from fights: watching a cutscene, or still loading the map they arrived on (Arrival safety). */
+  const watching = (o: Conn, now = Date.now()) => (o.cutsceneUntil ?? 0) > now || (o.loadingUntil ?? 0) > now;
   /** The room (and anyone arriving: TownPlayer.cutscene) sees their "..." or not. */
   const cutsceneShown = (c: Conn, on: boolean) => {
     if (on) c.player.cutscene = true;
@@ -1260,6 +1269,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     const here = mapOf(c.room);
     const inside_ = (col: unknown, row: unknown): col is number => inside(here, col, row);
     const walkable_ = (col: number, row: number) => walkable(here, col, row);
+    // Their page's loading cover lifted: in the fights from now (what was on its way to them while it loaded lands on
+    // nobody). Never their first word about where they are (`fresh` stays for their `here`).
+    if (m.t === 'ready') {
+      if (c.loadingUntil) {
+        c.loadingUntil = 0;
+        mobsOf(c.room)?.forget(p.id);
+      }
+      return;
+    }
     const fresh = c.fresh;
     c.fresh = false;
     // Knocked out: they can't walk, sit, move or fight until they respawn (chat and the rest go on).
@@ -1268,6 +1286,8 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       if (m.t === 'attack') return send(c, { t: 'attack-refused', reason: 'out' });
       if (m.t === 'face' || m.t === 'move' || m.t === 'stand') return;
     }
+    // (Attacking means the map is up: their arrival safety ends. A cutscene still refuses it.)
+    if (m.t === 'attack' && c.loadingUntil) c.loadingUntil = 0;
     if (m.t === 'attack' && watching(c)) return send(c, { t: 'attack-refused', reason: 'cutscene' });
     switch (m.t) {
       case 'here':
@@ -1511,7 +1531,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return;
       case 'cutscene': {
         // A cutscene on (away from fights for CUTSCENE_MS at most) or over; the room sees "..." meanwhile.
-        if (typeof m.on !== 'boolean' || m.on === watching(c)) return;
+        if (typeof m.on !== 'boolean' || m.on === (c.cutsceneUntil ?? 0) > Date.now()) return;
         c.cutsceneUntil = m.on ? Date.now() + (opts.cutsceneMs ?? CUTSCENE_MS) : 0;
         if (m.on) mobsOf(c.room)?.forget(p.id); // (what's on its way to them lands on nobody)
         return cutsceneShown(c, m.on);
@@ -2035,7 +2055,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     }
     const [col, row] = arrival(room, userId);
     const player: TownPlayer = { id: randomBytes(6).toString('hex'), ...profile, col, row, dir: 's', sit: false };
-    const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true };
+    const c: Conn = { ws, userId, room, player, tokens: STEP_BURST, refilled: Date.now(), says: SAY_BURST, saidAt: Date.now(), emotes: EMOTE_BURST, emotedAt: Date.now(), alive: true, fresh: true, loadingUntil: Date.now() + (opts.loadingMs ?? LOADING_MS) };
     // Off a battle map, timed buffs are over (a stance stays on; a reload on the same battle map keeps them).
     if (!battle(room)) buffs?.endTimed(userId);
     // HP and MP: full in a safe room; in a battle map as they were (a reload), full if new there or knocked out.
