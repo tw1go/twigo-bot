@@ -288,8 +288,14 @@
       #town-hud .th-top, #town-hud .th-buttons { display: flex; align-items: flex-start; gap: 8px; }
       /* The minimap (ui/minimap.ts), top right above the buttons. */
       #minimap { display: block; padding: 4px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.82); image-rendering: pixelated; }
+      /* The minimap's zoom (ui/minimap.ts): + and − at its bottom right corner. */
+      .mm-mini { position: relative; }
+      .mm-mini-zooms { position: absolute; right: 8px; bottom: 8px; display: flex; gap: 3px; }
+      .mm-mini-zoom { width: 18px; height: 18px; padding: 0; border: 1px solid #3D4256; border-radius: 3px; background: rgba(17, 24, 39, 0.85); color: #C4B5FD; font: 700 14px/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
+      .mm-mini-zoom:hover:not(:disabled) { background: #1E1B3A; color: #E6E9F2; }
+      .mm-mini-zoom:disabled { opacity: 0.35; cursor: default; }
       /* Not in the casino: out of the layout too, so News and Settings go back up top, clear of the casino's Leave. */
-      body.town-locked #minimap, body.town-locked #town-hud .th-jackpot { display: none; }
+      body.town-locked #minimap, body.town-locked .mm-mini, body.town-locked #town-hud .th-jackpot { display: none; }
       #town-hud .th-news { position: relative; }
       /* The buffs on you (ui/buff-tray.ts), under the buttons: icon, name, what it gives, time left. */
       #town-hud .buff-tray { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }

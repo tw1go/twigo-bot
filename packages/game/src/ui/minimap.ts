@@ -1,9 +1,13 @@
 import type { TownMap } from '../assets/types';
 
-// 🗺️ The minimap (top right, above the HUD's buttons; it goes in the HUD's .th-map slot): the town's diamond from maps/town.json — grass, paths, the plaza,
-// the river and the buildings' footprints — with a green dot for everyone else in town (pink for your party), a gold one for you, and a
-// faint box for what the camera shows. The Slums: their dirt, concrete, planks and canal, raised ground a shade lighter
-// and the basin darker. The ground is drawn once; the dots every quarter second. Smaller on phones.
+// 🗺️ The minimap (top right, above the HUD's buttons; it goes in the HUD's .th-map slot): the map round you, centred on
+// you and moving with you (26 Oct 2026: it showed the whole map, too small to read), about ZOOMS[n] tiles across: + and
+// − at its corner zoom it in and out (kept per browser, localStorage `mk_minimap_zoom`; 40 to start). The map's ground
+// from its file (the town's grass, paths, plaza, river and buildings' footprints; the Slums' dirt, concrete, planks and
+// canal, raised ground a shade lighter and the basin darker; a map's own picture over it: manifest ui.minimapPictures),
+// its Lantern Posts and dungeon entrance (`setMarks`), a green dot for everyone else (pink for your party), a gold one for
+// you, and a faint box for what the camera shows. The whole map's ground is drawn once, at the 40-tile zoom's scale, and
+// the part round you copied out of it each time. Smaller on phones.
 
 const GROUND: Record<string, string> = {
   grass: '#2D5240', path: '#565C75', plaza: '#7A8099', water: '#1D3F6E',
@@ -22,12 +26,22 @@ const PARTY = '#F9A8D4'; // your party's pink (their names in town, the party pa
 const YOU = '#FCDA4A';
 const OUTLINE = '#111827';
 const PHONE = '(max-width: 760px), (max-height: 500px)';
+/** How many tiles across it shows, by zoom step (+ goes left, − right); START the first time. */
+const ZOOMS = [20, 30, 40, 60, 90];
+const START = 2;
+const ZOOM_STORE = 'mk_minimap_zoom';
+/** The ground is drawn at the scale this many tiles across fills the minimap (a closer zoom stretches it a little). */
+const GROUND_TILES = 40;
+/** World px: a tile is 32 wide and 16 tall (its top corner at ((col − row) × 16, (col + row) × 8)). */
+const TILE_W = 32;
 
 /** A minimap icon: a Lantern Post (restored or not) or a dungeon entrance (by its id). */
 export type MinimapIcon = 'post' | 'postBroken' | 'warrens' | 'silong';
 
 export interface MinimapView {
   me: { col: number; row: number };
+  /** Where you are in world px (your feet, as drawn: it follows you smoothly between tiles); else your tile's middle. */
+  at?: { x: number; y: number };
   /** Everyone else; `party`: in your party (pink). */
   others: { col: number; row: number; party?: boolean }[];
   /** The camera's view, in world px (tile (col, row)'s top corner is at ((col - row) × 16, (col + row) × 8)). */
@@ -35,13 +49,24 @@ export interface MinimapView {
 }
 
 export class Minimap {
+  /** The minimap and its zoom buttons, in the HUD's .th-map slot. */
+  readonly box = document.createElement('div');
   readonly el = document.createElement('canvas');
+  /** The whole map's ground (world px × `gk`), drawn once. */
   private readonly ground = document.createElement('canvas');
   private readonly phone = matchMedia(PHONE);
   private width = 0;
   private height = 0;
-  private hw = 0; // minimap px per half tile width
   private ratio = 1;
+  /** The ground's device px per world px. */
+  private gk = 1;
+  /** The world x of the ground's left edge (the map's west corner: (col 0, row `rows`)). */
+  private readonly x0: number;
+  private zoom = START;
+  private readonly zoomIn = document.createElement('button');
+  private readonly zoomOut = document.createElement('button');
+  /** The last view drawn (redrawn at once when the zoom changes). */
+  private last: MinimapView | null = null;
 
   /** The map's own picture (manifest ui.minimapPictures: its diamond exactly, top corner at the top middle), once loaded. */
   private picture: HTMLImageElement | null = null;
@@ -50,6 +75,43 @@ export class Minimap {
    *  the ground under the dots (manifest ui.minimapIcons, drawn 1:1, their anchor on the spot). */
   private marks: { col: number; row: number; icon: MinimapIcon }[] = [];
   private readonly icons = new Map<MinimapIcon, { img: HTMLImageElement; size: [number, number]; anchor: [number, number] }>();
+
+  constructor(private readonly map: TownMap, pictureUrl?: string) {
+    this.x0 = -map.size[1] * (TILE_W / 2);
+    try {
+      const z = Number(localStorage.getItem(ZOOM_STORE));
+      if (Number.isInteger(z) && z >= 0 && z < ZOOMS.length && localStorage.getItem(ZOOM_STORE) !== null) this.zoom = z;
+    } catch {
+      // private window: 40 tiles
+    }
+    if (pictureUrl) {
+      const img = new Image();
+      img.onload = () => {
+        this.picture = img;
+        this.paintPicture();
+      };
+      img.src = pictureUrl;
+    }
+    this.el.id = 'minimap';
+    this.el.setAttribute('role', 'img');
+    this.el.setAttribute('aria-label', 'Map round you: you in gold, your party in pink, everyone else in green; Lantern Posts and dungeon entrances marked');
+    this.box.className = 'mm-mini';
+    for (const [b, text, label, step] of [[this.zoomIn, '+', 'Zoom the minimap in', -1], [this.zoomOut, '−', 'Zoom the minimap out', 1]] as const) {
+      b.className = 'mm-mini-zoom';
+      b.textContent = text;
+      b.setAttribute('aria-label', label);
+      b.title = label;
+      b.addEventListener('click', () => this.setZoom(this.zoom + step));
+    }
+    const zooms = document.createElement('div');
+    zooms.className = 'mm-mini-zooms';
+    zooms.append(this.zoomIn, this.zoomOut);
+    this.box.append(this.el, zooms);
+    (document.querySelector('#town-hud .th-map') ?? document.body).append(this.box);
+    this.phone.addEventListener('change', () => this.layout());
+    this.layout();
+    this.setZoom(this.zoom);
+  }
 
   /** The icons' art (manifest ui.minimapIcons). */
   setIcons(art: Partial<Record<MinimapIcon, { url: string; size: [number, number]; anchor: [number, number] }>>): void {
@@ -65,44 +127,42 @@ export class Minimap {
     this.marks = marks;
   }
 
-  constructor(private readonly map: TownMap, pictureUrl?: string) {
-    if (pictureUrl) {
-      const img = new Image();
-      img.onload = () => {
-        this.picture = img;
-        this.paintPicture();
-      };
-      img.src = pictureUrl;
+  /** A zoom step (clamped), kept for this browser; the buttons greyed at the ends. */
+  private setZoom(z: number): void {
+    this.zoom = Math.max(0, Math.min(ZOOMS.length - 1, z));
+    this.zoomIn.disabled = this.zoom === 0;
+    this.zoomOut.disabled = this.zoom === ZOOMS.length - 1;
+    try {
+      localStorage.setItem(ZOOM_STORE, String(this.zoom));
+    } catch {
+      // private window: not kept
     }
-    this.el.id = 'minimap';
-    this.el.setAttribute('role', 'img');
-    this.el.setAttribute('aria-label', 'Town map: you in gold, your party in pink, everyone else in green; Lantern Posts and dungeon entrances marked');
-    (document.querySelector('#town-hud .th-map') ?? document.body).append(this.el);
-    this.phone.addEventListener('change', () => this.layout());
-    this.layout();
+    if (this.last) this.draw(this.last);
   }
 
-  /** Sizes the canvases for the screen and draws the ground once. */
+  /** Sizes the canvas for the screen (always half as tall as it's wide, as the whole map's diamond was) and draws the
+   *  whole map's ground once. */
   private layout(): void {
     const [cols, rows] = this.map.size;
     this.width = this.phone.matches ? 132 : 216;
-    this.hw = this.width / (cols + rows);
-    this.height = Math.ceil((cols + rows) * this.hw * 0.5);
+    this.height = Math.round(this.width / 2);
     this.ratio = Math.max(1, Math.round(window.devicePixelRatio || 1));
-    for (const c of [this.el, this.ground]) {
-      c.width = this.width * this.ratio;
-      c.height = this.height * this.ratio;
-    }
+    this.el.width = this.width * this.ratio;
+    this.el.height = this.height * this.ratio;
     this.el.style.width = `${this.width}px`;
     this.el.style.height = `${this.height}px`;
+    // The ground at the scale GROUND_TILES across fills the minimap.
+    this.gk = (this.width * this.ratio) / (GROUND_TILES * TILE_W);
+    this.ground.width = Math.ceil((cols + rows) * (TILE_W / 2) * this.gk);
+    this.ground.height = Math.ceil((cols + rows) * (TILE_W / 4) * this.gk);
 
     const g = this.ground.getContext('2d')!;
-    g.scale(this.ratio, this.ratio);
-    const hw = this.hw;
+    const k = this.gk;
     const tile = (c: number, r: number, colour: string) => {
-      const { x, y } = this.at(c + 0.5, r + 0.5);
+      const x = ((c - r) * (TILE_W / 2) - this.x0) * k;
+      const y = (c + r + 1) * (TILE_W / 4) * k;
       g.fillStyle = colour;
-      g.fillRect(x - hw, y - hw / 2, hw * 2, hw); // a little diamond's bounding box: the tiles mesh into the town's shape
+      g.fillRect(x - (TILE_W / 2) * k, y - (TILE_W / 4) * k, TILE_W * k, (TILE_W / 2) * k); // its diamond's box: the tiles mesh into the map's shape
     };
     const H = this.map.height;
     // The map's usual level (its most common one above void) is the ground's own colour; each level up a shade lighter,
@@ -124,59 +184,82 @@ export class Minimap {
       for (let dc = 0; dc < o.footprint[0]; dc++) for (let dr = 0; dr < o.footprint[1]; dr++) tile(o.col + dc, o.row + dr, BUILDING);
     }
     this.paintPicture();
+    if (this.last) this.draw(this.last);
   }
 
-  /** The map's picture over the tile colours (they show while it loads, or if it can't): its diamond is at()'s, so the
-   *  dots and the camera box sit where they always do. Smoothed: it's drawn smaller than it is. */
+  /** The map's picture over the tile colours (they show while it loads, or if it can't): its diamond is the ground's, so
+   *  the dots and the camera box sit where they always do. Smoothed: it's drawn smaller than it is. */
   private paintPicture(): void {
     if (!this.picture) return;
     const g = this.ground.getContext('2d')!;
-    g.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
     g.imageSmoothingEnabled = true;
     g.imageSmoothingQuality = 'high';
-    g.drawImage(this.picture, 0, 0, this.width, this.height);
+    g.drawImage(this.picture, 0, 0, this.ground.width, this.ground.height);
   }
 
-  /** Minimap px for a tile position (col, row may be fractional: + 0.5 is a tile's middle). */
-  private at(col: number, row: number): { x: number; y: number } {
-    return { x: (col - row) * this.hw + this.width / 2, y: (col + row) * this.hw * 0.5 };
-  }
-
+  /** The map round you: the ground, the posts and the entrance, the camera's view, everyone's dots and yours in the
+   *  middle. */
   draw(v: MinimapView): void {
+    this.last = v;
     const g = this.el.getContext('2d')!;
+    const W = this.width;
+    const H = this.height;
     g.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
-    g.clearRect(0, 0, this.width, this.height);
-    g.drawImage(this.ground, 0, 0, this.width, this.height);
-
-    // What the camera shows: world px → tiles (x / 16 = col − row, y / 8 = col + row) → minimap px.
-    const k = this.hw / 16;
-    g.strokeStyle = 'rgba(230, 233, 242, 0.55)';
-    g.lineWidth = 1;
-    g.strokeRect(Math.round(v.camera.x * k + this.width / 2) + 0.5, Math.round(v.camera.y * k) + 0.5, Math.round(v.camera.width * k), Math.round(v.camera.height * k));
+    g.clearRect(0, 0, W, H);
+    // The view: ZOOMS[zoom] tiles across, centred on you (world px).
+    const centre = v.at ?? { x: (v.me.col - v.me.row) * (TILE_W / 2), y: (v.me.col + v.me.row + 1) * (TILE_W / 4) };
+    const vw = ZOOMS[this.zoom] * TILE_W;
+    const vh = vw * (H / W);
+    const left = centre.x - vw / 2;
+    const top = centre.y - vh / 2;
+    const s = W / vw; // minimap px per world px
+    const px = (wx: number, wy: number) => ({ x: (wx - left) * s, y: (wy - top) * s });
+    const tileAt = (col: number, row: number) => px((col - row) * (TILE_W / 2), (col + row) * (TILE_W / 4));
+    // The ground under it (what's past the map's edge stays clear: the box's own dark).
+    const sx = (left - this.x0) * this.gk;
+    const sy = top * this.gk;
+    const sw = vw * this.gk;
+    const sh = vh * this.gk;
+    const cx0 = Math.max(0, sx);
+    const cy0 = Math.max(0, sy);
+    const cx1 = Math.min(this.ground.width, sx + sw);
+    const cy1 = Math.min(this.ground.height, sy + sh);
+    if (cx1 > cx0 && cy1 > cy0) {
+      g.imageSmoothingEnabled = true;
+      g.drawImage(this.ground, cx0, cy0, cx1 - cx0, cy1 - cy0, ((cx0 - sx) / sw) * W, ((cy0 - sy) / sh) * H, ((cx1 - cx0) / sw) * W, ((cy1 - cy0) / sh) * H);
+    }
 
     // The posts and the entrance (whole px, never smoothed), under the dots.
     g.imageSmoothingEnabled = false;
     for (const m of this.marks) {
       const icon = this.icons.get(m.icon);
       if (!icon?.img.complete || !icon.img.naturalWidth) continue;
-      const { x, y } = this.at(m.col, m.row);
+      const { x, y } = tileAt(m.col, m.row);
+      if (x < -icon.size[0] || x > W + icon.size[0] || y < -icon.size[1] || y > H + icon.size[1]) continue;
       g.drawImage(icon.img, Math.round(x - icon.anchor[0]), Math.round(y - icon.anchor[1]), icon.size[0], icon.size[1]);
     }
 
+    // What the camera shows.
+    const cam = px(v.camera.x, v.camera.y);
+    g.strokeStyle = 'rgba(230, 233, 242, 0.55)';
+    g.lineWidth = 1;
+    g.strokeRect(Math.round(cam.x) + 0.5, Math.round(cam.y) + 0.5, Math.round(v.camera.width * s), Math.round(v.camera.height * s));
+
     const r = this.phone.matches ? 2 : 2.5;
-    const dot = (p: { col: number; row: number }, colour: string, size: number) => {
-      const { x, y } = this.at(p.col + 0.5, p.row + 0.5);
+    const dot = (p: { x: number; y: number }, colour: string, size: number) => {
+      if (p.x < -size || p.x > W + size || p.y < -size || p.y > H + size) return;
       g.beginPath();
-      g.arc(x, y, size, 0, Math.PI * 2);
+      g.arc(p.x, p.y, size, 0, Math.PI * 2);
       g.fillStyle = colour;
       g.fill();
       g.lineWidth = 1.5;
       g.strokeStyle = OUTLINE;
       g.stroke();
     };
-    for (const p of v.others) if (!p.party) dot(p, OTHER, r);
-    for (const p of v.others) if (p.party) dot(p, PARTY, r); // (over the others)
-    dot(v.me, YOU, r + 1); // last, on top
+    const middle = (p: { col: number; row: number }) => tileAt(p.col + 0.5, p.row + 0.5);
+    for (const p of v.others) if (!p.party) dot(middle(p), OTHER, r);
+    for (const p of v.others) if (p.party) dot(middle(p), PARTY, r); // (over the others)
+    dot(px(centre.x, centre.y), YOU, r + 1); // last, on top: the middle
   }
 }
 
