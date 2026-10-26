@@ -1159,7 +1159,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
   solo, 60% HP and ATK. Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
-  the Palengke's hatch label, click and glow after palengke-14. Its mini bosses' moves (part 2, 21 Oct 2026: bot
+  the Palengke's hatch label, click and glow after palengke-14 (the hatch and the Warren Gate: a left or right click or a tap on one is its own, `entranceBoxes` / `entranceClick`, never also the map's walk to the tile under it, and asks for the panel again even when it showed before; E beside one opens it again). Its mini bosses' moves (part 2, 21 Oct 2026: bot
   `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
   Delemon's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
   too) and Lid Spin (out and back along its line), Sakristan's Rice Rain (each circle's spilled rice:
