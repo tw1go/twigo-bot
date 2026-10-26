@@ -151,7 +151,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `combatRating` (the CP weights; toughness 0.4 and `reach` since 11 Oct 2026), the golem's mob table `skillMult.junkDrop` / `skillMult.shockwave`, `rarity.nameColour[r].colour`, `rarity.dropPlus`, `affixes.names`,
   `currencies.kusingPerMobRange`, `skills.mpCost`, `skills.cooldownByUnlock`, `skills.buffs` (numbers) with
   `rules.allyBuffsReachParty`, `rules.stack`, `agimats.onlyIn`, `agimats.rarePerItem`, `agimats.sellKusing`, `agimats.look`, `inventory.agimatSlots`,
-  `potions.separateCooldowns`, `potions.sellShare` (13 Oct 2026), `trainingGear.noSell` / `sellKusing`, `mobBehaviour.targetPriority`,
+  `potions.separateCooldowns`, `potions.sellShare` (13 Oct 2026), `trainingGear.noSell` / `sellKusing`, `mobBehaviour.aggro` (keepTiles 6, sticky aggro; replaced `targetPriority`, 26 Oct 2026),
   `mobBehaviour.golem.hpPerPlayer`, `mobBehaviour.golem.hpMin` (the least HP it has, whoever is in the Slums; 13 Oct
   2026).
 - `classes/stats.json` (Scrap Warrens): `party.xpRangeTiles` (+ `xpNote`), and consumables in `inventory.stack99`.
@@ -768,7 +768,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   shell (`shell`) blocks every hit from any side (`blocked`, 0) except for `shellOpenMs` (1.2 s) from each of its own
   swings (shell down: hit it then; it keeps its own rhythm, mobs.json `attackMs` 2.5 s; the game shows a small shield over a fighting or targeted crab while its shell is up); a hit mob (a `packAssist` kind's whole pack: Bottle Caps) chases its foe; an aggressive kind
   (`mobBehaviour.aggressive`: Tire Roller, Wire Tangle, Scrap Crab; passive: Tin Can, Bottle Caps, Plastic Bag Spook) one who comes within `aggroTiles` (4)
-  (in its zone, on its level; players are sorted per zone once a tick; the one it wants most first: stats.json mobBehaviour.targetPriority, a repo addition, Pot lid 4 > Greatstick 3 > Stick/Hilot 2 > Slingshot/Broom 1, then the nearest: `MobRoom.wanted`, the guard's `priority` from town.ts; any mob in a fight turns to a higher one within aggroTiles, never the same; the golem the highest in its fight, then the last to hit it, then the nearest: GolemHost `priority`), to the nearest free tile within
+  (in its zone, on its level; players are sorted per zone once a tick). Sticky aggro (CONTEXT.md Aggro; stats.json mobBehaviour.aggro, a repo change 26 Oct 2026 that replaced targetPriority; tested in town-mobs.test.ts and town-golem.test.ts): an aggressive mob's target is the first player to step within its aggro range (`MobRoom.watch` notes when each did: `seen`; several at once, the nearest), a passive one's the first to hit it (`struck` → `rally`; `hitters` by first hit); hits never switch it; it lets them go past `keepTiles` (6, from its body's edge for a boss: `away`), gone, knocked out, out of its zone or past its leash (`keeps`) and takes the next within its aggro range at once (`nextFoe`: aggressive the longest there, passive the earliest hitter, a field boss the earliest hitter in its arena, then the nearest), else gives up; a passive one gets bored GIVE_UP_MS after the last hit by anyone (`fightAt`); a taunt sets the target and it stays after; a director's flying mob asks `retarget` (the Manananggal's upper half); the golem's target is its first hitter while they're in its fight, then the earliest other hitter there (`firstHits`), then the nearest, a taunter kept after. It goes to the nearest free tile within
   its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
   rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
   hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
@@ -797,8 +797,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   down) go only to the Slums room through the mob clock: not kept for arrivals, never in Discord. Idle: a quarter turn (`mob-face`) or a 1–3 tile stomp inside the pit (`arena` rect) every
   5–11 s; 30 min with no hit (since rise or last hit) and not fighting → `sinking` (riseMs) → gone. Reach to it = to its
   body's edge (`edge`: distance from its tile − radius; area skills reach it too, `reached`); the stats rules' hit (its
-  DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the last to hit it if within `leash` (8, Chebyshev from home), else the nearest
-  there; it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
+  DEF and level; a miss still starts its fight), never blocked or slowed. First hit → fight: target = the first to hit it while they're in its fight (sticky aggro: hits never switch it; lost, the earliest other hitter there, else the nearest; a taunter kept after), within `leash` (8, Chebyshev from home);
+  it steps closer (1.5 tiles/s, within its leash), turns a quarter per 0.5 s and only attacks facing its target,
   every 1.5 s (1 s enraged): Tire Slam within 2 of its edge (`at` = a tile past its body toward them), Scrap Toss past 3
   (`at` = their tile; between 2 and 3 it steps closer), every 4th a Lamp Glare along its facing (`cone` [5 tiles from its
   tile, 60°] in grid space; `blinded` ids, `blindMs`) — `golem-attack`, with `hits` (Player HP, below). ≤ 50% once: `golem` change 'call' with

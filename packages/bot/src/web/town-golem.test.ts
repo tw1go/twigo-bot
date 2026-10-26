@@ -234,7 +234,7 @@ test('reach to it is measured to its body\'s edge: a melee player a tile past it
   assert.deepEqual(hit(at(R + 7, 0), 'slingshot'), { ok: false, reason: 'range' });
 });
 
-test('it waits to be hit; then it goes after whoever hit it last within its leash, else the nearest there', () => {
+test('it waits to be hit; then its target is the first to hit it (CONTEXT.md Aggro), whoever hits it after; gone from its fight, the next hitter there', () => {
   const { golem } = lone();
   golem.riseNow(0);
   const p1 = at(3, 0);
@@ -244,27 +244,39 @@ test('it waits to be hit; then it goes after whoever hit it last within its leas
   golem.hit('p1', 'Mara', 20, 20_000);
   golem.hit('p2', 'Bob', 20, 20_100);
   const first = attacks(run(golem, 20_250, 24_000, both));
-  assert.ok(first.length && first.every((a) => a.e.target === 'p2'), 'the last to hit it');
-  // p2 leaves its leash: the nearest one left (p1).
-  const away = new Map([['p1', p1], ['p2', at(boss.leash + 1, 0)]]);
+  assert.ok(first.length && first.every((a) => a.e.target === 'p1'), 'the first to hit it');
+  // p1 leaves its leash: the other one who hit it (p2).
+  const away = new Map([['p1', at(boss.leash + 1, 0)], ['p2', p2]]);
   const next = attacks(run(golem, 24_250, 30_000, away));
-  assert.ok(next.length && next.every((a) => a.e.target === 'p1'));
+  assert.ok(next.length && next.every((a) => a.e.target === 'p2'));
 });
 
-test('the golem goes for the one it wants most in its fight (a Pot lid over whoever hit it last), then the last to hit it', () => {
-  const { golem, host } = lone();
-  const want: Record<string, number> = { sling: 1, pot: 4 };
-  host.priority = (id) => want[id] ?? 0;
+test('the golem keeps its target (sticky aggro): others hitting it never switch it; its target gone, the earliest other hitter still in its fight; a taunter takes it and keeps it after', () => {
+  const { golem } = lone();
   golem.riseNow(0);
-  const both = new Map([['sling', at(3, 0)], ['pot', at(0, -3)]]);
-  run(golem, 0, 20_000, both);
-  golem.hit('pot', 'Pia', 20, 20_000);
-  golem.hit('sling', 'Sam', 20, 20_100); // the Slingshot hit it last
-  const evs = attacks(run(golem, 20_250, 26_000, both));
-  assert.ok(evs.length && evs.every((a) => a.e.target === 'pot'), 'the tank');
-  want.pot = 1; // all the same: the last to hit it
-  const then = attacks(run(golem, 26_250, 32_000, both));
-  assert.ok(then.length && then.every((a) => a.e.target === 'sling'));
+  const spots = { a: at(3, 0), b: at(0, -3), c: at(0, 3), pot: at(-3, 0), pot2: at(3, 3) };
+  const all = new Map(Object.entries(spots));
+  run(golem, 0, 20_000, all);
+  golem.hit('a', 'Ana', 20, 20_000);
+  golem.hit('b', 'Ben', 20, 20_100);
+  golem.hit('c', 'Cy', 20, 20_200);
+  let t = 20_250;
+  // c keeps hitting (the last to hit it every time): it stays on a.
+  for (; t < 26_000; t += 250) if (t % 1000 === 0) golem.hit('c', 'Cy', 20, t);
+  const evs = attacks(run(golem, t, (t += 4000), all));
+  assert.ok(evs.length && evs.every((x) => x.e.target === 'a'), 'the first hitter, still');
+  // a leaves its fight: b (who hit it before c), not c (who hit it last).
+  const noA = new Map([...all].filter(([id]) => id !== 'a'));
+  const handed = attacks(run(golem, (t += 250), (t += 5000), noA));
+  assert.ok(handed.length && handed.every((x) => x.e.target === 'b'), JSON.stringify(handed.map((x) => x.e.target)));
+  // A Pot lid taunts it: the Pot lid, and still the Pot lid once the taunt is over.
+  golem.taunt('pot', t + 3000);
+  const taunted = attacks(run(golem, (t += 250), (t += 8000), noA));
+  assert.ok(taunted.length && taunted.every((x) => x.e.target === 'pot'), JSON.stringify(taunted.map((x) => x.e.target)));
+  // A second Pot lid's taunt takes it off the first.
+  golem.taunt('pot2', t + 2000);
+  const second = attacks(run(golem, (t += 250), (t += 6000), noA));
+  assert.ok(second.length && second.every((x) => x.e.target === 'pot2'), JSON.stringify(second.map((x) => x.e.target)));
 });
 
 test('attacks: Tire Slam close, Scrap Toss far, a Lamp Glare every 4th at whoever is in its cone; 1.5 s apart, 1 s enraged', () => {

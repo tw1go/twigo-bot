@@ -12,8 +12,10 @@ import { loadStats } from './stats-data.js';
 // Left alone it idles in the pit, now and then stomping a tile or three inside it or turning a quarter; 30 min without
 // a hit (since it rose or was last hit) and it sinks again (never mid-fight).
 // Its body is `radius` tiles round its tile: reach to it is measured to that edge (players walk through it). The first
-// hit starts a fight: it goes after whoever hit it last while they're within its leash (`leash` tiles of home), else the
-// nearest player there, stepping closer within the leash, and attacks every GAP_MS (ENRAGED_GAP_MS enraged): Tire Slam
+// hit starts a fight: its target is the first to hit it (CONTEXT.md Aggro), kept while they're in its fight (its pit floor
+// and way in) whoever else hits it; losing them (gone, out of its fight, knocked out) it takes whoever hit it earliest of
+// those still there, else the nearest; a taunt takes it over and the taunter stays its target after. It goes after
+// them, stepping closer within the leash, and attacks every GAP_MS (ENRAGED_GAP_MS enraged): Tire Slam
 // with its target within SLAM tiles of its body's edge, Scrap Toss past TOSS, and every GLARE_EVERY-th attack a Lamp
 // Glare along its facing (a cone from its tile, CONE tiles past its body's edge and degrees wide: whoever's inside is
 // blinded, their attacks missing for BLIND_MS). It turns a quarter at a time (TURN_MS) and attacks only once it faces its
@@ -153,8 +155,6 @@ export interface GolemHost {
   /** Its hit on a player (town id) with this multiplier on its ATK: the stats rules' roll, or null (nothing to hit: no
    *  HP known for them). Without it its attacks are harmless. */
   roll?(player: string, mult: number): PlayerHit | null;
-  /** How much it wants a player (stats.json mobBehaviour.targetPriority: the tanks first); all the same without it. */
-  priority?(player: string): number;
 }
 
 /** The next rise after `now`: the next whole `everyMinutes` since the epoch. */
@@ -239,9 +239,12 @@ export class Golem {
   private warned = 0;
   private risenAt = 0;
   private lastHit = 0;
-  /** Whoever hit it last (it goes after them while they're within its leash). */
+  /** Its target (CONTEXT.md Aggro): the first to hit it, kept while they're in its fight; only losing them or a taunt
+   *  changes it. */
   private foe: string | null = null;
-  /** Taunted (CONTEXT.md Taunt): it fights this player until then while they're in its fight, whoever it wants more. */
+  /** Who hit it this fight, first hit first (town ids): losing its target, it takes the earliest still in its fight. */
+  private readonly firstHits: string[] = [];
+  /** Taunted (CONTEXT.md Taunt): it fights this player until then while they're in its fight; after, they're its target. */
   private taunted: { id: string; until: number } | null = null;
 
   /** A taunt on it: it fights `player` until `until` (its special moves still pick their own victims). */
@@ -421,6 +424,7 @@ export class Golem {
     [this.col, this.row] = this.boss.tile;
     Object.assign(this, { facing: 'sw', path: [], hp: this.max, enraged: false, called: false, foe: null, alone: null, adds: null, attacks: 0, lastHit: 0 });
     this.hitters.clear();
+    this.firstHits.length = 0;
     this.phase = 'rising';
     this.risenAt = now;
     this.nextRise = null;
@@ -534,8 +538,9 @@ export class Golem {
     }
   }
 
-  /** In a fight: its target (the one it wants most in its fight: targetPriority; then whoever hit it last; then the
-   *  nearest there), closer, turned, an attack. */
+  /** In a fight: its target (CONTEXT.md Aggro: the first to hit it while they're in its fight; a taunter takes it over
+   *  and keeps it; lost, the earliest other hitter still in its fight, then the nearest there), closer, turned, an
+   *  attack. */
   private fight(now: number, players: ReadonlyMap<string, [number, number]>): void {
     const near = [...players].filter(([, p]) => this.inFight(p));
     if (!near.length) {
@@ -544,12 +549,14 @@ export class Golem {
       return;
     }
     this.alone = null;
-    const wanted = (id: string) => this.host.priority?.(id) ?? 0;
-    const top = Math.max(...near.map(([id]) => wanted(id)));
-    const most = near.filter(([id]) => wanted(id) === top);
-    // (Taunted: its taunter while they're in its fight.)
+    // (Taunted: its taunter while they're in its fight, and its target after.)
     const taunter = this.taunted && now < this.taunted.until ? near.find(([id]) => id === this.taunted!.id) : undefined;
-    const target = taunter ?? most.find(([id]) => id === this.foe) ?? most.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
+    if (taunter) this.foe = taunter[0];
+    const target =
+      near.find(([id]) => id === this.foe) ??
+      this.firstHits.map((h) => near.find(([id]) => id === h)).find((x) => !!x) ??
+      near.reduce((a, b) => (this.edge(b[1], now) < this.edge(a[1], now) ? b : a));
+    this.foe = target[0];
     const [id, p] = target;
     // (Junk Drop keeps its own time: it falls mid-stomp and mid-swing too.)
     if (now >= this.nextDrop) this.drop(now, near, id);
@@ -658,6 +665,7 @@ export class Golem {
     this.cancelMoves();
     Object.assign(this, { hp: this.max, enraged: false, called: false, adds: null, foe: null, alone: null, attacks: 0 });
     this.hitters.clear();
+    this.firstHits.length = 0;
     this.dealt.clear();
     this.phase = 'home';
     this.pending.push(...this.host.dropAdds());
@@ -676,7 +684,9 @@ export class Golem {
       this.phase = 'fight';
       Object.assign(this, { alone: null, attacks: 0, nextAttack: Math.max(this.nextAttack, now + FIRST_MS), nextDrop: now + DROP_FIRST_MS });
     }
-    this.foe = player;
+    // (Its first hitter is its target; later hits never switch it.)
+    this.foe ??= player;
+    if (!this.firstHits.includes(player)) this.firstHits.push(player);
     this.hitters.set(member, name);
     this.lastHit = now;
     this.dealt.set(member, (this.dealt.get(member) ?? 0) + Math.min(damage, this.hp));
@@ -741,6 +751,7 @@ export class Golem {
     this.pending.push(...this.host.dropAdds());
     this.line(downLine([...this.hitters.values()], this.boss.name), 'down');
     this.hitters.clear();
+    this.firstHits.length = 0;
     this.dealt.clear();
   }
 

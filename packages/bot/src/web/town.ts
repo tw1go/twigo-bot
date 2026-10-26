@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, TestingSettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, targetPriority, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, tradeRules } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -711,7 +711,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
   /** Their most HP and MP, a regen buff's share (and their DEF, DEF rate and level, for mobs' hits). */
   const maxOf = (c: Conn): VitalMax => {
     const d = rules!.fighter(fighterOf(c));
-    c.guard = { def: d.def, level: d.level, defRate: d.defRate, priority: targetPriority(STATS, c.player.cls), ...(d.evasion ? { evasion: d.evasion } : {}) };
+    c.guard = { def: d.def, level: d.level, defRate: d.defRate, ...(d.evasion ? { evasion: d.evasion } : {}) };
     return { hp: d.hp, mp: d.mp, mpRegen: d.mpRegen, hpRegenPct: d.hpRegenPct ?? 0, ...(d.hpDrainPct ? { hpDrainPct: d.hpDrainPct } : {}) };
   };
   /** A skill's heal (heal:F, Herbal Storm): the caster and their party members in the room within the buffs' party

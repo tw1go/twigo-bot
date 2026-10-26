@@ -873,7 +873,7 @@
       "missChance": "(debuff) the mob's miss chance + points",
       "mobDamagePct": "(debuff) the mob's damage +% (negative)",
       "slow": "(debuff) the mob moves at this share of its speed",
-      "taunt": "(debuff) the mob fights the caster for this many seconds",
+      "taunt": "(debuff) the mob fights the caster for this many seconds, and the caster stays its target after (sticky aggro: mobBehaviour.aggro)",
       "tauntAround": "(debuff) every mob within this many tiles of the caster is taunted"
      }
     },
@@ -1723,14 +1723,9 @@
       "hpMinNote": "Repo addition (13 Oct 2026): the least HP it has, however few players are in the Slums: its HP is the mob table's x hpPerPlayer^(players), but never under this (0 or left out: no floor)",
       "hpPerPlayerNote": "Repo addition (Mac, 9 Oct 2026): its HP is the mob table's x hpPerPlayer^(players in the Slums), kept up to date as they come and go (its HP % stays)"
     },
-    "targetPriority": {
-      "note": "Repo addition (Mac, 9 Oct 2026): who mobs go for first. An aggressive mob takes the highest within its aggroTiles (then the nearest); any mob in a fight switches to a higher one who comes within aggroTiles of it; the golem takes the highest in its fight (then whoever hit it last, then the nearest). Same priority never steals a mob.",
-      "potlid": 4,
-      "greatstick": 3,
-      "stick": 2,
-      "hilot": 2,
-      "slingshot": 1,
-      "broom": 1
+    "aggro": {
+      "note": "Repo change (owner, 26 Oct 2026): sticky aggro. An aggressive mob targets the first player to step within aggroTiles, a passive one the first to hit it; hits never switch it. It drops its target past keepTiles (or leash, zone, gone, knocked out) and takes the next player within aggroTiles (aggressive: longest there; passive: earliest hitter). A taunt takes it over and it stays on the taunter after. Replaces targetPriority.",
+      "keepTiles": 6
     }
   },
   "lootRoll": {

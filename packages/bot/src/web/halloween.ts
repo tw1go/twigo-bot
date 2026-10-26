@@ -569,14 +569,17 @@ export class Halloween {
     return path;
   }
 
-  /** The upper half: after its foe (it flies: straight over anything, inside the map and out of the camp), Claw Swipe
-   *  next to them; pulled past its leash (or its foe gone), full again and home; else drifting round where it came out. */
+  /** The upper half: after its target (it flies: straight over anything, inside the map and out of the camp), Claw
+   *  Swipe next to them; its target lost with nobody else to take (the room's rules: past its leash or target range,
+   *  gone), full again and home; else drifting round where it came out. */
   private upperFly(room: MobRoom, upper: NonNullable<ReturnType<MobRoom['mobInfo']>>, players: ReadonlyMap<string, [number, number]>, now: number): MobEvent[] {
     const home = this.upperHome ?? upper.at;
     const speed = this.data.manananggal.upper.speedTilesPerSec;
-    const foe = upper.foe ? players.get(upper.foe) : undefined;
-    if (upper.foe && (!foe || cheb(foe, home) > mobRules(room.statsData(), UPPER_KIND).leashTiles)) {
-      // Lost them: healed and back where it came out.
+    // (Its target as the room's rules keep it, CONTEXT.md Aggro: it flies, so no zone for it.)
+    const target = upper.foe ? room.retarget(UPPER_ID, players, now, true) : null;
+    const foe = target ? players.get(target) : undefined;
+    if (upper.foe && !foe) {
+      // Lost them, and nobody else to fight: healed and back where it came out.
       const events = room.healFull(UPPER_ID);
       return [...events, ...room.moveMob(UPPER_ID, this.flight(upper.at, home), now, speed)];
     }
@@ -585,9 +588,9 @@ export class Halloween {
         if (now < this.upperSwing) return [];
         this.upperSwing = now + this.rules.upperAttackMs;
         const dir = facingTo(foe[0] - upper.at[0], foe[1] - upper.at[1]) ?? upper.facing;
-        const hit = room.rollFor(upper.foe!, UPPER_ID);
-        if (hit) room.land(upper.foe!, UPPER_ID, hit, now + (room.kindHitMs(UPPER_KIND) ?? 0));
-        return [{ t: 'mob-attack', id: UPPER_ID, target: upper.foe!, dir, ...(hit ? { hit } : {}) }];
+        const hit = room.rollFor(target!, UPPER_ID);
+        if (hit) room.land(target!, UPPER_ID, hit, now + (room.kindHitMs(UPPER_KIND) ?? 0));
+        return [{ t: 'mob-attack', id: UPPER_ID, target: target!, dir, ...(hit ? { hit } : {}) }];
       }
       if (now < this.upperNext) return [];
       // Closer: the tile next to them on its way, a few at a time.

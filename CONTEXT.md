@@ -194,6 +194,17 @@ _Avoid_: group, squad
 **Aggressive**:
 A mob that comes after a player who walks within its aggro range; a **passive** mob only fights back.
 
+**Aggro**:
+Who a mob is after (its **target**), and how it keeps them. An aggressive mob takes the first player to step within its
+**aggro range** (4 tiles; several at once, the nearest); a passive one the first to hit it (a miss counts). The target
+sticks: hits from anyone else do damage and count for the kill, but never pull it off. It lets its target go once they
+are past its **target range** (6 tiles), gone, knocked out, out of its zone or past its leash, and at once takes the next
+player within its aggro range: an aggressive mob the one who has been there longest, a passive one whoever hit it
+earliest in this fight (never someone who never touched it). Nobody: it gives up, heals and walks home. A pack's first hit
+pulls every cap that isn't fighting yet onto that player. Only a taunt takes a target away. The field bosses keep
+theirs while they're in their fight. Class plays no part.
+_Avoid_: threat, hate, priority
+
 **Leash**:
 How far a mob follows a player from home before it gives up and walks back; for the field boss, the pit floor itself.
 
@@ -550,9 +561,10 @@ timer. Works on mini bosses and field bosses too.
 _Avoid_: curse, hex, status effect
 
 **Taunt**:
-A mob made to fight a player (the taunter) for a while, whatever it would have chosen: Gong Wave, Searing Lid, Provoke,
-Iron Kitchen. Works on every mob, bosses too, but a boss's special moves still pick their own victims. The latest taunt
-wins.
+A mob made to take a player (the taunter) as its target at once, whoever had it: Gong Wave, Searing Lid, Provoke, Iron
+Kitchen. While it lasts, the target range doesn't let them go (leaving, the leash and a knock-out still do); once it's
+over, the taunter stays its target (it never goes back to the old one). Works on every mob, bosses too, but a boss's
+special moves still pick their own victims. The latest taunt wins, so two Pot lids can pass a mob between them.
 
 **Stun**:
 A mob that can't move or attack for a while (Thunder Tap, Thunder Sweep). Mini bosses take half; the field bosses none.

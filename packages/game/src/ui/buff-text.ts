@@ -26,7 +26,7 @@ const STAT: Record<string, (v: number) => string> = {
   missChance: (v) => `+${pct(v)}% miss chance`,
   mobDamagePct: (v) => `${signed(v)} damage dealt`,
   slow: (v) => `slowed to ${pct(v)}% speed`,
-  taunt: (v) => `fights you for ${seconds(v)}`,
+  taunt: (v) => `fights you for ${seconds(v)}, then stays on you`,
 };
 
 /** A fraction as a signed percentage: "+8%", "−15%". */
