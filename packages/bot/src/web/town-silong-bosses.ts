@@ -51,6 +51,9 @@ interface Move {
   rangeTiles?: number;
   returns?: boolean;
   speedTilesPerSec?: number;
+  /** A shell's share off a hit from its front (1: blocked), and how long it's open after a charge. */
+  share?: number;
+  openMs?: number;
   untargetableMs?: number;
   slow?: { pct: number; ms: number };
   leaves?: { ms: number; slowPct: number };
@@ -138,10 +141,13 @@ export class FloorBosses {
     }
   }
 
-  /** Once its bosses are placed: a shell's front block on (every hit from his front blocked, open just after his
+  /** Once its bosses are placed: a shell's front block on (its share off every hit from his front, open just after his
    *  charges). */
   arm(): void {
-    for (const b of this.bosses.values()) if (b.moves.some((m) => m.id === 'shell')) this.mobs.frontBlock(b.mob, 1);
+    for (const b of this.bosses.values()) {
+      const shell = b.moves.find((m) => m.id === 'shell');
+      if (shell) this.mobs.frontBlock(b.mob, shell.share ?? 1);
+    }
   }
 
   get mobs(): MobRoom {
@@ -370,10 +376,12 @@ export class FloorBosses {
         const speed = m.speedTilesPerSec ?? 10;
         const shape: TelegraphShape = { kind: 'line', from: at, to: end, width: m.width ?? 1 };
         const ev = this.moveEvent(b.mob, m.id, ms, shape, { path, speed });
+        const shell = b.moves.find((x) => x.id === 'shell');
+        const open = (path.length / speed) * 1000 + (shell?.openMs ?? SHELL_OPEN_MS);
         return this.queue(b, ev, (t, players) => {
           // His shell open just after (his back to them, his cleaver stuck).
-          this.mobs.frontBlock(b.mob, 1, t + (path.length / speed) * 1000 + SHELL_OPEN_MS);
-          return [...this.mobs.moveMob(b.mob, path, t, speed), ...this.landHits(b.mob, m.id, ev.key, players, (p) => tiles.has(key(p)), mult, t, {}, { openMs: (path.length / speed) * 1000 + SHELL_OPEN_MS })];
+          this.mobs.frontBlock(b.mob, shell?.share ?? 1, t + open);
+          return [...this.mobs.moveMob(b.mob, path, t, speed), ...this.landHits(b.mob, m.id, ev.key, players, (p) => tiles.has(key(p)), mult, t, {}, { openMs: open })];
         }, now + ms, now);
       }
       case 'ambush': {

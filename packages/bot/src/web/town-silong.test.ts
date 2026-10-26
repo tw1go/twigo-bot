@@ -215,7 +215,7 @@ test('Mono Lisa: Chair Barrage lands where they stood; at 60% she splits: two fa
   assert.ok(of(later, 'mob-remove').some((e) => fakes.every((id) => e.ids.includes(id))));
 });
 
-test("Sangkalancelot: his shell blocks every hit from his front, except just after a Cleaver Charge; his hooks from 50%", () => {
+test("Sangkalancelot: his shell takes half off every hit from his front (never all of it, nor the Chomper's half on top), none for 3 s after a Cleaver Charge; his hooks from 50%", () => {
   const run = open(silong());
   run.skipTo('b2');
   const f = run.floors.b2;
@@ -224,12 +224,20 @@ test("Sangkalancelot: his shell blocks every hit from his front, except just aft
   play(run, 'b2', 0, 1000, { A: near(at, 1) });
   const facing = f.mobs.mobInfo('boss:sangkalancelot', 1000)!;
   const front = near(facing.at, facing.facing === 'se' ? 1 : facing.facing === 'nw' ? -1 : 0, facing.facing === 'sw' ? 1 : facing.facing === 'ne' ? -1 : 0);
-  const blocked = f.mobs.attack('t-a', front, { cls: 'stick', level: 40 }, 'boss:sangkalancelot', 1100);
-  assert.ok(blocked.ok && blocked.hits[0].blocked, 'his front: blocked');
-  // A Cleaver Charge: open for a moment after.
-  const ev = play(run, 'b2', 1250, 12_000, { A: near(at, 1), B: near(at, 0, 6) });
+  const halved = f.mobs.attack('t-a', front, { cls: 'stick', level: 40 }, 'boss:sangkalancelot', 1100);
+  const h = halved.ok ? halved.hits[0] : null;
+  assert.ok(h && !h.blocked && h.reduced && h.damage > 0, 'his front: half off, never blocked');
+  // (Half, not a quarter: 20 hits from his front come to about half of 20 with his shell open.)
+  const sum = (who: string) => Array.from({ length: 20 }, (_, k) => f.mobs.attack(`${who}${k}`, front, { cls: 'stick', level: 40 }, 'boss:sangkalancelot', 1100)).reduce((n, r) => n + (r.ok ? r.hits[0].damage : 0), 0);
+  const shut = sum('t-s');
+  f.mobs.frontBlock('boss:sangkalancelot', 0.5, Infinity);
+  const opened = sum('t-o');
+  f.mobs.frontBlock('boss:sangkalancelot', 0.5);
+  assert.ok(shut / opened > 0.35 && shut / opened < 0.65, `${shut} of ${opened}`);
+  // A Cleaver Charge: open for 3 s after.
+  const ev = play(run, 'b2', 2100, 12_000, { A: near(at, 1), B: near(at, 0, 6) });
   const charge = of(ev, 'boss-hit').find((h) => h.move === 'cleaverCharge')!;
-  assert.ok(charge && (charge.data?.openMs as number) > 1200);
+  assert.ok(charge && (charge.data?.openMs as number) > 3000);
   // At half: his Chompers, then hook shadows every 6 s.
   const info = f.mobs.mobInfo('boss:sangkalancelot', 13_000)!;
   f.mobs.devWound(info.id, Math.round(info.maxHp * 0.5));
