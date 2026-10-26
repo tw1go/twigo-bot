@@ -5309,6 +5309,7 @@ export class TownScene extends Phaser.Scene {
         town: asset('maps/town.json'),
         palengke: asset('maps/palengke.json'),
         marks: this.questMarkArt() ?? undefined,
+        dungeons: Object.fromEntries(Object.entries(U.mapDungeons ?? {}).filter(([k]) => k !== 'note').map(([k, d]) => [k, { ...d, url: asset(d.file) }])),
       });
       onAdventure(() => this.mapView?.refresh());
     }

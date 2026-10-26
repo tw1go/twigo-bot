@@ -2,6 +2,7 @@ import { type LanternMap, type LanternMapData, type LanternPost, isLanternMap, l
 import { playSound } from '../audio/sound';
 import { type QuestMarkArt, drawQuestMarks } from './quest-marks';
 import { toast } from './toast';
+import type { MapDungeonIcon } from '../assets/types';
 import { type MapLayout, type SlumsPlaces, loadPlaces, loadWorldMap, middleOf, postsOf, shifted, worldPoint, worldPx } from './world-map';
 
 // 🗺️ The Map menu (M anywhere; a Lantern Post's click): a tab per map (Town, Slums, Old Market), each its map alone, cut
@@ -9,7 +10,8 @@ import { type MapLayout, type SlumsPlaces, loadPlaces, loadWorldMap, middleOf, p
 // 2026) to its own diamond and drawn at the largest whole-number scale that fits (3× at most), opening on the map you're
 // in. Over it, its names and places from the map itself (the Slums' zones, the Golem Pit, the Camp; the Old Market's
 // sections; the way to the neighbourhood), every Lantern Post as a teleporter icon (the Old Market has four) and its
-// dungeon entrance (the Warren Gate, the Cellar Hatch: shared travel.ts DUNGEON_ENTRANCES) as a gate marker. Opened from
+// dungeon entrance (the Warren Gate, the Cellar Hatch: shared travel.ts DUNGEON_ENTRANCES) as a small picture of it,
+// its gold glow pulsing (manifest ui.mapDungeons; lit up on hover; held still under reduced motion). Opened from
 // a post, another post's icon or an entrance asks to teleport there (the Teleport box: one Return Lantern; another post
 // of the same map too); opened anywhere else it's only to look at. Built like the Equipment
 // panel: its frame, a title bar with ×, the UI font. Under the posts and labels, every active quest's hunting area in
@@ -31,6 +33,8 @@ export interface MapMenuArt {
   palengke: string;
   /** The quest marks' art (the quest map's pins, the quests' colours). */
   marks?: QuestMarkArt;
+  /** The dungeon entrances' icons by entrance id (manifest ui.mapDungeons, `url` its sheet); one without: a diamond. */
+  dungeons?: Record<string, MapDungeonIcon & { url: string }>;
 }
 
 export interface MapOpen {
@@ -331,10 +335,27 @@ export class MapMenu {
       if (!at) return;
       const gate = el('button', 'mm-gate');
       gate.setAttribute('aria-label', `${e.name}: teleport there`);
-      gate.style.left = `${at[0] * k}px`;
-      gate.style.top = `${at[1] * k}px`;
+      // Its own art (the sheet at the icons' scale, its foot on the entrance's point), its name under its foot; an
+      // entrance without art: the old gold diamond centred there.
+      const art = e.entrance ? this.art.dungeons?.[e.entrance] : undefined;
+      let below = 7;
+      if (art) {
+        const [fw, fh] = art.frame;
+        gate.classList.add('mm-gate-art');
+        gate.style.backgroundImage = `url("${art.url}")`;
+        gate.style.backgroundSize = `${fw * art.frames * ik}px ${fh * ik}px`;
+        gate.style.setProperty('--fw', `${fw * ik}px`);
+        gate.style.width = `${fw * ik}px`;
+        gate.style.height = `${fh * ik}px`;
+        gate.style.left = `${at[0] * k - art.anchor[0] * ik}px`;
+        gate.style.top = `${at[1] * k - art.anchor[1] * ik}px`;
+        below = fh - art.anchor[1] + 5;
+      } else {
+        gate.style.left = `${at[0] * k}px`;
+        gate.style.top = `${at[1] * k}px`;
+      }
       view.append(gate);
-      label(e.name ?? 'Dungeon', at, 'mm-gate-tag', false, 0, 7);
+      label(e.name ?? 'Dungeon', at, 'mm-gate-tag', false, 0, below);
       gate.addEventListener('click', () => this.pick(id, index));
     });
     this.footText();

@@ -24289,6 +24289,27 @@
       ],
       "note": "A Lantern Post's icon on the Map menu"
     },
+    "mapDungeons": {
+      "note": "The Map menu's dungeon entrances (CONTEXT.md Dungeon entrance): each entrance's own art, shrunk from its prop (the art folder's ui/map/dungeon-markers, build_dungeon_map_icons.py), a row of frames: 0 to glowFrames - 1 its gold glow pulsing at fps, hoverFrame lit up; anchor = the entrance's foot (its tile goes there).",
+      "warrens": {
+        "file": "ui/map/ui-map-dungeon-warrens.png",
+        "frame": [38, 36],
+        "frames": 9,
+        "glowFrames": 8,
+        "hoverFrame": 8,
+        "fps": 8,
+        "anchor": [19, 29]
+      },
+      "silong": {
+        "file": "ui/map/ui-map-dungeon-silong.png",
+        "frame": [40, 31],
+        "frames": 9,
+        "glowFrames": 8,
+        "hoverFrame": 8,
+        "fps": 8,
+        "anchor": [20, 24]
+      }
+    },
     "mapPin": {
       "file": "ui/map/ui-map-pin.png",
       "size": [

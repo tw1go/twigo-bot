@@ -1227,8 +1227,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   FILL_K 6, `--k`; icons and writing at ICON_K 3 at most, `--ik`; no scrollbars: bigger than its box (a phone), it's
   dragged, `dragToScroll`: a press moving 4 px is a drag and its click is swallowed), with the Slums'
   zone names, "Golem Pit", "Camp", the Old Market's sections (palengke.json, `loadPlaces`) and "Hood ›" written from the
-  maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; a gold
-  diamond `.mm-gate` and its name: a stand-in until there's an icon) and a teleporter icon per post
+  maps (fetched once), a drawn map's name at its `label` tile, its dungeon entrance (CONTEXT.md Dungeon entrance; `.mm-gate`: its own
+  art, manifest ui.mapDungeons, the art folder's ui/map/dungeon-markers: frames 0-7 a gold glow pulsing at 8 fps as a CSS
+  steps(8) animation, frame 8 on hover, frame 4 held under reduced motion, its foot on the entrance; an entrance without
+  art the old gold diamond; its name under it; the map's writing drawn over the icons) and a teleporter icon per post
   (ui.mapTeleporter: normal / hover with "Lantern Post" / here with ui.mapPin and "You are here", flipped left if it would
   overlap a label), the bar "Return Lanterns: N"; closes with Esc, ×, or walking more than 3 tiles from the post. The
   other post's icon → the Teleport box (Travel to the Slums?, its cost; 0 lanterns: "You need a Return Lantern", Teleport

@@ -13,6 +13,17 @@ export interface AnimSheet {
   loop?: boolean;
 }
 
+/** A dungeon entrance's icon on the Map menu (manifest ui.mapDungeons). */
+export interface MapDungeonIcon {
+  file: string;
+  frame: Vec2;
+  frames: number;
+  glowFrames: number;
+  hoverFrame: number;
+  fps: number;
+  anchor: Vec2;
+}
+
 export interface Manifest {
   tiles: {
     grass: {
@@ -116,6 +127,9 @@ export interface Manifest {
     minimapPictures?: Record<string, string>;
     mapTeleporter?: { file: string; size: Vec2; frames: string[]; anchor: Vec2 };
     mapPin?: { file: string; size: Vec2 };
+    /** The Map menu's dungeon entrances, by entrance id ('warrens', 'silong'): a row of `frames` frames of `frame` px,
+     *  the first `glowFrames` a glow pulsing at `fps`, `hoverFrame` lit; `anchor` its foot. */
+    mapDungeons?: Record<string, MapDungeonIcon>;
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).
      *  The siren and coin burst are fx (siren, coin-burst). */
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };
