@@ -1,3 +1,4 @@
+import { comboOn, setComboOn } from './combo-counter';
 import { onHotbarLock, setHotbarLocked } from './hotbar-lock';
 import { fakeLogin } from '../session';
 import { setTrailOn, trailOn } from '../world/quest-trail';
@@ -285,6 +286,16 @@ function leave(): HTMLElement {
     playSound('click');
   });
   lock.append(lockBox, el('span', undefined, 'Lock hotbar'));
+  // The combo counter on battle maps (ui/combo-counter.ts).
+  const combo = el('label', 'st-row st-check');
+  const comboBox = el('input');
+  comboBox.type = 'checkbox';
+  comboBox.checked = comboOn();
+  comboBox.addEventListener('change', () => {
+    setComboOn(comboBox.checked);
+    playSound('click');
+  });
+  combo.append(comboBox, el('span', undefined, 'Combo counter'));
   const lockNote = el('p', 'st-note', "Skills and potions can't be dragged off or moved. You can still fill empty slots.");
   // The lag report (net/lag.ts): what ran in each slow frame, to paste to the developers.
   const lag = el('button', 'st-button', `Copy lag report (${lagCount()} slow frame${lagCount() === 1 ? '' : 's'})`);
@@ -299,7 +310,7 @@ function leave(): HTMLElement {
       },
     );
   });
-  section.append(el('h3', 'st-heading', 'Game'), trail, lock, lockNote, lag, el('p', 'st-note', 'Lag or stutter? Copy this right after it happens and send it to the developers.'), out);
+  section.append(el('h3', 'st-heading', 'Game'), trail, combo, lock, lockNote, lag, el('p', 'st-note', 'Lag or stutter? Copy this right after it happens and send it to the developers.'), out);
   return section;
 }
 

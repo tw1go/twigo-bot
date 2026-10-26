@@ -138,6 +138,7 @@ import { type ArenaChannel, BotChannel, PlayerChannel } from '../arena/channel';
 import { showArenaMenu } from '../arena/menu';
 import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
+import { ComboCounter } from '../ui/combo-counter';
 import { Minimap } from '../ui/minimap';
 import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
@@ -657,6 +658,12 @@ export class TownScene extends Phaser.Scene {
     };
     // A battle map (one with mobs: the Slums): characters with a class in its battle poses.
     this.battleMap = !!this.map.mobZones?.length && !!this.M.classes;
+    // Your hits in a row (ui/combo-counter.ts): battle maps only; leaving the map ends it with the scene.
+    if (this.battleMap) {
+      const combo = new ComboCounter();
+      this.combo = combo;
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => combo.destroy());
+    }
     lagContext({ area: this.area, battle: this.battleMap });
     lagEvent(`entered ${this.area}`);
     if (this.battleMap) this.others.battleFor = (cls, look) => battleSheets(this, this.M.characters, this.M.classes!, cls, look);
@@ -1439,9 +1446,13 @@ export class TownScene extends Phaser.Scene {
   }
   private worldSkills: WorldSkills | null = null;
 
-  /** A skill hit's number and HP on its mob (and your hit's sound). */
+  /** The combo counter (battle maps): your hits in a row as they land. */
+  private combo: ComboCounter | null = null;
+
+  /** A skill hit's number and HP on its mob (and your hit's sound, and the combo counter's tick). */
   private showHit(h: MobHitView, mine: boolean): void {
-    this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced);
+    const killed = this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, h.slow, h.blocked, h.miss, false, h.reduced) ?? false;
+    if (mine) this.combo?.hit(h, killed);
     if (mine && h.damage > 0) playSound(h.crit ? 'combat-hit-crit' : 'combat-hit'); // your hit landing
   }
 
@@ -3031,7 +3042,11 @@ export class TownScene extends Phaser.Scene {
       }
       // A burning puddle's tick (Boiling Splash): each mob in it, an orange number.
       if (m.t === 'mob-burn') {
-        for (const h of m.hits) this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true);
+        // (Your puddle's ticks keep your combo going, and their kills count.)
+        for (const h of m.hits) {
+          const killed = this.mobs?.hit(h.id, h.damage, h.crit, h.hp, h.dead, undefined, h.blocked, h.miss, true) ?? false;
+          if (m.by === myId) this.combo?.hit(h, killed);
+        }
         return;
       }
       if (m.t === 'mob-attack') {
@@ -3054,6 +3069,7 @@ export class TownScene extends Phaser.Scene {
       // `reviveIn` (300 s), after which it puts you back at the way in; "Revive now" asks for that straight away.
       if (m.t === 'knocked-out' && m.id === myId) {
         this.knockedOut = true;
+        this.combo?.end(); // (knocked out: the streak's over)
         this.stopFight();
         this.pending = null;
         const down = this.player.setKnockedOut(true);

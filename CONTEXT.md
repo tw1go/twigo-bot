@@ -500,6 +500,12 @@ holds a skill or an HP / MP Potion (sari-sari potions never go on it); a class's
 ten.
 _Avoid_: action bar, skill bar
 
+**Combo**:
+Your own hits on mobs in a row, shown as a counter at the right of the screen on battle maps: HITS for every hit of yours
+that lands (a miss or a blocked hit doesn't), KILLS for every mob one of them kills. Two seconds without a new hit of
+yours ends it and both go back to 0; being hit never does. Others' hits never count.
+_Avoid_: chain (a skill shape), streak on its own
+
 **Hotbar lock**:
 A player's switch (the padlock on the bar, or Settings → Game) that keeps everything on their hotbar where it is: nothing
 dragged off, moved or swapped, nothing dropped onto a filled slot. Empty slots still fill (a skill or potion put there, a
