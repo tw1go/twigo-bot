@@ -3,11 +3,12 @@ import { type QuestMarkArt, drawQuestMarks } from './quest-marks';
 import { type WorldMap, type WorldMapUrls, loadWorldMap, middleOf, worldPx } from './world-map';
 
 // 🗺️ The quest map (CONTEXT.md "Quest map"): the world map's picture (ui-map-world.png, placed by map-layout.json, the
-// Slums and the Town together) over the game while its key is held (keybind questMap, Tab by default), or from a touch
-// screen's tracker pin until the next tap. Centred at the biggest whole-number scale that fits (2× or 1×), on the night
-// navy at 70%, no frame and no title; only for looking. On it: you (the Map menu's pin; in the neighbourhood at the
-// Town's way there, in a Warrens run at the Slums' Warren Gate) and every active quest's hunt (ui/quest-marks.ts); none:
-// "No hunting quests right now." Not while typing or while another window or dialog is open.
+// Town, the Slums and the Old Market together) over the game while its key is held (keybind questMap, Tab by default),
+// or from a touch screen's tracker pin until the next tap. Centred at the biggest whole-number scale that fits (2× or
+// 1×), on the night navy at 70%, no frame and no title; only for looking. On it: you (the Map menu's pin; in the
+// neighbourhood at the Town's way there, in a Warrens run at the Slums' Warren Gate) and every active quest's hunt and
+// the NPCs it needs (ui/quest-marks.ts); none: "No quests to show on the map right now." Not while typing or while
+// another window or dialog is open.
 
 export interface QuestMapArt extends WorldMapUrls {
   world: string;
@@ -98,7 +99,7 @@ export class QuestMap {
     const img = new Image();
     img.className = 'qmap-world';
     img.src = this.art.world;
-    img.alt = 'The Slums and the Town';
+    img.alt = 'The Town, the Slums and the Old Market';
     img.draggable = false;
     // 2× where it fits (a margin round it and room for the line under it), else 1×.
     const [w, h] = this.art.worldSize;

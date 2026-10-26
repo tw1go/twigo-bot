@@ -1,6 +1,6 @@
 // 🗺️ The world map's picture as data, for both pictures of it: the Map menu (ui/map-menu.ts, M) and the quest map
-// (ui/quest-map.ts, Tab). map-layout.json says where each map sits on ui-map-world.png; the Slums' map and the Town's
-// say what's where (zones, mini boss spots, gates). Fetched once and kept.
+// (ui/quest-map.ts, Tab). map-layout.json says where each map sits on ui-map-world.png; the Slums' map, the Town's and
+// the Old Market's say what's where (zones, mini boss spots, gates, its NPCs). Fetched once and kept.
 
 export interface MapLayout {
   tilePx: number;
@@ -51,25 +51,38 @@ export interface MapZone {
   miniBosses?: { id: string; tile: [number, number] }[];
 }
 
-/** What the Slums' map says that the pictures use. */
+/** What a battle map says that the pictures use (the Slums', the Old Market's). */
 export interface SlumsPlaces {
   mobZones?: MapZone[];
-  boss?: { tile?: [number, number] };
+  boss?: { id?: string; name?: string; tile?: [number, number] };
+  /** Its story NPCs' spots (the Old Market's), one standing somewhere else once a quest is done (`moves`). */
+  npcs?: MapNpc[];
   safeZone?: [number, number, number, number];
   arrive?: Record<string, [number, number]>;
   gates?: Record<string, [number, number][]>;
+}
+
+/** An NPC's spot on a map; `after` names a quest ("q7" = palengke-07). */
+export interface MapNpc {
+  id: string;
+  name?: string;
+  tile: [number, number];
+  moves?: { after: string; tile: [number, number] }[];
 }
 
 export interface WorldMap {
   layout: MapLayout;
   slums: SlumsPlaces;
   town: { gates?: Record<string, [number, number][]> };
+  /** The Old Market's (its zones, the Great Scale, its NPCs), if it was given. */
+  palengke?: SlumsPlaces;
 }
 
 export interface WorldMapUrls {
   layout: string;
   slums: string;
   town: string;
+  palengke?: string;
 }
 
 let loading: Promise<WorldMap | null> | null = null;
@@ -81,9 +94,12 @@ export function loadWorldMap(urls: WorldMapUrls): Promise<WorldMap | null> {
     const r = await fetch(url).catch(() => null);
     return r?.ok ? ((await r.json().catch(() => null)) as T | null) : null;
   };
-  loading = Promise.all([json<MapLayout>(urls.layout), json<SlumsPlaces>(urls.slums), json<WorldMap['town']>(urls.town)]).then(([layout, slums, town]) =>
-    layout ? { layout, slums: slums ?? {}, town: town ?? {} } : null,
-  );
+  loading = Promise.all([
+    json<MapLayout>(urls.layout),
+    json<SlumsPlaces>(urls.slums),
+    json<WorldMap['town']>(urls.town),
+    urls.palengke ? loadPlaces<SlumsPlaces>(urls.palengke) : null, // (the Map menu's own fetch of it, shared)
+  ]).then(([layout, slums, town, palengke]) => (layout ? { layout, slums: slums ?? {}, town: town ?? {}, ...(palengke ? { palengke } : {}) } : null));
   // (A failed fetch is tried again next time.)
   void loading.then((w) => {
     if (!w) loading = null;

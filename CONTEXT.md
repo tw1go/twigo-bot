@@ -711,9 +711,15 @@ area (or the nearest mini boss spot) in the Slums. It stops once you're there; S
 _Avoid_: path, breadcrumbs, guide line
 
 **Quest map**:
-The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every active quest's hunting area
-in the quest's colour, with its count. Only for looking.
+The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every quest mark. Only for looking.
 _Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and teleporting)
+
+**Quest mark**:
+Where an active quest sends you, in the quest's colour: a hunt's area (the mob's zone in the Slums or the Old Market,
+with its count; a mini boss's spots; a field boss's spot) and the NPC you're to talk to or bring something to (the sign
+over their head: "!" or "…"), the giver of a quest on offer too. Shown on the quest map, the Map menu and the minimap;
+on the minimap one off its edge is held at the edge, the way to it.
+_Avoid_: waypoint, objective marker; not the head marker over an NPC (that's on the NPC in the world)
 
 **Lesson**:
 A one-time walkthrough of a new player's firsts (potions onto the hotbar, wearing each quest piece in place of

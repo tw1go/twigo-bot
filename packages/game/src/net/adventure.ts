@@ -576,6 +576,9 @@ export function enterArea(area: string): void {
 /** How many of an item kind are in your combat bag (a collect objective's count). */
 export const heldOf = (defId: string | undefined): number => heldCount(state?.bag ?? [], defId);
 
+/** The mob a quest item drops from (palengke-leveling.json questItems: the Old Market's), if any. */
+export const questItemMob = (item: string | undefined): string | undefined => (item ? data?.palengke?.questItems[item]?.mob : undefined);
+
 /** Quests you can start now (offered), for the log. */
 export const offeredNow = (): QuestDef[] => (state && data ? offeredQuests(state, data.quests) : []);
 
