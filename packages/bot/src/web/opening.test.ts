@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
 import { type TownServerMessage, lanternPostOf, mapOpensAt, opensLine } from '@mikazuki/shared';
-import { attachTown, loadTownMap } from './town.js';
+import { attachTown, loadMapObject, loadTownMap } from './town.js';
 
 // A map's opening time (CONTEXT.md Opening time; shared travel.ts mapOpensAt, the bot's web/town.ts): before it nobody but
 // Game Masters comes in, by a link or a Lantern Post, and each welcome says what's still closed.
@@ -85,4 +85,11 @@ test('before its opening: a link is sent back, a teleport refused, Game Masters 
   } finally {
     server.close();
   }
+});
+
+test('the Cellar Hatch is found on the Old Market map as the server looks for it (it once read the objects off loadTownMap, which has none, and the Cellar was off on the live server)', () => {
+  const hatch = loadMapObject('palengke', 'palengke-silong-hatch');
+  assert.ok(hatch, 'the hatch is on maps/palengke.json');
+  assert.equal('objects' in loadTownMap('palengke'), false, 'loadTownMap leaves the objects out: never look for the hatch there');
+  assert.equal(loadMapObject('palengke', 'no-such-object'), undefined);
 });
