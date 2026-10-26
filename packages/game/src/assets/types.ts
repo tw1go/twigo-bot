@@ -130,6 +130,10 @@ export interface Manifest {
     /** The Map menu's dungeon entrances, by entrance id ('warrens', 'silong'): a row of `frames` frames of `frame` px,
      *  the first `glowFrames` a glow pulsing at `fps`, `hoverFrame` lit; `anchor` its foot. */
     mapDungeons?: Record<string, MapDungeonIcon>;
+    /** A Lantern Post not restored yet on the Map menu: its icon (normal, hover). */
+    mapTeleporterBroken?: { file: string; size: Vec2; frames: string[]; anchor: Vec2 };
+    /** The minimap's posts (restored or not) and dungeon entrances: drawn 1:1, `anchor` on the spot. */
+    minimapIcons?: Partial<Record<'post' | 'postBroken' | 'warrens' | 'silong', { file: string; size: Vec2; anchor: Vec2 }>>;
     /** The Casino's Kara y Krus: the flip for the side the coin lands on (each ending on that face, the coin at rest).
      *  The siren and coin burst are fx (siren, coin-burst). */
     coinFlip?: { sides: Record<'kara' | 'krus', string>; size: Vec2; frames: number; fps: number; anchor: Vec2 };
@@ -189,6 +193,10 @@ export interface PropDef {
   /** A portal drawn over it at the same anchor (the Warren Gate's and the exit warp's): a looping strip, never moved or
    *  turned, its alpha pulsing between pulse[0] and pulse[1] over pulse[2] ms. */
   portal?: { file: string; frames: number; frameSize: Vec2; fps: number; pulse?: [number, number, number] };
+  /** A Lantern Post's looks before it's restored (CONTEXT.md Restored Lantern Post): `broken` its still, `restore` the
+   *  one-off sheet that puts it back together (its last frame the still post), then its `animation`. */
+  broken?: { file: string };
+  restore?: AnimSheet;
   /** A prop you walk inside (the Golem Pit): `file` is its back half and this its front, on one canvas and anchor; the
    *  anchor is the ground point of its tile's centre, and each half sorts as if its feet were at anchor y + sortOffsetY. */
   front?: string;

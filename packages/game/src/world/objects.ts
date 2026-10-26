@@ -110,6 +110,10 @@ export class WorldObjects {
   /** Every fence piece drawn, by edge and tile (a Bakod's pieces turn rusty for a moment: ui/bakod-fx.ts). */
   readonly fencePieces = new Map<FenceKey, Phaser.GameObjects.Image>();
   readonly benches: Bench[] = [];
+  /** The Lantern Posts drawn (by tile 'col,row'; a streamed region's go with it), and whether the one at a tile is broken
+   *  for you (CONTEXT.md Restored Lantern Post; set by TownScene: without it, every post lit as ever). */
+  private readonly lanterns = new Map<string, Phaser.GameObjects.Sprite>();
+  lanternBroken: ((col: number, row: number) => boolean) | null = null;
   readonly lamps: Lamp[] = [];
   private readonly big: BigObject[] = [];
   /** The ground's levels (flat in town): objects stand on them. */
@@ -500,6 +504,10 @@ export class WorldObjects {
       }
       s.play(key);
       sprite = this.track(s);
+      if (o.id === 'lantern-post') {
+        this.lanterns.set(`${o.col},${o.row}`, s);
+        if (this.lanternBroken?.(o.col, o.row)) this.lanternLook(s, true);
+      }
     } else {
       sprite = this.place(def.file, o.col, o.row, def.anchor, o.flip);
     }
@@ -551,6 +559,44 @@ export class WorldObjects {
       this.strings.push(s);
       if (lit) this.lightString(s);
     }
+  }
+
+  /** A Lantern Post broken (its broken still) or lit (its idle) for you. */
+  private lanternLook(s: Phaser.GameObjects.Sprite, broken: boolean): void {
+    const def = this.M.props['lantern-post'] as PropDef | undefined;
+    if (broken && def?.broken && this.scene.textures.exists(def.broken.file)) {
+      s.stop();
+      s.setTexture(def.broken.file);
+    } else if (!broken && def?.animation && this.scene.anims.exists(`anim:${def.animation.file}`)) s.play(`anim:${def.animation.file}`);
+  }
+
+  /** Every drawn post's look again (the posts you've restored changed). */
+  refreshLanterns(): void {
+    for (const [k, s] of this.lanterns) {
+      if (!s.scene) {
+        this.lanterns.delete(k); // (its streamed region went)
+        continue;
+      }
+      const [c, r] = k.split(',').map(Number);
+      this.lanternLook(s, !!this.lanternBroken?.(c, r));
+    }
+  }
+
+  /** The post drawn at col,row put back together (its restore sheet, once), then its idle; how long that takes (ms; 0:
+   *  it isn't drawn, or there's no restore art: lit at once). */
+  restoreLantern(col: number, row: number): number {
+    const s = this.lanterns.get(`${col},${row}`);
+    const R = (this.M.props['lantern-post'] as PropDef | undefined)?.restore;
+    if (!s?.scene) return 0;
+    if (!R || !this.scene.textures.exists(R.file)) return this.lanternLook(s, false), 0;
+    const key = `anim:${R.file}`;
+    if (!this.scene.anims.exists(key)) {
+      slice(this.scene.textures, R.file, R.frameSize[0], R.frameSize[1]);
+      this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(R.file, { start: 0, end: R.frames - 1 }), frameRate: R.fps, repeat: 0 });
+    }
+    s.play(key);
+    s.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => s.scene && this.lanternLook(s, false));
+    return Math.round((R.frames / R.fps) * 1000);
   }
 
   /** A portal's strip played in place over its prop (never moved or turned: the frames only cycle its colours), its

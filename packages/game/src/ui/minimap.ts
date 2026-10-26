@@ -23,6 +23,9 @@ const YOU = '#FCDA4A';
 const OUTLINE = '#111827';
 const PHONE = '(max-width: 760px), (max-height: 500px)';
 
+/** A minimap icon: a Lantern Post (restored or not) or a dungeon entrance (by its id). */
+export type MinimapIcon = 'post' | 'postBroken' | 'warrens' | 'silong';
+
 export interface MinimapView {
   me: { col: number; row: number };
   /** Everyone else; `party`: in your party (pink). */
@@ -43,6 +46,25 @@ export class Minimap {
   /** The map's own picture (manifest ui.minimapPictures: its diamond exactly, top corner at the top middle), once loaded. */
   private picture: HTMLImageElement | null = null;
 
+  /** The map's Lantern Posts (restored or not: CONTEXT.md Restored Lantern Post) and its dungeon entrance, as icons on
+   *  the ground under the dots (manifest ui.minimapIcons, drawn 1:1, their anchor on the spot). */
+  private marks: { col: number; row: number; icon: MinimapIcon }[] = [];
+  private readonly icons = new Map<MinimapIcon, { img: HTMLImageElement; size: [number, number]; anchor: [number, number] }>();
+
+  /** The icons' art (manifest ui.minimapIcons). */
+  setIcons(art: Partial<Record<MinimapIcon, { url: string; size: [number, number]; anchor: [number, number] }>>): void {
+    for (const [k, a] of Object.entries(art) as [MinimapIcon, { url: string; size: [number, number]; anchor: [number, number] }][]) {
+      const img = new Image();
+      img.src = a.url;
+      this.icons.set(k, { img, size: a.size, anchor: a.anchor });
+    }
+  }
+
+  /** Where the posts and the entrance are, and which look (drawn from the next frame on). */
+  setMarks(marks: { col: number; row: number; icon: MinimapIcon }[]): void {
+    this.marks = marks;
+  }
+
   constructor(private readonly map: TownMap, pictureUrl?: string) {
     if (pictureUrl) {
       const img = new Image();
@@ -54,7 +76,7 @@ export class Minimap {
     }
     this.el.id = 'minimap';
     this.el.setAttribute('role', 'img');
-    this.el.setAttribute('aria-label', 'Town map: you in gold, your party in pink, everyone else in green');
+    this.el.setAttribute('aria-label', 'Town map: you in gold, your party in pink, everyone else in green; Lantern Posts and dungeon entrances marked');
     (document.querySelector('#town-hud .th-map') ?? document.body).append(this.el);
     this.phone.addEventListener('change', () => this.layout());
     this.layout();
@@ -131,6 +153,15 @@ export class Minimap {
     g.strokeStyle = 'rgba(230, 233, 242, 0.55)';
     g.lineWidth = 1;
     g.strokeRect(Math.round(v.camera.x * k + this.width / 2) + 0.5, Math.round(v.camera.y * k) + 0.5, Math.round(v.camera.width * k), Math.round(v.camera.height * k));
+
+    // The posts and the entrance (whole px, never smoothed), under the dots.
+    g.imageSmoothingEnabled = false;
+    for (const m of this.marks) {
+      const icon = this.icons.get(m.icon);
+      if (!icon?.img.complete || !icon.img.naturalWidth) continue;
+      const { x, y } = this.at(m.col, m.row);
+      g.drawImage(icon.img, Math.round(x - icon.anchor[0]), Math.round(y - icon.anchor[1]), icon.size[0], icon.size[1]);
+    }
 
     const r = this.phone.matches ? 2 : 2.5;
     const dot = (p: { col: number; row: number }, colour: string, size: number) => {

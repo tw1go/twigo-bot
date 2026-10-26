@@ -355,6 +355,8 @@ export type TownClientMessage =
   | { t: 'ramon-give' }
   /** Teleport from the Lantern Post you're by to another map's (uses a Return Lantern; shared travel.ts's rules). */
   | { t: 'lantern'; to: string; post?: number }
+  /** Restore the Lantern Post you're by (CONTEXT.md Restored Lantern Post): its place in this map's lanternPostsOf. */
+  | { t: 'lantern-restore'; post: number }
   /** The buffs on another player (the player box shows their icons), by town id. */
   | { t: 'buffs-of'; id: string }
   | { t: 'trade-answer'; ask: string; accept: boolean }
@@ -616,7 +618,9 @@ export type TownServerMessage =
       /** The owner's latest notice, while it's still current (30 minutes). */
       notice?: TownAnnouncement;
       /** Areas not open to you yet (CONTEXT.md Opening time): each one's opening (server ms). */
-      closed?: Record<string, number> }
+      closed?: Record<string, number>;
+      /** The Lantern Posts and dungeon entrances you've restored (CONTEXT.md Restored Lantern Post; shared postKey). */
+      restored?: string[] }
   | { t: 'join'; player: TownPlayer }
   | { t: 'leave'; id: string }
   | { t: 'step'; id: string; col: number; row: number }
@@ -742,6 +746,9 @@ export type TownServerMessage =
    *  3rd). */
   | { t: 'lantern-go'; to: 'town' | 'slums' | 'palengke'; post?: number }
   | { t: 'lantern-refused'; message: string }
+  /** A Lantern Post or dungeon entrance you've just restored (`key`, shared postKey; `fresh`: only now, not before), and
+   *  every one you have. */
+  | { t: 'lantern-restored'; key: string; fresh: boolean; restored: string[] }
   /** You came to an area that isn't open yet (CONTEXT.md Opening time): back where you came from; then closed (4002). */
   | { t: 'area-closed'; area: string; opensAt: number; message: string }
   | { t: 'lantern-fx'; id: string; col: number; row: number; phase: 'out' | 'in' }

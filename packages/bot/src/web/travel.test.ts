@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocket } from 'ws';
-import { type CombatItemDef, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, type TownServerMessage, blockedWithPosts, lanternPostOf, lanternPostsOf, lanternRefusal, nearPost, postAt, stackLimit } from '@mikazuki/shared';
+import { type CombatItemDef, LANTERN_USE_TILES, LANTERN_WALK_TILES, RETURN_LANTERN, type TownServerMessage, blockedWithPosts, lanternPostOf, lanternPostsOf, lanternRefusal, NOT_RESTORED, nearPost, postAt, postKey, stackLimit } from '@mikazuki/shared';
 import { combatWares } from './combat-bag.js';
 import { loadItemData, loadStats } from './stats-data.js';
 import { Vitals } from './town-vitals.js';
@@ -224,5 +224,105 @@ test('a teleport over the town: a lantern used, the light seen as they leave and
     for (const c of [alice5, bob, carol]) c.ws.close();
   } finally {
     await new Promise((ok) => server.close(ok));
+  }
+});
+
+// Restored Lantern Posts (CONTEXT.md Restored Lantern Post): every post starts broken for each player; using one beside it
+// restores it; a teleport needs both ends restored (a dungeon entrance: reached on foot).
+
+test("posts' keys: '<map>:<index>', a dungeon entrance '<map>:<dungeon>'; a teleport needs the post you're at and where to restored", () => {
+  const slumsPosts = lanternPostsOf({ ...slums, blocked: blockedWithPosts(slums.blocked, slums.teleporters) });
+  assert.deepEqual(slumsPosts.map((_, i) => postKey('slums', slumsPosts, i)), ['slums:0', 'slums:warrens']);
+  const palPosts = lanternPostsOf({ ...palengke, blocked: blockedWithPosts(palengke.blocked, palengke.teleporters) });
+  assert.deepEqual(palPosts.map((_, i) => postKey('palengke', palPosts, i)), ['palengke:0', 'palengke:1', 'palengke:2', 'palengke:3', 'palengke:silong']);
+  const post = lanternPostOf(town)!;
+  const ok = { from: 'town', to: 'slums', posts: [post], at: post.arrive, inCombat: false, out: false, lanterns: 1, toKey: 'slums:0' };
+  assert.equal(lanternRefusal({ ...ok, restored: new Set(['town:0', 'slums:0']) }), null);
+  assert.equal(lanternRefusal({ ...ok, restored: new Set(['town:0']) }), NOT_RESTORED, 'where to is broken');
+  assert.equal(NOT_RESTORED, "You haven't restored that Lantern Post yet. Find it on foot first.");
+  assert.match(lanternRefusal({ ...ok, restored: new Set(['slums:0']) })!, /Restore this Lantern Post first/, 'the one you\'re at is broken');
+  assert.equal(lanternRefusal({ ...ok, toKey: 'slums:warrens', restored: new Set(['town:0']) }), NOT_RESTORED, 'an entrance not reached yet');
+  assert.equal(lanternRefusal(ok), null, 'without restored posts every post works (as before)');
+});
+
+test('over the town: a post restored only beside it, kept and sent with the next welcome; a teleport to a broken post refused, then fine once restored', async () => {
+  const restored = new Map<string, Set<string>>();
+  const lanterns = new Map([['alice', 3]]);
+  const server = createServer();
+  attachTown(server, {
+    map: loadTownMap(),
+    rooms: { slums: () => loadTownMap('slums'), palengke: () => loadTownMap('palengke') },
+    lanterns: {
+      count: (u) => lanterns.get(u) ?? 0,
+      use: (u) => (lanterns.get(u) ?? 0) > 0 && !!lanterns.set(u, lanterns.get(u)! - 1),
+      restored: (u) => [...(restored.get(u) ?? [])],
+      restore: (u, post) => {
+        const mine = restored.get(u) ?? restored.set(u, new Set()).get(u)!;
+        return !mine.has(post) && !!mine.add(post);
+      },
+    },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never }),
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const open = (as: string, room = 'town') =>
+    new Promise<{ ws: WebSocket; got: TownServerMessage[] }>((ok) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?as=${as}&room=${room}`);
+      const c = { ws, got: [] as TownServerMessage[] };
+      ws.on('message', (d) => {
+        const m = JSON.parse(String(d)) as TownServerMessage;
+        c.got.push(m);
+        if (m.t === 'welcome') ok(c);
+      });
+    });
+  const wait = (ms = 600) => new Promise((ok) => setTimeout(ok, ms));
+  const send = (ws: WebSocket, m: unknown) => ws.send(JSON.stringify(m));
+  const last = (c: { got: TownServerMessage[] }, t: string) => [...c.got].reverse().find((m) => m.t === t);
+  try {
+    const post = lanternPostOf(town)!;
+    let alice = await open('alice');
+    assert.deepEqual((last(alice, 'welcome') as { restored?: string[] }).restored, [], 'every post starts broken');
+    // Far from it: refused, nothing kept.
+    send(alice.ws, { t: 'here', col: post.tile[0] + 6, row: post.tile[1], dir: 's' });
+    await wait(150);
+    send(alice.ws, { t: 'lantern-restore', post: 0 });
+    await wait();
+    assert.match((last(alice, 'lantern-refused') as { message: string }).message, /Walk up/);
+    assert.equal(restored.get('alice')?.size ?? 0, 0);
+    // Beside it (a fresh page: 'here' at the landing): restored (fresh), then again (not fresh: already).
+    alice.ws.close();
+    await wait(150);
+    alice = await open('alice');
+    send(alice.ws, { t: 'here', col: post.arrive[0], row: post.arrive[1], dir: 's' });
+    await wait(150);
+    send(alice.ws, { t: 'lantern-restore', post: 0 });
+    await wait();
+    assert.deepEqual(last(alice, 'lantern-restored'), { t: 'lantern-restored', key: 'town:0', fresh: true, restored: ['town:0'] });
+    send(alice.ws, { t: 'lantern-restore', post: 0 });
+    await wait();
+    assert.equal((last(alice, 'lantern-restored') as { fresh: boolean }).fresh, false);
+    // To the Slums' post, not restored yet: refused, the lantern kept. (A second apart: the teleport's own pace.)
+    await wait(1000);
+    send(alice.ws, { t: 'lantern', to: 'slums' });
+    await wait();
+    assert.equal((last(alice, 'lantern-refused') as { message: string }).message, NOT_RESTORED);
+    assert.equal(lanterns.get('alice'), 3);
+    assert.equal(alice.got.some((m) => m.t === 'lantern-go'), false);
+    // Restored there (on foot, another day): it goes.
+    restored.get('alice')!.add('slums:0');
+    await wait(1000);
+    send(alice.ws, { t: 'lantern', to: 'slums' });
+    await wait();
+    assert.ok(last(alice, 'lantern-go'));
+    assert.equal(lanterns.get('alice'), 2);
+    // The next welcome says which.
+    alice.ws.close();
+    await wait(150);
+    const again = await open('alice', 'slums');
+    assert.deepEqual([...((last(again, 'welcome') as { restored?: string[] }).restored ?? [])].sort(), ['slums:0', 'town:0']);
+    again.ws.close();
+  } finally {
+    server.close();
   }
 });

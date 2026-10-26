@@ -31,6 +31,7 @@ import { today } from '../time.js';
 //  • v23, items.expires_at: when a timed item runs out (web/adventure.ts takes it out then).
 //  • v24, warrens_clears, golem_fights: the leaderboard's records (web/records.ts).
 //  • v25, last_area: the area each member was last in (web/last-area.ts; CONTEXT.md Resume spot).
+//  • v26, lantern_posts: the Lantern Posts and dungeon entrances each member has restored (web/lantern-posts.ts).
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -432,6 +433,16 @@ export const MIGRATIONS: string[] = [
     user_id  TEXT PRIMARY KEY,
     area     TEXT NOT NULL,              -- 'hood' | 'slums' | 'palengke' | 'warrens' | 'silong' (shared resume.ts)
     at       INTEGER NOT NULL            -- when they arrived there (ms)
+  );
+  `,
+  /* v26: the Lantern Posts each member has restored on foot (web/lantern-posts.ts; CONTEXT.md Restored Lantern Post): a
+     post only takes them anywhere once they have. Empty at first: everyone's posts start broken, the Town's too (one
+     fresh start, those who teleported before included). */ `
+  CREATE TABLE lantern_posts (
+    user_id  TEXT NOT NULL,
+    post     TEXT NOT NULL,              -- '<map>:<index>' or '<map>:<dungeon>' (shared postKey)
+    at       INTEGER NOT NULL,           -- when they restored it (ms)
+    PRIMARY KEY (user_id, post)
   );
   `,
 ];

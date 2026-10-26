@@ -60,9 +60,17 @@ own.
 _Avoid_: last position, save point, checkpoint (that's a Scrap Warrens area's)
 
 **Lantern Post**:
-A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
-teleport to another map's Lantern Post.
+A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums (the Old Market has four);
+standing by one you've restored, you can teleport to another map's Lantern Post you've restored.
 _Avoid_: teleporter, waypoint (the map shows a teleporter icon on it, but the thing is a Lantern Post)
+
+**Restored Lantern Post**:
+A Lantern Post a player has put back together on foot. Every post starts broken for each player (snapped off its stump,
+its lantern out), the Town's too; walking up to one and using it restores it for them, for good: it lights up, and from
+then on it can take them anywhere they've restored, and be teleported to. Each player sees the posts as they are for
+them. A dungeon entrance is restored by reaching it on foot (or going into the dungeon). Restoring isn't travel: it
+works in a fight.
+_Avoid_: unlocked, discovered, activated (it's restored: the post is broken until then)
 
 **Return Lantern**:
 The item a teleport costs: one is used up each time, at a Lantern Post.
@@ -73,7 +81,8 @@ a post it travels, opened anywhere else (M) it's only to look at.
 
 **Dungeon entrance**:
 A dungeon's way in (the Warren Gate in the Slums, the Cellar Hatch in the Old Market) as a teleport's destination: from
-any Lantern Post you can land beside one, for a Return Lantern; you can't teleport from one.
+any Lantern Post you can land beside one you've reached on foot (a Restored Lantern Post's rule), for a Return Lantern;
+you can't teleport from one. The Map menu and the minimap show it as a small picture of itself.
 _Avoid_: post (it isn't one), portal
 
 **Teleport**:

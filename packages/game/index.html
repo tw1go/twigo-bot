@@ -2253,6 +2253,10 @@
          (its brightest, frame 4) under reduced motion. */
       #map-menu .mm-gate.mm-gate-art { transform: none; border: 0; background-color: transparent; box-shadow: none; background-repeat: no-repeat; image-rendering: pixelated; animation: mm-gate-glow 1s steps(8) infinite; }
       #map-menu .mm-gate.mm-gate-art:hover, #map-menu .mm-gate.mm-gate-art:focus-visible { animation: none; background-color: transparent; background-position-x: calc(var(--fw) * -8); }
+      /* Not reached on foot yet (CONTEXT.md Restored Lantern Post): still, dim and not to be clicked. */
+      #map-menu .mm-gate.mm-gate-art.mm-gate-off, #map-menu .mm-gate.mm-gate-art.mm-gate-off:hover { animation: none; background-position-x: calc(var(--fw) * -4); filter: grayscale(0.7) brightness(0.7); cursor: default; }
+      #map-menu .mm-gate-off:not(.mm-gate-art) { filter: grayscale(0.7) brightness(0.7); cursor: default; }
+      #map-menu .mm-gate-tag.mm-off { color: #9AA0B8; }
       @keyframes mm-gate-glow { from { background-position-x: 0; } to { background-position-x: calc(var(--fw) * -8); } }
       @media (prefers-reduced-motion: reduce) { #map-menu .mm-gate.mm-gate-art:not(:hover):not(:focus-visible) { animation: none; background-position-x: calc(var(--fw) * -4); } }
       #map-menu .mm-where-gate { flex: none; width: 22px; height: 22px; margin: 7px 4px; transform: rotate(45deg); border: 2px solid #1E1B3A; background: #F59E0B; box-shadow: 0 0 0 2px #FCD34D inset; }

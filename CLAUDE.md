@@ -1207,6 +1207,20 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   refused 'cutscene'; the room sees `cutscene` { id, on } (others.ts says "..." over them every few seconds;
   `TownPlayer.cutscene` for arrivals; tested in town-vitals.test.ts). Dev: `?cutscene=<id>` and `__town.cutscene(id)`
   play one where you are (its map), changing nothing.
+- Restored Lantern Posts (CONTEXT.md Restored Lantern Post; 26 Oct 2026): every post starts broken for each player, the
+  Town's too (schema v26 `lantern_posts`, empty at the update: one fresh start; bot `web/lantern-posts.ts`; shared
+  `postKey`: '<map>:<index>', a dungeon entrance '<map>:<dungeon>'). Using one beside it (`lantern-restore` {post}, the
+  server's `postAt` check) restores it: `lantern-restored` {key, fresh, restored}; the welcome carries `restored`;
+  `TownOptions.lanterns.restored` / `restore` (without them every post works, as the tests' old towns). A dungeon
+  entrance is restored by its gate's panel asked for from beside it (`warrens-gate` / `silong-gate` atGate) or a run's
+  room joined (town.ts `reachedEntrance`). `lanternRefusal`'s `restored` / `toKey`: both ends restored, else
+  `NOT_RESTORED` ("You haven't restored that Lantern Post yet. Find it on foot first."). Game: WorldObjects
+  `lanternBroken` / `refreshLanterns` / `restoreLantern` (manifest props['lantern-post'].broken still, .restore 16
+  frames at 12 fps, then the idle), TownScene `toLanternPost` (a broken one restored first, even in a fight: `restorePost`,
+  `lanternRestored`: the anim, the Repair Kit's sound, a toast, then the Map menu out of a fight), the Map menu
+  (`MapOpen.restored`: ui.mapTeleporterBroken and "· not restored yet", a click only says why; an entrance not reached
+  dim (frame 4, grayscale) and disabled), the minimap (`Minimap.setMarks`, manifest ui.minimapIcons drawn 1:1 under the
+  dots). Tested in `web/travel.test.ts`. Dev: `?lanterns=all` (every one restored for you), `?lanterns=none`.
 - Lantern Posts (teleporting between maps; words in CONTEXT.md: Map, Lantern Post, Return Lantern, Map menu, Teleport,
   In combat, Dungeon entrance; the dungeon entrances, shared travel.ts DUNGEON_ENTRANCES: the Warren Gate's and the Cellar
   Hatch's object and `arrive` (warrens, silong), listed after a map's posts by `lanternPostsOf` with `entrance`, so a

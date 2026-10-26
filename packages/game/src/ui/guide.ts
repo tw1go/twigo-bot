@@ -208,8 +208,10 @@ const TOPICS: Topic[] = [
     icon: '🏮',
     label: 'Lantern Posts',
     text: [
-      'A **Lantern Post** stands in the middle of the Town (on the fountain plaza) and in the middle of the Slums. From one, you can **teleport** to the other.',
-      '• Click the post (or press **E** beside it): you walk up and the **Map** opens, the Slums and the Town side by side',
+      'A **Lantern Post** stands in the middle of the Town (on the fountain plaza) and in the middle of the Slums, and four in the Old Market. From one, you can **teleport** to another.',
+      '• Every post starts **broken**: walk up to it and use it once (click it, or **E** beside it) to **restore** it. You can only teleport between posts you\'ve restored',
+      '• The **Warren Gate** and the **Cellar Hatch** count once you\'ve reached them on foot',
+      '• Click a restored post (or press **E** beside it): you walk up and the **Map** opens',
       '• Click the other post\'s icon, then **Teleport**. It uses one **Return Lantern** (the sari-sari store\'s **Travel** tab)',
       '• Not during a fight: wait a few seconds after your last hit',
       '• Each player goes alone; your party isn\'t pulled along',
