@@ -2,7 +2,8 @@ import type { TownMap } from '../assets/types';
 
 // 🗺️ The minimap (top right, above the HUD's buttons; it goes in the HUD's .th-map slot): the map round you, centred on
 // you and moving with you (26 Oct 2026: it showed the whole map, too small to read), about ZOOMS[n] tiles across: + and
-// − at its corner zoom it in and out (kept per browser, localStorage `mk_minimap_zoom`; 40 to start). The map's ground
+// − at its corner zoom it in and out (kept per browser, localStorage `mk_minimap_zoom`; 40 to start), its last step out
+// the whole map (WHOLE: it stays put, your dot where you are on it). The map's ground
 // from its file (the town's grass, paths, plaza, river and buildings' footprints; the Slums' dirt, concrete, planks and
 // canal, raised ground a shade lighter and the basin darker; a map's own picture over it: manifest ui.minimapPictures),
 // its Lantern Posts and dungeon entrance (`setMarks`), a green dot for everyone else (pink for your party), a gold one for
@@ -26,8 +27,10 @@ const PARTY = '#F9A8D4'; // your party's pink (their names in town, the party pa
 const YOU = '#FCDA4A';
 const OUTLINE = '#111827';
 const PHONE = '(max-width: 760px), (max-height: 500px)';
-/** How many tiles across it shows, by zoom step (+ goes left, − right); START the first time. */
-const ZOOMS = [20, 30, 40, 60, 90];
+/** The whole map, fitted to the minimap (the last zoom step). */
+const WHOLE = 0;
+/** How many tiles across it shows, by zoom step (+ goes left, − right; WHOLE: the whole map); START the first time. */
+const ZOOMS = [20, 30, 40, 60, 90, WHOLE];
 const START = 2;
 const ZOOM_STORE = 'mk_minimap_zoom';
 /** The ground is drawn at the scale this many tiles across fills the minimap (a closer zoom stretches it a little). */
@@ -96,7 +99,7 @@ export class Minimap {
     this.el.setAttribute('role', 'img');
     this.el.setAttribute('aria-label', 'Map round you: you in gold, your party in pink, everyone else in green; Lantern Posts and dungeon entrances marked');
     this.box.className = 'mm-mini';
-    for (const [b, text, label, step] of [[this.zoomIn, '+', 'Zoom the minimap in', -1], [this.zoomOut, '−', 'Zoom the minimap out', 1]] as const) {
+    for (const [b, text, label, step] of [[this.zoomIn, '+', 'Zoom the minimap in', -1], [this.zoomOut, '−', 'Zoom the minimap out (all the way: the whole map)', 1]] as const) {
       b.className = 'mm-mini-zoom';
       b.textContent = text;
       b.setAttribute('aria-label', label);
@@ -206,10 +209,14 @@ export class Minimap {
     const H = this.height;
     g.setTransform(this.ratio, 0, 0, this.ratio, 0, 0);
     g.clearRect(0, 0, W, H);
-    // The view: ZOOMS[zoom] tiles across, centred on you (world px).
-    const centre = v.at ?? { x: (v.me.col - v.me.row) * (TILE_W / 2), y: (v.me.col + v.me.row + 1) * (TILE_W / 4) };
-    const vw = ZOOMS[this.zoom] * TILE_W;
+    // The view (world px): ZOOMS[zoom] tiles across, centred on you; WHOLE: the map's whole diamond, fitted and centred.
+    const me = v.at ?? { x: (v.me.col - v.me.row) * (TILE_W / 2), y: (v.me.col + v.me.row + 1) * (TILE_W / 4) };
+    const [cols, rows] = this.map.size;
+    const mapW = (cols + rows) * (TILE_W / 2);
+    const whole = ZOOMS[this.zoom] === WHOLE;
+    const vw = whole ? Math.max(mapW, (mapW / 2) * (W / H)) : ZOOMS[this.zoom] * TILE_W;
     const vh = vw * (H / W);
+    const centre = whole ? { x: this.x0 + mapW / 2, y: mapW / 4 } : me;
     const left = centre.x - vw / 2;
     const top = centre.y - vh / 2;
     const s = W / vw; // minimap px per world px
@@ -259,7 +266,7 @@ export class Minimap {
     const middle = (p: { col: number; row: number }) => tileAt(p.col + 0.5, p.row + 0.5);
     for (const p of v.others) if (!p.party) dot(middle(p), OTHER, r);
     for (const p of v.others) if (p.party) dot(middle(p), PARTY, r); // (over the others)
-    dot(px(centre.x, centre.y), YOU, r + 1); // last, on top: the middle
+    dot(px(me.x, me.y), YOU, r + 1); // last, on top: the middle (the whole map: where you are on it)
   }
 }
 

@@ -491,7 +491,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Minimap (`ui/minimap.ts`, top right in the HUD's `.th-map` slot, the jackpot counter left of it, News and Settings in a row
   under it; on phones (≤560 px wide, or ≤500 px tall = landscape phones, which get every phone rule) those buttons stack in
   a column under the map with the bag button under them, and the stay box sits beside the Chat button): the map round you, centred on you and moving with you (26 Oct 2026; it was the whole
-  map, too small to read): ZOOMS 20 / 30 / 40 / 60 / 90 tiles across, + and − at its corner (`.mm-mini-zoom`, localStorage
+  map, too small to read): ZOOMS 20 / 30 / 40 / 60 / 90 tiles across, then WHOLE (the whole map fitted, your dot where you are on it), + and − at its corner (`.mm-mini-zoom`, localStorage
   `mk_minimap_zoom`, 40 to start); the whole map's ground (tile colours, buildings, a map's picture) drawn once at the
   40-tile scale and the part round you copied out (`draw`'s `at`: your feet between tiles, Character `groundAt`); green
   dots for everyone else (your party's pink, over the others: `inParty`), gold for you in the middle, a faint box for the
