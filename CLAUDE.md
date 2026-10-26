@@ -262,6 +262,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   practice run nerfed, as the Warrens' practice; was `mobHpAtkPct` 60); `kusingPct` 50, `retryHours` 24 (+ `gateNote`) and
   its `loot` text (the normal loot; was XP and Kusing only); `silong.loot.mobGearChance` 0.12 (+ `mobGearNote`; was the
   Old Market's 3%).
+- `classes/dungeons.json` `silong.lastBoss.exitWarp` [[51,29],[52,29],[51,30],[52,30]] (+ `exitWarpNote`; 26 Oct 2026, the
+  owner: B3's way out once the Ice Machine falls).
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -1192,7 +1194,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   between them and the fan: `shielded`; `data.chill` 2 for part 4), Belt Rush (a line down one belt, `data.belt`,
   `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
   the Frost at 75 / 50 / 25% (the plant's west side), its enrage at 25% (moves 1.3× sooner); it down: the run cleared,
-  `boss-move` 'melt' on every floor. Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
+  `boss-move` 'melt' on every floor; B3's way out then (26 Oct 2026, the owner: like the Warrens' clear warp; dungeons.json
+  `lastBoss.exitWarp`, a 2x2 east of its body clear of its loot; `SilongView.openExit`: the Warren Gate's exit art and
+  portal frost-tinted, its sheets queued on B3; a click (left, right or a tap) walks you onto it; stepping on it while
+  the run is cleared sends `silong-leave`, TownScene `gateOn`, so `silong-out` takes you up beside the hatch). Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
   block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
   bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /

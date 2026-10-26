@@ -14,6 +14,7 @@ import { type SilongSfx, playSet, playSilong } from '../audio/sound';
 import { BuildingLabel } from '../ui/labels';
 import type { PidoMoment } from '../ui/silong';
 import { onMap } from './clicks';
+import { slice } from '../assets/packs';
 import { LABEL_DEPTH } from './depth';
 
 // 🧊 An Ang Silong floor in the game (maps/silong-<floor>.json; the server runs the run: bot web/town-silong.ts). This
@@ -94,7 +95,17 @@ export interface SilongHooks {
   radio(moment: PidoMoment): void;
   /** Mang Ramon's box was clicked: the scene walks you there and asks for his note. */
   ramon(): void;
+  /** B3's way out (dungeons.json silong.lastBoss.exitWarp; none on the other floors), and a click on it: the scene walks
+   *  you onto it (stepping on it leaves the run: TownScene `gateOn`). */
+  exitWarp: [number, number][];
+  toExit(tiles: [number, number][]): void;
+  /** Its picture's clicks are its own (the map's walk to the tile under it leaves them). */
+  own(obj: Phaser.GameObjects.GameObject): void;
 }
+
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** The way out's frost tint (the Warren Gate's exit art in the Ice Plant). */
+const EXIT_TINT = 0xbfe4ff;
 
 interface Piece {
   o: MapObject;
@@ -119,6 +130,10 @@ export class SilongView {
   private readonly blocks = new Map<string, { img: Phaser.GameObjects.Image; col: number; row: number; timer: Phaser.Time.TimerEvent }>();
   /** The frost melted (the last boss down): no more steam asked. */
   private melted = false;
+  /** B3's way out, drawn as the run is cleared. */
+  private exit: { gate: Phaser.GameObjects.Image; portal: Phaser.GameObjects.Sprite | null } | null = null;
+  /** The run has been told once (a later clear opens the way out with dust; one already cleared just shows it). */
+  private told = false;
   private ramonZone: Phaser.GameObjects.Zone | null = null;
   /** Mang Ramon's box's hover label (the scene sizes it with its zoom, as the gates' signs). */
   ramonLabel: BuildingLabel | null = null;
@@ -202,6 +217,8 @@ export class SilongView {
   /** The run as the server has it: the way down open once this floor's mini bosses are down, the B3 door once Frosty
    *  Tubbs is. */
   run(r: TownSilongRun): void {
+    if (r.phase === 'cleared') this.openExit(this.told);
+    this.told = true;
     const f = r.floors.find((x) => x.floor === this.floor);
     if (f?.open && !this.open) {
       this.open = true;
@@ -490,6 +507,46 @@ export class SilongView {
     });
   }
 
+  /** B3's way out as the run is cleared, like the Warrens' clear warp: the Warren Gate's exit art (frost-tinted) and its
+   *  pulsing portal round the 2x2 (the art's anchor is the top corner of its 3x3), fading in with frost when it happens
+   *  while you're here. A click walks you onto it. */
+  private openExit(animate: boolean): void {
+    const tiles = this.hooks.exitWarp;
+    const def = this.M.props['warren-exit'] as PropDef | undefined;
+    if (this.exit || !tiles.length || !def || !this.scene.textures.exists(def.file)) return;
+    const c0 = Math.min(...tiles.map((t) => t[0])) - 1;
+    const r0 = Math.min(...tiles.map((t) => t[1])) - 1;
+    const top = this.mobs.ground(c0, r0);
+    const depth = frontDepth(c0, r0, 3, 3);
+    const gate = this.scene.add.image(top.x, top.y, def.file).setOrigin(def.anchor[0] / def.size[0], def.anchor[1] / def.size[1]).setDepth(depth).setTint(EXIT_TINT);
+    let portal: Phaser.GameObjects.Sprite | null = null;
+    const p = def.portal;
+    if (p && this.scene.textures.exists(p.file)) {
+      slice(this.scene.textures, p.file, p.frameSize[0], p.frameSize[1]);
+      const key = `anim:${p.file}`;
+      if (!this.scene.anims.exists(key)) this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(p.file, { start: 0, end: p.frames - 1 }), frameRate: p.fps, repeat: -1 });
+      portal = this.scene.add.sprite(top.x, top.y, p.file, 0).setOrigin(def.anchor[0] / p.frameSize[0], def.anchor[1] / p.frameSize[1]).setDepth(depth + 0.01).setTint(EXIT_TINT);
+      portal.play(key);
+      if (p.pulse) {
+        const [lo, hi, ms] = p.pulse;
+        this.scene.tweens.add({ targets: portal, alpha: { from: hi, to: lo }, duration: ms / 2, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
+    }
+    this.exit = { gate, portal };
+    gate.setInteractive({ pixelPerfect: true, cursor: 'pointer' });
+    this.hooks.own(gate);
+    gate.on('pointerup', (ptr: Phaser.Input.Pointer) => {
+      if ((!ptr.leftButtonReleased() && !ptr.rightButtonReleased() && !ptr.wasTouch) || !onMap(ptr, this.scene.game.canvas)) return;
+      this.hooks.toExit(tiles);
+    });
+    if (!animate || reducedMotion()) return;
+    gate.setAlpha(0);
+    this.scene.tweens.add({ targets: gate, alpha: 1, duration: 600 });
+    const crack = this.M.fx['fx-silong-frost-crack'];
+    if (crack) for (const [c, r] of tiles) this.fx.play(crack, this.mobs.ground(c + 0.5, r + 0.5), { layer: 'front' });
+    this.sound('silong-door', null);
+  }
+
   /** The last boss down: steam off the frost round you (the floor's frost and ice tiles within 18), over 3 s. */
   private melt(): void {
     if (this.melted) return;
@@ -675,6 +732,8 @@ export class SilongView {
     this.bar.destroy();
     this.ramonZone?.destroy();
     this.ramonLabel?.text.destroy();
+    this.exit?.gate.destroy();
+    this.exit?.portal?.destroy();
     for (const b of this.blocks.values()) {
       b.timer.remove();
       b.img.destroy();

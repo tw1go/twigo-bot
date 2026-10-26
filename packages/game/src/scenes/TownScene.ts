@@ -419,6 +419,8 @@ export class TownScene extends Phaser.Scene {
   private clearWarp = new Set<string>();
   private warrensRun: TownWarrensRun | null = null;
   private clearWarpToldAt = 0;
+  /** B3's way out asked for (once every few seconds while you stand on it). */
+  private silongExitAt = 0;
   private bridges: (Phaser.GameObjects.Image | null)[] = [];
   /** The gates' signs (always shown, unlike the buildings' names). */
   private readonly gateLabels: BuildingLabel[] = [];
@@ -776,6 +778,13 @@ export class TownScene extends Phaser.Scene {
         },
         radio: (moment) => pidoSays(this.silongRun?.id ?? null, moment, (text) => this.say(`Mang Pido (radio): ${text}`, 5000, null, this.pidoFace())),
         ramon: () => this.toRamon(),
+        exitWarp: this.silongExitTiles(),
+        toExit: (tiles) => {
+          const me = this.player.tile;
+          const [c, r] = tiles.reduce((a, b) => (Math.hypot(b[0] - me.col, b[1] - me.row) < Math.hypot(a[0] - me.col, a[1] - me.row) ? b : a));
+          this.goToTile({ col: c, row: r }); // (stepping on it leaves: gateOn)
+        },
+        own: (obj) => this.entranceBoxes.add(obj),
         rush: (ms, speed) => {
           this.beltRush = { until: performance.now() + ms, speed };
           if (this.ground instanceof Terrain) this.ground.speedUp(['belt-e', 'belt-w'], speed / this.beltBase(), ms);
@@ -2085,9 +2094,22 @@ export class TownScene extends Phaser.Scene {
     if (gate) this.travel(gate);
   }
 
-  /** The gate a tile is: the map's (`gates`), or the Warrens' clear warp once the run is cleared (before that, a word). */
+  /** B3's way out of the Cellar (dungeons.json silong.lastBoss.exitWarp), on B3 only. */
+  private silongExitTiles(): [number, number][] {
+    if (this.map.silong?.floor !== 'b3') return [];
+    return (this.cache.json.get('dungeons') as { silong?: { lastBoss: { exitWarp?: [number, number][] } } } | undefined)?.silong?.lastBoss.exitWarp ?? [];
+  }
+
+  /** The gate a tile is: the map's (`gates`), or the Warrens' clear warp once the run is cleared (before that, a word).
+   *  B3's way out of a cleared Cellar run is no gate: stepping on it asks the server to let you out (as the tracker's
+   *  Leave: `silong-out` takes you up beside the hatch). */
   private gateOn(col: number, row: number): Gate | undefined {
     const k = `${col},${row}`;
+    if (this.silongRun?.phase === 'cleared' && this.silongView && this.silongExitTiles().some(([c, r]) => c === col && r === row) && this.time.now >= this.silongExitAt) {
+      this.silongExitAt = this.time.now + 3000;
+      this.link?.send({ t: 'silong-leave' });
+      return undefined;
+    }
     const gate = this.gateAt.get(k);
     if (gate || !this.clearWarp.has(k)) return gate;
     if (this.warrensRun?.phase === 'cleared') return 'slums';

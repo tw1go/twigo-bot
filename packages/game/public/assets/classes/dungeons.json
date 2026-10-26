@@ -1488,6 +1488,8 @@
    "art": "mobs/makinang-yelo/ (Mac PixelLab view, flipped; script animations)",
    "facing": "down-left (screen SW) only",
    "moves": false,
+   "exitWarp": [[51, 29], [52, 29], [51, 30], [52, 30]],
+   "exitWarpNote": "Repo addition (owner, 26 Oct 2026): like the Warrens' clear warp, the way out once the Ice Machine falls: these 2x2 tiles on B3 beside it (east of its body, clear of where its loot lands round its fan), drawn with the Warren Gate's exit art (frost-tinted); stepping on them leaves the run (back beside the Cellar Hatch).",
    "tile": [
     44,
     28

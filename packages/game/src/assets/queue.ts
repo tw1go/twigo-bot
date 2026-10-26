@@ -47,6 +47,10 @@ export function queueTown(load: Phaser.Loader.LoaderPlugin, textures: Phaser.Tex
   if (map.silong) {
     if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons);
     for (const id of ['silong-elevator-open', 'silong-elevator-closed', 'silong-elevator-plate', 'silong-door-closed', 'silong-door-open']) if (M.props[id]?.file) img(M.props[id].file);
+    // (B3: the way out as the Ice Machine falls, drawn with the Warren Gate's exit art and its portal.)
+    const exit = map.silong.floor === 'b3' ? (M.props['warren-exit'] as PropDef | undefined) : undefined;
+    if (exit?.file) img(exit.file);
+    if (exit?.portal?.file) img(exit.portal.file);
     for (const [id, f] of Object.entries(M.fx)) if (SILONG_FX.test(id) && f.file) f.frame ? queueSheet(load, textures, f.file, f.frame[0], f.frame[1]) : img(f.file);
   } else if (map.tileset === 'palengke') {
     if (M.classes?.dungeons) load.json('dungeons', M.classes.dungeons); // (the hatch's use range, Aling Conching's key)
