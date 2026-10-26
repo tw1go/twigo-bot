@@ -75,6 +75,20 @@ export function addPotions(userId: string, id: PotionId, n: number): number {
   return u.have[id]!;
 }
 
+/** Takes up to `n` of a potion away (sold from the town's bag): how many went. */
+export function takePotions(userId: string, id: PotionId, n: number): number {
+  const u = state[userId];
+  const gone = Math.max(0, Math.min(n, u?.have[id] ?? 0));
+  if (!gone) return 0;
+  u!.have[id]! -= gone;
+  save();
+  return gone;
+}
+
+/** What a sari-sari potion sells for in the town's bag: this much Kusing for each Kowen of its store price (the owner,
+ *  26 Oct 2026: Kusing, not Kowens, so the store's Kowens never come back; the CMS's price counts). */
+export const POTION_KUSING_PER_KOWEN = 50_000;
+
 /** Uses one potion. Returns false if they have none. */
 export function usePotion(userId: string, id: PotionId): boolean {
   const u = state[userId];

@@ -860,18 +860,21 @@ export class Inventory {
   private renderMany(d: TownInventoryResponse): void {
     const counts = new Map<string, number>();
     for (const p of this.picked) counts.set(p.id, (counts.get(p.id) ?? 0) + 1);
+    // (Dug-up items for Kowens, sari-sari potions for Kusing: each total on its own.)
     const sell = [...counts].flatMap(([id, n]) => {
       const it = d.items.find((x) => x.id === id);
-      return it?.sellable ? [{ id, quantity: n, value: it.value * n }] : [];
+      return it?.sellable ? [{ id, quantity: n, value: it.value * n, kusing: (it.kusing ?? 0) * n }] : [];
     });
     const total = sell.reduce((s, x) => s + x.value, 0);
+    const totalKusing = sell.reduce((s, x) => s + x.kusing, 0);
+    const worth = [total || !totalKusing ? kowens(total) : '', totalKusing ? `${totalKusing.toLocaleString()} Kusing` : ''].filter(Boolean).join(' and ');
     const sellable = sell.reduce((s, x) => s + x.quantity, 0);
     const skipped = this.picked.length - sellable;
     const row = el('div', 'iv-actions');
-    const sellButton = this.action(`Sell selected · ${total}`, 'iv-sell', () => void this.act('/town/sell', { items: sell.map(({ id, quantity }) => ({ id, quantity })) }));
+    const sellButton = this.action(`Sell selected · ${worth}`, 'iv-sell', () => void this.act('/town/sell', { items: sell.map(({ id, quantity }) => ({ id, quantity })) }));
     sellButton.disabled ||= !sellable;
     row.append(sellButton, this.action('Clear', 'iv-clear', () => ((this.picked = []), (this.message = null), this.render())));
-    const meta = `${sellable ? `${sellable} to sell for ${kowens(total)}` : 'Nothing here can be sold'}${skipped ? ` · ${skipped} kept (keys, potions, megaphones)` : ''}`;
+    const meta = `${sellable ? `${sellable} to sell for ${worth}` : 'Nothing here can be sold'}${skipped ? ` · ${skipped} kept (keys, megaphones, cards)` : ''}`;
     this.detail.replaceChildren(...[el('div', 'iv-name', `${this.picked.length} items selected`), el('div', 'iv-meta', meta), row, this.note()].filter((x): x is HTMLElement => !!x));
   }
 
@@ -897,18 +900,20 @@ export class Inventory {
     const rarity: Rarity = isRarity(it.rarity) ? it.rarity : 'common';
     const name = el('div', 'iv-name', it.name);
     name.style.color = RARITY_TEXT[rarity];
+    // (A sari-sari potion sells for Kusing: `kusing`; a dug-up item for Kowens.)
+    const potion = it.kind === 'potion';
+    const price = (n: number) => (potion ? `${((it.kusing ?? 0) * n).toLocaleString()} Kusing` : String(it.value * n));
     const meta = it.sellable
-      ? `${LABEL[rarity]} · ${kowens(it.value)} each · you have ${it.count}`
+      ? `${potion ? 'Potion' : LABEL[rarity]} · ${potion ? price(1) : kowens(it.value)} each · you have ${it.count}`
       : `${it.kind === 'key' ? 'Master Key' : it.kind === 'megaphone' ? 'Megaphone' : it.kind === 'equipment' ? 'Equipment' : it.kind === 'rename' ? 'Rename Card' : it.kind === 'classchange' ? 'Bagong Buhay Ticket' : 'Potion'} · you have ${it.count}`;
     const parts: HTMLElement[] = [name, el('div', 'iv-meta', meta)];
     if (it.sellable) {
       const row = el('div', 'iv-actions');
       const button = (text: string, cls: string, run: () => void) => this.action(text, cls, run);
-      row.append(
-        button('Flex', 'iv-flex', () => void this.act('/town/flex', { id: it.id })),
-        button(`Sell 1 · ${it.value}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: 1 })),
-      );
-      if (it.count > 1) row.append(button(`Sell all · ${it.value * it.count}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: it.count })));
+      if (!potion) row.append(button('Flex', 'iv-flex', () => void this.act('/town/flex', { id: it.id })));
+      row.append(button(`Sell 1 · ${price(1)}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: 1 })));
+      if (it.count > 1) row.append(button(`Sell all · ${price(it.count)}`, 'iv-sell', () => void this.act('/town/sell', { id: it.id, quantity: it.count })));
+      if (potion && it.about) parts.push(el('div', 'iv-about', it.about));
       parts.push(row);
     } else if (it.about) parts.push(el('div', 'iv-about', it.about));
     const working = this.working(it);
@@ -1025,10 +1030,10 @@ const fake: TownInventoryResponse = {
     { id: 'rename-card', name: 'Rename Card', emoji: '🪪', rarity: 'common', value: 0, count: 1, kind: 'rename', sellable: false, stacked: true, about: 'Use it to change your town nickname (3-16 letters or numbers; spaces, _ - . in between).' },
     { id: 'class-ticket', name: 'Bagong Buhay Ticket', emoji: '🎫', rarity: 'common', value: 0, count: 1, kind: 'classchange', sellable: false, stacked: true, about: "A fresh start: use it to change your class. You keep your quests and level, get your stat and skill points back, and your training gear becomes the new class's." },
     { id: 'megaphone', name: 'Megaphone', emoji: '📢', rarity: 'common', value: 0, count: 3, kind: 'megaphone', sellable: false, stacked: true, about: "Type /m and your message in the town's chat: it runs across everyone's screen in sky blue. One per message." },
-    { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, drink: true, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Drink it from your bag (Misc tab), or with /potion use in Discord." },
-    { id: 'potion-swerte', name: 'Swerte Elixir', emoji: '🍀', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: false, drink: true, about: 'Your next 3 digs: any junk gets rerolled once. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
-    { id: 'potion-marites', name: 'Marites Tea', emoji: '🍵', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: false, drink: true, about: 'Aling Marites spills a hint about a hidden Easter egg. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
-    { id: 'potion-kalawang', name: 'Kalawang Potion', emoji: '🧪', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: false, about: "Rusts someone's Bakod: cuts its remaining time in half. Throw it at a house's Bakod from its menu in the neighbourhood, or with /potion use in Discord." },
+    { id: 'potion-tago', name: 'Tago Tonic', emoji: '🫥', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: true, kusing: 300000, drink: true, about: "For 30 minutes the Tanod can't see you gamble: 0% bust chance. Drink it from your bag (Misc tab), or with /potion use in Discord." },
+    { id: 'potion-swerte', name: 'Swerte Elixir', emoji: '🍀', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: true, kusing: 250000, drink: true, about: 'Your next 3 digs: any junk gets rerolled once. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
+    { id: 'potion-marites', name: 'Marites Tea', emoji: '🍵', rarity: 'common', value: 0, count: 2, kind: 'potion', sellable: true, kusing: 150000, drink: true, about: 'Aling Marites spills a hint about a hidden Easter egg. Drink it from your bag (Misc tab), or with /potion use in Discord.' },
+    { id: 'potion-kalawang', name: 'Kalawang Potion', emoji: '🧪', rarity: 'common', value: 0, count: 1, kind: 'potion', sellable: true, kusing: 400000, about: "Rusts someone's Bakod: cuts its remaining time in half. Throw it at a house's Bakod from its menu in the neighbourhood, or with /potion use in Discord." },
   ],
   slots: Number(q.get('slots') ?? 18),
   maxSlots: 50,
@@ -1049,6 +1054,7 @@ function fakeAction(path: string, body: ActBody): TownPotionResponse {
   if ('items' in body) {
     let sold = 0;
     let earned = 0;
+    let kusing = 0;
     for (const { id, quantity } of body.items) {
       const it = fake.items.find((x) => x.id === id);
       if (!it) continue;
@@ -1056,11 +1062,13 @@ function fakeAction(path: string, body: ActBody): TownPotionResponse {
       it.count -= n;
       sold += n;
       earned += n * it.value;
+      kusing += n * (it.kusing ?? 0);
     }
     fake.items = fake.items.filter((x) => x.count > 0);
     fake.used -= sold;
     fake.kowens += earned;
-    return done(sold > 0, sold ? `Sold ${sold} items for ${kowens(earned)}.` : "You don't have those items.");
+    const paid = [earned || !kusing ? kowens(earned) : '', kusing ? `${kusing.toLocaleString()} Kusing` : ''].filter(Boolean).join(' and ');
+    return done(sold > 0, sold ? `Sold ${sold} items for ${paid}.` : "You don't have those items.");
   }
   const it = fake.items.find((x) => x.id === body.id);
   if (!it) return done(false, "You don't have that item.");
@@ -1090,5 +1098,6 @@ function fakeAction(path: string, body: ActBody): TownPotionResponse {
   fake.items = fake.items.filter((x) => x.count > 0);
   fake.used -= n;
   fake.kowens += n * it.value;
+  if (it.kusing) return done(true, `Sold ${n > 1 ? `${n}× ` : ''}${it.name} for ${(n * it.kusing).toLocaleString()} Kusing.`);
   return done(true, `Sold ${n > 1 ? `${n}× ` : ''}${it.name} for ${kowens(n * it.value)}.`);
 }

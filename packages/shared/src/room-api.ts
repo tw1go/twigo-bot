@@ -195,14 +195,17 @@ export interface TownBagItem {
   name: string;
   emoji: string;
   rarity: string;
-  /** What /sell pays for one (0 for keys and potions). */
+  /** What /sell pays for one, in Kowens (0 for keys and potions). */
   value: number;
+  /** What one sells for in Kusing instead (sari-sari potions: the town's bag sells them for Kusing). */
+  kusing?: number;
   count: number;
   /** All of them in one slot, with a count (megaphones). */
   stacked?: boolean;
   /** equipment: a weapon or gear piece not being worn (the equipment panel wears it). */
   kind: 'dig' | 'key' | 'potion' | 'megaphone' | 'equipment' | 'rename' | 'classchange';
-  /** Dug-up items can be sold and flexed; keys and potions say how they're used. */
+  /** Dug-up items can be sold (for Kowens) and flexed; sari-sari potions sold (for Kusing: `kusing`); keys say how
+   *  they're used. */
   sellable: boolean;
   about?: string;
   /** A sari-sari potion drunk from the bag (POST /town/potion): Tago Tonic, Swerte Elixir, Marites Tea. */
