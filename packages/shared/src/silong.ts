@@ -96,8 +96,9 @@ export interface SilongData {
   floors: SilongFloorData[];
   lastBoss: SilongMiniBoss & { title: string; reachRadius: number };
   miniBossLook: { drawScale: number; nameColour: string };
-  /** A practice run's mobs and bosses: this % of their HP and of their ATK. */
-  practiceRun: { mobHpPct: number; mobAtkPct: number; once: boolean };
+  /** A practice run's mobs and bosses: this % of their HP and of their ATK; its loot's Kusing this %; Mang Pido's next
+   *  Practice Cellar Key this long after the last (one failed: none held, the run over, the practice not cleared). */
+  practiceRun: { mobHpPct: number; mobAtkPct: number; kusingPct?: number; retryHours?: number; once: boolean };
   loot: SilongLoot;
   key: { id: string; name: string; sources: { shop: { kusing: number }; greatScaleChance: number; lastBossChance: number } };
 }
@@ -105,6 +106,8 @@ export interface SilongData {
 /** The Silong's loot (classes/dungeons.json silong.loot): like the Warrens', a tier up (Lv 40, Polished Whetstones). */
 export interface SilongLoot {
   gearLevel: number;
+  /** A room mob's chance of a Lv `gearLevel` gear piece (its rarity by the mobs' odds); the Old Market's when not given. */
+  mobGearChance?: number;
   miniBoss: {
     roll: {
       affix: { chance: number; affix: Record<string, number> };
@@ -188,8 +191,9 @@ export interface TownSilongGate {
   keys: number;
   inParty: boolean;
   partyRun: { id: string; inside: number; opener: string } | null;
-  /** 'level' (under minLevel), 'quest' (Now's the Time not done: `questLine`), 'full', 'key' (none to open with). */
-  blocked?: 'level' | 'quest' | 'full' | 'key';
+  /** 'level' (under minLevel), 'quest' (Now's the Time not done: `questLine`), 'practice' (no practice run cleared yet:
+   *  `questLine`), 'full', 'key' (none to open with). */
+  blocked?: 'level' | 'quest' | 'practice' | 'full' | 'key';
   questLine?: string;
   /** A practice run (a Practice Susi ng Silong held): Practice run (alone); `blocked` its reason if it can't open now. */
   practice?: { keys: number; blocked?: 'level' | 'full' | 'run' };
@@ -222,7 +226,9 @@ export const chillAttack = (R: ChillRules, stacks: number) => Math.max(0.1, 1 + 
 
 /** One-off things a character has done in Ang Silong (kept in `quests.flags`): cleared it once (Aling Conching's Atchara
  *  refill at half price after), Mang Ramon's note handed to Kuya Jun (his box gives no more). */
-export const SILONG_FLAGS = { cleared: 'silong-cleared', ramonDone: 'ramon-note-done' } as const;
+export const SILONG_FLAGS = { cleared: 'silong-cleared', practiced: 'silong-practice-cleared', ramonDone: 'ramon-note-done' } as const;
+/** In quests.flags: when Mang Pido last gave a Practice Cellar Key (`silong-practice-key:<ms>`). */
+export const PRACTICE_KEY_FLAG = 'silong-practice-key:';
 /** The quest item in Mang Ramon's box (B2's R), and what Kuya Jun gives for it. */
 export const RAMON = { note: 'ramon-note', reward: 'mid-repair-kit' } as const;
 /** After the first clear: this dish at this share of its price (silong.json's "Atchara refill at half price"). */

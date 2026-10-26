@@ -825,8 +825,10 @@ _Avoid_: gate (alone, a gate is a map edge between maps: town ↔ Slums)
 The item a run costs, used up by whoever opens it; joining a party's run is free.
 
 **Practice run**:
-A run for one player alone, opened with a Practice Warren Ticket during Aling Nena's quest: the same map, mobs and
-bosses with weaker numbers and less Kusing; nobody else can join it. Barong-Barong drops her binoculars in it.
+A run for one player alone, opened with a practice key: the same map, mobs and bosses with weaker numbers and less
+Kusing, the same loot otherwise; nobody else can join it. The Warrens': a Practice Warren Ticket during Aling Nena's
+quest (Barong-Barong drops her binoculars in it). The Cellar's: a Practice Cellar Key from "Now's the Time", and
+clearing one (the Ice Machine down) is what opens the real Cellar; failed, Mang Pido gives another a day later.
 _Avoid_: tutorial run, easy mode
 
 **Clear time**:

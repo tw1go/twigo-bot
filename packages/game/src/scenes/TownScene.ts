@@ -3263,10 +3263,16 @@ export class TownScene extends Phaser.Scene {
       if (m.t === 'chill') return this.chillOn(m.id, charOf(m.id), m.stacks, !!m.puff);
       if (m.t === 'silong-ramon') return this.ramonResult(m.result);
       if (m.t === 'ramon-thanks') return this.ramonThanks(m.ok, m.message);
+      if (m.t === 'silong-practice-key') {
+        playSound(m.ok ? 'coin' : 'error');
+        return toast(`Mang Pido: ${m.message}`, 4500, m.ok ? undefined : 'bad');
+      }
       if (m.t === 'silong-cleared') {
-        // (Ang Silong cleared: Aling Conching's Atchara refill at half price from now.)
+        // (Ang Silong cleared: Aling Conching's Atchara refill at half price from now; a practice run: the real Cellar opens.)
         const q = adventure()?.quests;
-        if (q && !q.flags?.includes(SILONG_FLAGS.cleared)) (q.flags ??= []).push(SILONG_FLAGS.cleared);
+        const f = m.practice ? SILONG_FLAGS.practiced : SILONG_FLAGS.cleared;
+        if (q && !q.flags?.includes(f)) (q.flags ??= []).push(f);
+        if (m.practice) toast('Practice cleared! The Cellar is open to you now: bring a Cellar Key.', 5000, 'good');
         return;
       }
       if (m.t === 'level-up') {
@@ -4131,9 +4137,19 @@ export class TownScene extends Phaser.Scene {
         ? { label: '🍲 Menu', run: () => void this.openDishes() }
         : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Cellar's B2)
           ? { label: "📜 Mang Ramon's note", run: () => void this.link?.send({ t: 'ramon-give' }) }
-          : undefined;
+          : id === 'mang-pido' && this.needsPracticeKey() // (another Practice Cellar Key: a practice run not cleared)
+            ? { label: '🔑 Practice Cellar Key', run: () => void this.link?.send({ t: 'silong-practice-key' }) }
+            : undefined;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => npcs.destroy());
     return npcs;
+  }
+
+  /** Mang Pido has another Practice Cellar Key for you: "Now's the Time" done, no practice run cleared (nor the Cellar),
+   *  none held. (He may still say to come back later: the server keeps the wait.) */
+  private needsPracticeKey(): boolean {
+    const s = adventure();
+    const flags = s?.quests.flags ?? [];
+    return !!s && s.quests.done.includes('palengke-15') && !flags.includes(SILONG_FLAGS.practiced) && !flags.includes(SILONG_FLAGS.cleared) && !countOf(s.bag, 'practice-susi-ng-silong');
   }
 
   // ── Cutscenes (CONTEXT.md Cutscene; quests/cutscenes.json, played by world/cutscene.ts) ──
