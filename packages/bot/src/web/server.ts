@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { LeaderboardResponse, LeaderboardRow, MeDig, MeResponse, PresenceStatus, PreregResponse, PreregStatus, TownJackpotBuyResponse, TownJackpotResponse, TownLeaderboardResponse, TownRaceResponse } from '@mikazuki/shared';
-import { RETURN_LANTERN, combatRating } from '@mikazuki/shared';
+import { RETURN_LANTERN, combatRating, mapOpensAt, type AdventureState } from '@mikazuki/shared';
+import { resumeFor, saveLastArea } from './last-area.js';
 import { EmbedBuilder, GatewayIntentBits, escapeMarkdown, type Client } from 'discord.js';
 import { config } from '../config.js';
 import { VOICE_DAILY_CAP, VOICE_MINUTES_PER_CREDIT, add, balance, rankOf, setWalletHook, topBalances, totalKowens, vaultBalance, voiceCreditsToday, voiceProgress } from '../credits/store.js';
@@ -98,7 +99,7 @@ const lookOf = (userId: string): OutfitData | null => {
 };
 import { enhanceFeedLine, parseForgeAction } from './forge.js';
 import { loadItemData, loadPalengkeLeveling, loadStats } from './stats-data.js';
-import { practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, silongClearedFor, ramonBoxFor, ramonGiveFor, adventurersWithClass } from './adventure.js';
+import { QUESTS, practiceDropFor, refundPracticeTicketFor, usePracticeTicketFor, warrensAccessOf, refundTicketFor, warrenTicketsOf, useTicketFor, kindCountOf, useKindFor, adventureOf, cosmeticsOf, combatOf, fighterOf, forgeFor, petXpFor, dropItemFor, killFor, kitOf, moveLevel, weaponPlusOf, takeLootFor, tradeFor, usePotionFor, parseEquipAction, parsePointsAction, parseQuestAction, parseSkillsAction, townPet, townEquip, townPoints, townQuest, townSkills, trainingArmorFor, questRewardsFor, questPiecesFor, questKillFor, enterAreaFor, questDropsFor, ringBellFor, buyDishFor, silongKeysOf, useSilongKeyFor, refundSilongKeyFor, usePracticeSusiFor, refundPracticeSusiFor, silongAccessOf, buySilongKeyFor, silongClearedFor, ramonBoxFor, ramonGiveFor, adventurersWithClass } from './adventure.js';
 import { renameWithCard } from '../items/rename-card.js';
 import { changeClassWithTicket } from '../items/class-ticket.js';
 import { LAUNCH_REWARD, isPreregistered, launched, preregCount, preregister } from '../prereg/prereg.js';
@@ -321,6 +322,18 @@ async function statusOf(client: Client, userId: string): Promise<PresenceStatus>
   return status === 'dnd' ? 'busy' : status === 'idle' ? 'idle' : status === 'online' ? 'online' : 'offline';
 }
 
+/** The Old Market's opening (its map's `opensAt`), read once. */
+let palengkeOpens: { opensAt?: string | null } | null = null;
+const palengkeOpening = () => (palengkeOpens ??= { opensAt: loadTownMap('palengke').opensAt });
+
+/** /me's resume spot (web/last-area.ts): with whether a guided quest is under way and the Old Market still closed. */
+function resumeOf(userId: string, adventure: AdventureState): Pick<MeResponse, 'lastArea' | 'guided' | 'palengkeClosed'> {
+  return resumeFor(userId, {
+    guided: adventure.quests.active.some((p) => QUESTS.find((q) => q.id === p.id)?.guided),
+    palengkeClosed: mapOpensAt(palengkeOpening(), Date.now()) !== null && !isCmsUser(userId),
+  });
+}
+
 /** Digs left today and on the shovel, and shovels left to buy (for /me and the Mine). */
 function digStatus(userId: string): MeDig {
   return {
@@ -357,7 +370,8 @@ async function me(client: Client, req: IncomingMessage, res: ServerResponse): Pr
   const questPieces = questPiecesFor(userId);
   if (questPieces.length) console.log(`[quest] ${userId} got quest pieces: ${questPieces.map((i) => `${i.defId} +${i.plus}`).join(', ')}`);
   const upkeep = maintenance().on ? { maintenance: { note: maintenanceNote(), allowed: isCmsUser(userId) } } : {};
-  const body: MeResponse = { ...upkeep, id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure: adventureOf(userId),
+  const adventure = adventureOf(userId);
+  const body: MeResponse = { ...upkeep, ...resumeOf(userId, adventure), id: userId, name, ...(username ? { username } : {}), avatar, kowens: balance(userId), vault: vaultBalance(userId), rank: rankOf(userId), items, preregistered: isPreregistered(userId), house: !!houseOf(userId), tester: await isTester(client, userId), outfit: getOutfit(userId), nickname: getNickname(userId), title: titleOf(userId), newTitle: newTitle(userId), welcomeGift: welcomeGift(userId), mailUnread: unreadMail(userId), status: await statusOf(client, userId), adventure,
     dig: digStatus(userId), tagoUntil: tagoUntil(userId), hotbars: hotbarsOf(userId), keybinds: keybindsOf(userId), ...(trainingGear.length ? { trainingGear } : {}), ...(questRewards.length ? { questRewards } : {}), ...(questPieces.length ? { questPieces } : {}) };
   send(res, 200, JSON.stringify(body));
 }
@@ -1220,6 +1234,8 @@ export function startWebServer(client: Client): void {
       rooms: { hood: hoodTownMap, slums: () => slumsMap, palengke: () => palengkeMap },
       // The Old Market opens at its map's `opensAt` (CONTEXT.md Opening time): Game Masters before it.
       opening: { palengke: { name: 'The Old Market', opensAt: palengkeMap.opensAt } },
+      // The resume spot: the area each member was last in (web/last-area.ts), for /me.
+      resume: { save: saveLastArea },
       // (The Halloween event's mobs live in the Slums' room too, and Biikko in the Old Market's: its directors run them,
       // in a zone of their own.)
       mobs: {

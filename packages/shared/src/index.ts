@@ -1,5 +1,5 @@
 // Shared between the bot (Node) and the web game (browser). Types, plus one pure module of code: the stats rules
-// (stats.ts: levels, stats, gear requirements, skills, damage, XP; items.ts: item rolls, names, bags; forge.ts: enhancing, repairs, agimats, disassembly, weapon auras; trade.ts: what can be traded; leveling.ts: the Tanod's leveling quests and the mini bosses; quests.ts: offered quests and item objectives; dungeons.ts: the Scrap Warrens' data and party scaling; travel.ts: Lantern Posts; pets.ts: pets, their levels and pet tree; mail.ts: mail and its attachments). Keep this package free of Node or browser APIs so
+// (stats.ts: levels, stats, gear requirements, skills, damage, XP; items.ts: item rolls, names, bags; forge.ts: enhancing, repairs, agimats, disassembly, weapon auras; trade.ts: what can be traded; leveling.ts: the Tanod's leveling quests and the mini bosses; quests.ts: offered quests and item objectives; dungeons.ts: the Scrap Warrens' data and party scaling; travel.ts: Lantern Posts; pets.ts: pets, their levels and pet tree; mail.ts: mail and its attachments; resume.ts: where a fresh visit starts). Keep this package free of Node or browser APIs so
 // both sides can import it.
 export type * from './room-api.js';
 export type * from './town.js';
@@ -24,3 +24,4 @@ export * from './cosmetic-shop.js';
 export * from './combat-wares.js';
 export * from './pets.js';
 export * from './mail.js';
+export * from './resume.js';

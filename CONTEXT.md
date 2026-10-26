@@ -43,6 +43,22 @@ When a new map opens to everyone. Before it, its gate says when it opens, and no
 follows a link in, except Game Masters (to check it).
 _Avoid_: launch, release (those are a whole game's), unlock (a skill or a dish unlocks)
 
+**Resume spot**:
+Where a fresh visit (a new tab, the app opened again, the next day) starts: by the area the player was last in.
+
+| Last in | Starts at |
+| --- | --- |
+| The Town or the neighbourhood | The neighbourhood, at their door (no house, or a guided quest under way: the Town) |
+| The Slums | The Slums' way in from the Town (its spawn) |
+| The Old Market | Its way in by the east gate (its spawn) |
+| A Scrap Warrens run | The Slums, at the Warren Gate |
+| A Cellar floor | The Old Market, beside the Cellar Hatch |
+
+The Old Market not open to them yet: the Slums. Nothing kept (a new player): the neighbourhood with a house, else the
+Town. A reload, a gate or a teleport goes where it always did; a run still open is rejoined from its gate, never on its
+own.
+_Avoid_: last position, save point, checkpoint (that's a Scrap Warrens area's)
+
 **Lantern Post**:
 A stone plinth with a glowing lantern on a post, in the middle of the Town and of the Slums; standing by one, you can
 teleport to another map's Lantern Post.

@@ -651,8 +651,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   vault; `web/richest.ts`, kv 'richest', tested): checked 2 s after any Kowens change and at startup; the first time ever
   it's the pop-up (`new-title` message live, or `/me` newTitle), not worn automatically; losing #1 drops it (wearers show
   Townfolk). Automatic titles can't be given (/gift title, CMS) or removed. Dev: `/__title?as=Alice`.
-- Where you start: a fresh visit (a new tab: no `?from=`, nothing remembered) with a house (`/me` house) goes to the
-  neighbourhood at your door (BootScene `markHood`); without one, the town's spawn, in front of the plaza fountain. A
+- Where you start (CONTEXT.md Resume spot; 26 Oct 2026): a fresh visit (a new tab: no `?from=`, nothing remembered) starts
+  by the area the member was last in (bot `web/last-area.ts`, schema v25 `last_area`, saved by town.ts on every arrival
+  through `TownOptions.resume`: shared `resumeAreaOf`, the town and the neighbourhood as 'hood', a run's rooms as
+  'warrens' / 'silong'; `/me` `lastArea`, with `guided` (a guided quest under way) and `palengkeClosed`; tested in
+  `web/resume.test.ts`): BootScene.route asks shared `resumeStart` and `markResume`s the area, out of a dungeon with
+  `from` (`cameFrom` hands it over once: the Warren Gate's or the Cellar Hatch's way out, as if walked out). 'hood':
+  the neighbourhood at your door, the town without a house or with a guided quest under way (the guide's arrow and
+  trail run in town and the Slums); 'slums' / 'palengke' their spawns; the Old Market closed to them: the Slums. No
+  `lastArea`: with a house (`/me` house) the neighbourhood at your door; without one, the town's spawn, in front of the
+  plaza fountain. Dev: `&lastarea=hood|slums|palengke|warrens|silong`, `&guided=1`, `&palengkeclosed=1` (session.ts). A
   reload stays in the area you were in: the tab remembers it (sessionStorage `mk_area`, `net/hood.ts` resolveArea), so
   the address stays plain `/play/` (a gate's `?area=hood` and `?from=` are read once and tidied away). Through a gate you arrive
   at its way in (`arrive`). Dev: `&house=1`.

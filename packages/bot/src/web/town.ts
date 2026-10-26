@@ -20,7 +20,7 @@ import { type HeldOffer, type Trade, Trades, checkOffer } from './trade.js';
 import { type Inside, type Run, type RunDeps, type RunNews, Warrens, type WarrensAccess, type WarrensMap } from './town-warrens.js';
 import { Silong, type SilongAccess, type SilongInside, type SilongMap, type SilongNews, type SilongRun } from './town-silong.js';
 import type { SilongData, SilongFloor, FriendAsk, FriendView, FriendsState, HalloweenReward, LootGot, PrivacySettings, TestingSettings, WarrensData, ChatItemLink, CharacterProgress, QuestProgress, HoodHouse, HoodMap, OutfitData, PartyState, Target, TownRace, TitleData, TownAnnouncement, TownChatLine, TownClientMessage, TownDir, TownEmote, TownMove, TownPlayer, TownServerMessage, TownStayInfo, TownSystemLine, TownItems, Item, TradeEnd, TradeView } from '@mikazuki/shared';
-import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, skillMpCost, tradeRules } from '@mikazuki/shared';
+import { SILONG_FLOORS, mapOpensAt, opensLine, chillMove, chillRules, floorOfArea, type LanternPost, type PalengkeData, type Visibility, PALENGKE, VISIBILITIES, dishMs, dishOf, moveSpeedOf, PetXpClock, moveDodgeMs, petRules, petXpForHit, isLanternMap, itemName, itemStats, blockedWithPosts, lanternPostsOf, lanternRefusal, lootRollRules, rollWorthy, partyXpMult, partyXpRange, potionCooldownGroup, resumeAreaOf, skillMpCost, tradeRules, type ResumeArea } from '@mikazuki/shared';
 
 // 🏘️ Who's in the web town, and where: a WebSocket at /ws for logged-in members (see room-api's town.ts for the
 // messages). The server keeps everyone's tile and checks each step — on the map, not blocked, next to the last
@@ -228,6 +228,9 @@ export interface TownOptions {
    *  `opensAt`). Before it only Game Masters (`gm`) come in: anyone else is sent back (`area-closed`, 4002) and their
    *  Lantern Post teleport there refused; each welcome lists what's still closed to them. */
   opening?: Record<string, { name: string; opensAt?: string | null }>;
+  /** The resume spot (CONTEXT.md Resume spot; web/last-area.ts): each member's area kept as they arrive in a room (the
+   *  town and the neighbourhood as 'hood', a run's rooms as 'warrens' / 'silong': shared resumeAreaOf). */
+  resume?: { save: (userId: string, area: ResumeArea) => void };
   /** Uses one of a member's megaphones (`/m` in the chat): how many are left, or null if they have none. Without it
    *  (the game's dev server) megaphones are free. */
   megaphone?: (userId: string) => number | null;
@@ -2035,6 +2038,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     away.delete(userId);
     tellParty(userId); // back (or in another area): their new id and where they are
     friendArrived(userId, room, !!old);
+    // (Where a fresh visit starts next time: sent out of a run, the Slums or the Old Market's own join overwrites it.)
+    const resumed = resumeAreaOf(room);
+    if (resumed) opts.resume?.save(userId, resumed);
     if (opts.privacy) send(c, { t: 'privacy', privacy: opts.privacy.get(userId) });
     // A Game Master's testing switches (and only a Game Master's: rights taken away, they no longer count).
     if (opts.testing) {

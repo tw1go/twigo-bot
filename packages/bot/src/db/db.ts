@@ -30,6 +30,7 @@ import { today } from '../time.js';
 //  • v22, privacy.balance, privacy.status: who can see a member's Balance and Status (web/privacy.ts).
 //  • v23, items.expires_at: when a timed item runs out (web/adventure.ts takes it out then).
 //  • v24, warrens_clears, golem_fights: the leaderboard's records (web/records.ts).
+//  • v25, last_area: the area each member was last in (web/last-area.ts; CONTEXT.md Resume spot).
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -423,6 +424,14 @@ export const MIGRATIONS: string[] = [
     user_id  TEXT PRIMARY KEY,
     damage   INTEGER NOT NULL,           -- their most in one fight it fell in
     at       INTEGER NOT NULL            -- when (ms)
+  );
+  `,
+  /* v25: the area each member was last in (web/last-area.ts; CONTEXT.md Resume spot): a fresh visit starts there. Empty
+     at first: anyone without a row starts as before. */ `
+  CREATE TABLE last_area (
+    user_id  TEXT PRIMARY KEY,
+    area     TEXT NOT NULL,              -- 'hood' | 'slums' | 'palengke' | 'warrens' | 'silong' (shared resume.ts)
+    at       INTEGER NOT NULL            -- when they arrived there (ms)
   );
   `,
 ];
