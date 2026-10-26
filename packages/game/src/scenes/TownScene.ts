@@ -5139,8 +5139,13 @@ export class TownScene extends Phaser.Scene {
     const o = this.map.objects.find((x) => x.id === 'palengke-silong-hatch');
     const def = o && (this.M.props[o.id] as PropDef | undefined);
     if (!o || !def) return;
+    // (Raised with its ground, as WorldObjects draws it: the Old Market is all at level 1. Without it the click box sat
+    // a level under the art, so a click on the hatch's top half walked you there instead.)
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
     const top = tileToScreen(o.col, o.row);
+    top.y -= lift;
     const mid = tileToScreen(o.col + 2, o.row + 2);
+    mid.y -= lift;
     const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
     const label = new BuildingLabel(this, 'Cellar Hatch', mid.x);
     label.setZoom(this.cameras.main.zoom);
