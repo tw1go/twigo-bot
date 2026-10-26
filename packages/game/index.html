@@ -2302,7 +2302,9 @@
       .qm-pin.qm-visit { --f: 0; }
       @keyframes qm-bob { 0% { background-position-x: calc(var(--f) * var(--pw) * var(--k) * -1); } 50% { background-position-x: calc((var(--f) + 1) * var(--pw) * var(--k) * -1); } }
       .qm-label { position: absolute; transform: translateX(-50%); white-space: nowrap; pointer-events: none; font: 700 calc(7px * var(--k, 1))/1 var(--ui-font); text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
-      @media (prefers-reduced-motion: reduce) { .qm-edge { animation: none; } }
+      .qm-npc { position: absolute; box-sizing: border-box; width: calc(11px * var(--k)); height: calc(11px * var(--k)); transform: translate(-50%, -50%); border: calc(1px * var(--k)) solid var(--c); border-radius: 50%; background: #1E1B3A; color: var(--c); font: 700 calc(9px * var(--k))/calc(9px * var(--k)) var(--ui-font); text-align: center; pointer-events: none; box-shadow: 0 0 0 1px #0A0F1E, 0 0 calc(4px * var(--k)) var(--c); animation: qm-glow 1.6s ease-in-out infinite; }
+      @keyframes qm-glow { 50% { box-shadow: 0 0 0 1px #0A0F1E, 0 0 calc(1px * var(--k)) var(--c); } }
+      @media (prefers-reduced-motion: reduce) { .qm-edge, .qm-npc { animation: none; } }
       #map-menu .mm-label { position: absolute; z-index: 1; transform: translate(-50%, -50%); white-space: nowrap; pointer-events: none; font: calc(6px * var(--ik, var(--k)))/1 'Pixelify Sans', var(--ui-font); color: #9AA0B8; text-shadow: 0 1px 0 #0A0F1E, 1px 0 0 #0A0F1E, 0 -1px 0 #0A0F1E, -1px 0 0 #0A0F1E; }
       #map-menu .mm-left { transform: translate(0, -50%); }
       #map-menu .mm-right { transform: translate(-100%, -50%); }

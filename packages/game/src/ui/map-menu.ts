@@ -264,7 +264,7 @@ export class MapMenu {
     img.style.left = `${-v.x0 * k}px`;
     img.style.top = `${-v.y0 * k}px`;
     clip.append(img);
-    if (this.art.marks && this.places) drawQuestMarks(clip, { layout: L, slums: this.places.slums, town: {} }, k, this.art.marks);
+    if (this.art.marks && this.places) drawQuestMarks(clip, { layout: L, slums: this.places.slums, town: {}, ...(this.places.palengke ? { palengke: this.places.palengke as SlumsPlaces } : {}) }, k, this.art.marks, ik);
     const px = (col: number, row: number) => worldPx(L, this.tab, col, row);
     // Writing on the picture: centred on its pixel (`left`: starting there instead), `dx`, `dy` more (icon px).
     const label = (text: string, at: [number, number] | null, cls: string, left = false, dx = 0, dy = 0) => {

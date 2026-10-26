@@ -1844,8 +1844,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (none once inside, or within 6 of the spot); the walk grid's path, its first 40 tiles; ground layer, a brightness
   wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). The quest map (`ui/quest-map.ts`, keybind
   `questMap` = Tab, rebindable: Tab left keybinds.ts's reserved keys, main.ts still stops its focus moves): hold to see
-  the world map (`ui/world-map.ts`, shared with the Map menu) with you and every active hunt (`ui/quest-marks.ts`, the M
-  map draws them too); a touch screen's tracker rows get a pin (`qt-pin`) that opens it until the next tap. Lessons
+  the world map (`ui/world-map.ts`, shared with the Map menu) with you and every quest mark (CONTEXT.md Quest mark;
+  `ui/quest-marks.ts`, the M map draws them too, at its icon scale): hunts on the Slums' and the Old Market's zones (a
+  collect's by its item's mob, net/adventure.ts `questItemMob`; "Dry Goods · 12/20 · Clean Rice Scoops 4/10"), a field
+  boss's tile (the Great Scale, its bell), and the NPCs the quests need (`npcMarks`: a talk / deliver / class choice and
+  offered quests' givers, the head marker's sign in a badge, `.qm-npc`; the town's at world/npcs.ts homes, named from
+  npc-dialogue.json (fetched off the town), the Old Market's from palengke.json `npcs` with `moves`); the minimap the
+  same for the map you're on (`placesOn`, TownScene `minimapQuests` on every adventure change; Minimap `setQuestMarks`:
+  the zone's dashed diamond, the pins, NPC badges where they stand now (MinimapView `npcs`); one off the minimap held at
+  its edge the way to it, `toEdge`); a touch screen's tracker rows get a pin (`qt-pin`) that opens it until the next tap. Lessons
   (`ui/lessons.ts` = every step and line, run by `ui/lesson-runner.ts`): potions onto the hotbar, wearing each quest
   piece (one lesson a place, `wear-<place>`: it starts once the piece can be worn, level and stats, while training gear
   or nothing is in its place, so Just In Time's Lv 10 body waits for Lv 10; only pieces up to Lv 10, so not the Scrap

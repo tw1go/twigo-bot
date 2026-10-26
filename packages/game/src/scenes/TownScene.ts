@@ -42,7 +42,8 @@ import { mountGuideArrow } from '../ui/guide-arrow';
 import { mountQuestGuide } from '../ui/quest-guide';
 import { mountLessons } from '../ui/lesson-runner';
 import { QuestMap } from '../ui/quest-map';
-import type { QuestMarkArt } from '../ui/quest-marks';
+import { type QuestMarkArt, npcMarks, placesOn, questMarks } from '../ui/quest-marks';
+import { type SlumsPlaces, loadPlaces } from '../ui/world-map';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -139,7 +140,7 @@ import { showArenaMenu } from '../arena/menu';
 import { stopQueue } from '../arena/queue';
 import type { ArenaData } from './ArenaScene';
 import { ComboCounter } from '../ui/combo-counter';
-import { Minimap } from '../ui/minimap';
+import { Minimap, type MinimapQuestMark } from '../ui/minimap';
 import { type ActiveBuff, BuffTray } from '../ui/buff-tray';
 import { buffStatLines } from '../ui/buff-text';
 import { myBuffStats, myBuffs, setMyBuffs } from '../net/buffs';
@@ -870,6 +871,9 @@ export class TownScene extends Phaser.Scene {
     const MI = this.M.ui.minimapIcons;
     if (MI) this.minimap.setIcons(Object.fromEntries(Object.entries(MI).filter(([k]) => k !== 'note').map(([k, v]) => [k, { ...v, url: `${import.meta.env.BASE_URL}assets/${v.file}` }])));
     this.minimapMarks();
+    const questArt = this.questMarkArt();
+    if (questArt) this.minimap.setQuestArt({ pin: questArt.pin, frame: questArt.pinFrame, anchor: questArt.pinAnchor, colours: questArt.colours });
+    this.minimapQuests();
     const tray = new BuffTray({
       icon: (cls, name) => this.buffIcon(cls, name),
       effect: (cls, name) => classInfo(cls)?.buffs?.find((b) => b.name === name)?.effect ?? null,
@@ -1018,7 +1022,7 @@ export class TownScene extends Phaser.Scene {
     if (this.minimap && time >= this.nextMinimap) {
       this.nextMinimap = time + 50; // (it moves with you: smooth enough at 20 a second, and one small copy each)
       const v = this.cameras.main.worldView;
-      this.minimap.draw({ me: this.player.tile, at: this.player.groundAt, others: this.others.players.map((o) => ({ col: o.col, row: o.row, party: inParty(o.id) })), camera: { x: v.x, y: v.y, width: v.width, height: v.height } });
+      this.minimap.draw({ me: this.player.tile, at: this.player.groundAt, others: this.others.players.map((o) => ({ col: o.col, row: o.row, party: inParty(o.id) })), camera: { x: v.x, y: v.y, width: v.width, height: v.height }, npcs: this.npcs?.positions });
     }
     if (time >= this.nextSkyCheck) {
       this.nextSkyCheck = time + 1000;
@@ -1314,6 +1318,7 @@ export class TownScene extends Phaser.Scene {
         hotbar.setClass(classInfo(s.cls) ?? null);
         void this.applyBattle(s.cls);
         this.questMarkers();
+        this.minimapQuests();
         void this.wearWeapon(s.equipped.weapon?.defId, s.cls);
         this.player.setAura(s.equipped.weapon ? itemAura(data, s.equipped.weapon) : null); // +15 and up glows
         const c = classInfo(s.cls);
@@ -4887,7 +4892,13 @@ export class TownScene extends Phaser.Scene {
     const Q = this.M.quests;
     if (!G || !Q) return null;
     const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
-    return { pin: (type) => asset(G.pin.file.replace('{type}', type)), pinFrame: G.pin.frame, pinAnchor: G.pin.anchor, colours: Q.colours };
+    // The town NPCs' names (npc-dialogue.json): loaded with the town; on another map fetched for the marks.
+    type Names = { npcs?: Record<string, { name: string }> };
+    let fetched: Names | null = null;
+    const file = this.M.npcs?.dialogue;
+    if (file && !this.cache.json.get('npc-dialogue')) void loadPlaces<Names>(asset(file)).then((d) => (fetched = d));
+    const names = () => ((this.cache.json.get('npc-dialogue') as Names | undefined) ?? fetched)?.npcs;
+    return { pin: (type) => asset(G.pin.file.replace('{type}', type)), pinFrame: G.pin.frame, pinAnchor: G.pin.anchor, colours: Q.colours, npcName: (id) => names()?.[id]?.name };
   }
 
   private makeQuestMap(marks: QuestMarkArt): QuestMap {
@@ -4900,6 +4911,7 @@ export class TownScene extends Phaser.Scene {
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),
+        palengke: asset('maps/palengke.json'),
         pin: asset(U.mapPin?.file ?? 'ui/map/ui-map-pin.png'),
         pinSize: U.mapPin?.size ?? [9, 12],
         marks,
@@ -5395,6 +5407,22 @@ export class TownScene extends Phaser.Scene {
       this.objects.refreshLanterns();
       menu();
     });
+  }
+
+  /** The minimap's quest marks: the active quests' hunts and field bosses on this map, and the NPCs they need (each
+   *  where they stand: MinimapView.npcs). */
+  private minimapQuests(): void {
+    if (!this.minimap) return;
+    const places = placesOn(this.area, this.map as unknown as SlumsPlaces);
+    const mid = (t: [number, number]) => ({ col: t[0] + 0.5, row: t[1] + 0.5 });
+    this.minimap.setQuestMarks([
+      ...questMarks(places).map((m): MinimapQuestMark => {
+        const [c0, r0, c1, r1] = m.zone?.rect ?? [0, 0, 0, 0];
+        const pins = m.kind === 'boss' ? [mid(m.tile!)] : m.kind === 'kill' ? [{ col: (c0 + c1 + 1) / 2, row: (r0 + r1 + 1) / 2 }] : (m.zone?.miniBosses ?? []).map((b) => mid(b.tile));
+        return { type: m.type, zone: m.zone?.rect, faint: m.kind === 'miniBoss', pin: m.kind === 'kill' ? 'kill' : 'miniBoss', pins };
+      }),
+      ...npcMarks(places).map((n): MinimapQuestMark => ({ type: n.type, pins: [mid(n.tile)], symbol: n.symbol, npc: n.npc })),
+    ]);
   }
 
   /** The minimap's posts (restored or not) and this map's dungeon entrance. */

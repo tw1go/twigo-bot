@@ -6,9 +6,11 @@ import type { TownMap } from '../assets/types';
 // the whole map (WHOLE: it stays put, your dot where you are on it). The map's ground
 // from its file (the town's grass, paths, plaza, river and buildings' footprints; the Slums' dirt, concrete, planks and
 // canal, raised ground a shade lighter and the basin darker; a map's own picture over it: manifest ui.minimapPictures),
-// its Lantern Posts and dungeon entrance (`setMarks`), a green dot for everyone else (pink for your party), a gold one for
-// you, and a faint box for what the camera shows. The whole map's ground is drawn once, at the 40-tile zoom's scale, and
-// the part round you copied out of it each time. Smaller on phones.
+// its Lantern Posts and dungeon entrance (`setMarks`), where the active quests send you on it (`setQuestMarks`: a hunt's
+// zone and pins, an NPC's sign; off the minimap, held at its edge the way to it: ui/quest-marks.ts), a green dot for
+// everyone else (pink for your party), a gold one for you, and a faint box for what the camera shows. The whole map's
+// ground is drawn once, at the 40-tile zoom's scale, and the part round you copied out of it each time. Smaller on
+// phones.
 
 const GROUND: Record<string, string> = {
   grass: '#2D5240', path: '#565C75', plaza: '#7A8099', water: '#1D3F6E',
@@ -41,6 +43,28 @@ const TILE_W = 32;
 /** A minimap icon: a Lantern Post (restored or not) or a dungeon entrance (by its id). */
 export type MinimapIcon = 'post' | 'postBroken' | 'warrens' | 'silong';
 
+/** A quest mark on this map (ui/quest-marks.ts): a hunt's zone with its pins, a field boss's pin, or an NPC's sign. */
+export interface MinimapQuestMark {
+  type: 'main' | 'side';
+  /** A hunt's zone ([col0, row0, col1, row1], both ends in): its diamond, faint for a mini boss's. */
+  zone?: [number, number, number, number];
+  faint?: boolean;
+  /** Pins (tile space, a tile's middle is col + 0.5) and their look; an NPC's sign in a badge instead. */
+  pins: { col: number; row: number }[];
+  pin?: 'kill' | 'miniBoss';
+  symbol?: string;
+  /** The NPC's id: drawn where they stand now (MinimapView.npcs), when known. */
+  npc?: string;
+}
+
+/** The quest pins' art (manifest guide.pin) and the quests' colours. */
+export interface MinimapQuestArt {
+  pin: (type: 'main' | 'side') => string;
+  frame: [number, number];
+  anchor: [number, number];
+  colours: { main: string; side: string };
+}
+
 export interface MinimapView {
   me: { col: number; row: number };
   /** Where you are in world px (your feet, as drawn: it follows you smoothly between tiles); else your tile's middle. */
@@ -49,6 +73,8 @@ export interface MinimapView {
   others: { col: number; row: number; party?: boolean }[];
   /** The camera's view, in world px (tile (col, row)'s top corner is at ((col - row) × 16, (col + row) × 8)). */
   camera: { x: number; y: number; width: number; height: number };
+  /** Where this map's NPCs stand now, by id (their quest signs follow them). */
+  npcs?: Record<string, { col: number; row: number }>;
 }
 
 export class Minimap {
@@ -78,6 +104,11 @@ export class Minimap {
    *  the ground under the dots (manifest ui.minimapIcons, drawn 1:1, their anchor on the spot). */
   private marks: { col: number; row: number; icon: MinimapIcon }[] = [];
   private readonly icons = new Map<MinimapIcon, { img: HTMLImageElement; size: [number, number]; anchor: [number, number] }>();
+  /** The active quests' marks on this map, and their art (pins by the quest's type). */
+  private quests: MinimapQuestMark[] = [];
+  /** The page's UI font (its --ui-font), read once. */
+  private uiFont = '';
+  private questArt: (MinimapQuestArt & { imgs: Record<'main' | 'side', HTMLImageElement> }) | null = null;
 
   constructor(private readonly map: TownMap, pictureUrl?: string) {
     this.x0 = -map.size[1] * (TILE_W / 2);
@@ -97,7 +128,7 @@ export class Minimap {
     }
     this.el.id = 'minimap';
     this.el.setAttribute('role', 'img');
-    this.el.setAttribute('aria-label', 'Map round you: you in gold, your party in pink, everyone else in green; Lantern Posts and dungeon entrances marked');
+    this.el.setAttribute('aria-label', 'Map round you: you in gold, your party in pink, everyone else in green; Lantern Posts, dungeon entrances and where your quests send you marked');
     this.box.className = 'mm-mini';
     for (const [b, text, label, step] of [[this.zoomIn, '+', 'Zoom the minimap in', -1], [this.zoomOut, '−', 'Zoom the minimap out (all the way: the whole map)', 1]] as const) {
       b.className = 'mm-mini-zoom';
@@ -128,6 +159,17 @@ export class Minimap {
   /** Where the posts and the entrance are, and which look (drawn from the next frame on). */
   setMarks(marks: { col: number; row: number; icon: MinimapIcon }[]): void {
     this.marks = marks;
+  }
+
+  /** The quest pins' art. */
+  setQuestArt(art: MinimapQuestArt): void {
+    const img = (type: 'main' | 'side') => Object.assign(new Image(), { src: art.pin(type) });
+    this.questArt = { ...art, imgs: { main: img('main'), side: img('side') } };
+  }
+
+  /** Where the active quests send you on this map (drawn from the next frame on). */
+  setQuestMarks(marks: MinimapQuestMark[]): void {
+    this.quests = marks;
   }
 
   /** A zoom step (clamped), kept for this browser; the buttons greyed at the ends. */
@@ -246,6 +288,8 @@ export class Minimap {
       g.drawImage(icon.img, Math.round(x - icon.anchor[0]), Math.round(y - icon.anchor[1]), icon.size[0], icon.size[1]);
     }
 
+    this.drawQuests(g, v, tileAt);
+
     // What the camera shows.
     const cam = px(v.camera.x, v.camera.y);
     g.strokeStyle = 'rgba(230, 233, 242, 0.55)';
@@ -268,6 +312,93 @@ export class Minimap {
     for (const p of v.others) if (p.party) dot(middle(p), PARTY, r); // (over the others)
     dot(px(me.x, me.y), YOU, r + 1); // last, on top: the middle (the whole map: where you are on it)
   }
+
+  /** The quest marks: each zone's diamond (dashed, in the quest's colour) under its pins; NPCs' signs in badges. A pin or
+   *  badge off the minimap is held at its edge, the way to it (a zone's only while you're outside it; of a mini boss's
+   *  spots, the nearest), a little faded. */
+  private drawQuests(g: CanvasRenderingContext2D, v: MinimapView, tileAt: (col: number, row: number) => MinimapPoint): void {
+    const A = this.questArt;
+    if (!A || !this.quests.length) return;
+    const W = this.width;
+    const H = this.height;
+    const inside = (p: MinimapPoint, m = 0) => p.x >= -m && p.x <= W + m && p.y >= -m && p.y <= H + m;
+    const frame = Math.floor(performance.now() / 333) % 2; // (the pins' bob: 3 fps)
+    const [pw, ph] = A.frame;
+    const [ax, ay] = A.anchor;
+    for (const m of this.quests) {
+      const colour = A.colours[m.type];
+      let here = false;
+      if (m.zone) {
+        const [c0, r0, c1, r1] = m.zone;
+        here = v.me.col >= c0 && v.me.col <= c1 && v.me.row >= r0 && v.me.row <= r1;
+        const pts = [tileAt(c0, r0), tileAt(c1 + 1, r0), tileAt(c1 + 1, r1 + 1), tileAt(c0, r1 + 1)];
+        g.beginPath();
+        pts.forEach((p, i) => (i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)));
+        g.closePath();
+        g.globalAlpha = m.faint ? 0.1 : 0.2;
+        g.fillStyle = colour;
+        g.fill();
+        g.globalAlpha = m.faint ? 0.5 : 0.9;
+        g.setLineDash([3, 2]);
+        g.lineDashOffset = -((performance.now() / 120) % 5);
+        g.lineWidth = 1;
+        g.strokeStyle = colour;
+        g.stroke();
+        g.setLineDash([]);
+        g.globalAlpha = 1;
+      }
+      // Its pins: those on the minimap, else (outside a zone) the nearest held at the edge.
+      const live = m.npc ? v.npcs?.[m.npc] : undefined;
+      const pts = live ? [tileAt(live.col + 0.5, live.row + 0.5)] : m.pins.map((t) => tileAt(t.col, t.row));
+      const shown = pts.filter((p) => inside(p));
+      const off = !shown.length && !here && pts.length ? pts.reduce((a, b) => (Math.hypot(a.x - W / 2, a.y - H / 2) <= Math.hypot(b.x - W / 2, b.y - H / 2) ? a : b)) : null;
+      const at = [...shown.map((p) => ({ ...p, held: false })), ...(off ? [toEdge(off, W, H)] : [])];
+      for (const p of at) {
+        g.globalAlpha = p.held ? 0.8 : 1;
+        if (m.symbol) this.badge(g, p, m.symbol, colour);
+        else {
+          const img = A.imgs[m.type];
+          if (img.complete && img.naturalWidth) g.drawImage(img, ((m.pin === 'miniBoss' ? 2 : 0) + frame) * pw, 0, pw, ph, Math.round(p.x - ax), Math.round(p.y - (p.held ? ph / 2 : ay)), pw, ph);
+        }
+        g.globalAlpha = 1;
+      }
+    }
+  }
+
+  /** An NPC's sign ("!" or "…") in a round navy badge edged in the quest's colour. */
+  private badge(g: CanvasRenderingContext2D, p: MinimapPoint, symbol: string, colour: string): void {
+    const r = this.phone.matches ? 4.5 : 5.5;
+    g.beginPath();
+    g.arc(p.x, p.y, r, 0, Math.PI * 2);
+    g.fillStyle = '#1E1B3A';
+    g.fill();
+    g.lineWidth = 1.5;
+    g.strokeStyle = colour;
+    g.stroke();
+    g.fillStyle = colour;
+    this.uiFont ||= getComputedStyle(document.body).getPropertyValue('--ui-font').trim() || 'sans-serif';
+    g.font = `700 ${Math.round(r * 1.7)}px ${this.uiFont}`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(symbol, p.x, p.y + 0.5);
+  }
+}
+
+/** How far in from the minimap's edge a mark off it is held (px). */
+const EDGE = 9;
+
+export interface MinimapPoint {
+  x: number;
+  y: number;
+}
+
+/** A point off the box [EDGE, W − EDGE] × [EDGE, H − EDGE] moved in along the line from the middle to it, onto its edge
+ *  (a mark there points the way); one inside stays. Returns whether it moved. */
+export function toEdge(p: MinimapPoint, W: number, H: number): { x: number; y: number; held: boolean } {
+  const [cx, cy] = [W / 2, H / 2];
+  const [dx, dy] = [p.x - cx, p.y - cy];
+  const t = Math.min(1, dx ? (W / 2 - EDGE) / Math.abs(dx) : 1, dy ? (H / 2 - EDGE) / Math.abs(dy) : 1);
+  return { x: cx + dx * t, y: cy + dy * t, held: t < 1 };
 }
 
 /** A colour mixed toward white (amount > 0) or black (< 0). */
