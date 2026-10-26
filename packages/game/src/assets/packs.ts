@@ -145,7 +145,9 @@ function cut(textures: Phaser.Textures.TextureManager, img: HTMLImageElement, fi
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  canvas.getContext('2d')!.drawImage(img, x, y, w, h, 0, 0, w, h);
+  // (Kept in memory, not on the GPU: the looks and combat poses read its pixels back, which on integrated graphics was a
+  // slow round trip a layer.)
+  canvas.getContext('2d', { willReadFrequently: true })!.drawImage(img, x, y, w, h, 0, 0, w, h);
   textures.addCanvas(file, canvas);
   const frame = sheets.get(file);
   if (frame) slice(textures, file, frame[0], frame[1]);

@@ -137,9 +137,16 @@ export class Minimap {
     g.drawImage(this.picture, 0, 0, this.width, this.height);
   }
 
-  /** Minimap px for a tile position (col, row may be fractional: + 0.5 is a tile's middle). */
+  /** Minimap px for a tile position (col, row may be fractional: + 0.5 is a tile's middle). The map's top corner (tile
+   *  0,0) is `rows` tiles in from the left, not the middle: only a square map's is (the Old Market's 280 × 210 put every
+   *  dot ~15 px east of its picture, and the Slums' ran off the right edge). */
   private at(col: number, row: number): { x: number; y: number } {
-    return { x: (col - row) * this.hw + this.width / 2, y: (col + row) * this.hw * 0.5 };
+    return { x: (col - row) * this.hw + this.top, y: (col + row) * this.hw * 0.5 };
+  }
+
+  /** The top corner's x (minimap px). */
+  private get top(): number {
+    return this.map.size[1] * this.hw;
   }
 
   draw(v: MinimapView): void {
@@ -152,7 +159,7 @@ export class Minimap {
     const k = this.hw / 16;
     g.strokeStyle = 'rgba(230, 233, 242, 0.55)';
     g.lineWidth = 1;
-    g.strokeRect(Math.round(v.camera.x * k + this.width / 2) + 0.5, Math.round(v.camera.y * k) + 0.5, Math.round(v.camera.width * k), Math.round(v.camera.height * k));
+    g.strokeRect(Math.round(v.camera.x * k + this.top) + 0.5, Math.round(v.camera.y * k) + 0.5, Math.round(v.camera.width * k), Math.round(v.camera.height * k));
 
     // The posts and the entrance (whole px, never smoothed), under the dots.
     g.imageSmoothingEnabled = false;

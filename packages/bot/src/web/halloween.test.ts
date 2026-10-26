@@ -361,6 +361,62 @@ test("the Old Market's own Biikko: on its own schedule beside the Slums', walkin
   assert.deepEqual(before.state.biikkoAt, { slums: START + 90 * MIN, palengke: START + 10 * MIN });
 });
 
+test("Biikko grows with the players fighting it (halloween.json scaling): to the highest hitter's level, its HP keeping its share, never lower mid-fight; back to its own once healed full", () => {
+  const { H } = event();
+  const room = slums(H);
+  H.tick(START, []);
+  const t0 = START + 10 * MIN;
+  room.tick(t0);
+  const view = (t: number) => room.snapshot(t).find((m) => m.id === BIIKKO_ID)!;
+  const hit = (level: number, t: number) => {
+    const at = room.mobInfo(BIIKKO_ID, t)!.at;
+    room.attack('p1', [at[0] + 1, at[1]], { cls: 'stick', level }, BIIKKO_ID, t, 0, 'Mara', 'mara');
+    return room.tick(t + 1, new Map([['p1', [at[0] + 1, at[1]] as [number, number]]]), new Map([['p1', { def: 10, level, hp: 900 }]]));
+  };
+  // A Lv 15 hitter: as it is.
+  hit(15, t0 + 1000);
+  assert.deepEqual([view(t0 + 1001).level, view(t0 + 1001).maxHp], [15, DATA.biikko.hp]);
+  // A Lv 40: Lv 40, 350,000 HP, the HP's share kept, told to the room.
+  const before = room.mobInfo(BIIKKO_ID, t0 + 2000)!;
+  const events = hit(40, t0 + 2000);
+  const after = view(t0 + 2001);
+  assert.deepEqual([after.level, after.maxHp], [40, 350_000]);
+  assert.ok(Math.abs(after.hp / after.maxHp - before.hp / before.maxHp) < 0.01, 'its HP keeps its share');
+  assert.ok(events.some((e) => e.t === 'mob-scale' && e.mobs.some((m) => m.id === BIIKKO_ID && m.level === 40 && m.maxHp === 350_000)), 'mob-scale with its level');
+  // A Lv 20 after: still Lv 40.
+  hit(20, t0 + 3000);
+  assert.equal(view(t0 + 3001).level, 40);
+  // Its DEF at a level: the higher of the golem's and the mob table's ("2 * lv").
+  const golemDef = mobStats(loadStats(), 'scrapheap-golem')!.def;
+  assert.equal(H.biikkoStats(room, 40).def, Math.max(golemDef, 80));
+  assert.equal(H.biikkoStats(room, 40).atk, 0, 'never attacks');
+  // 5 min unhit: full again and back to its own.
+  room.tick(t0 + 3000 + 301_000);
+  const healed = view(t0 + 3000 + 301_001);
+  assert.deepEqual([healed.level, healed.maxHp, healed.hp], [DATA.biikko.level, DATA.biikko.hp, DATA.biikko.hp]);
+});
+
+test("the upper half grows the same way: a Lv 40 hitter makes it Lv 40, 108,000 HP, the mob table's ATK and DEF at 40; back to its own once its foe is lost", () => {
+  const { H } = event();
+  const room = slums(H);
+  H.tick(START, []);
+  H.tick(START + 10 * MIN, []);
+  const t0 = START + 10 * MIN;
+  room.tick(t0);
+  const at = room.mobInfo(UPPER_ID, t0)!.at;
+  const where = new Map([['p1', [at[0] + 1, at[1]] as [number, number]]]);
+  room.attack('p1', [at[0] + 1, at[1]], { cls: 'stick', level: 40 }, UPPER_ID, t0 + 100, 0, 'Mara', 'mara');
+  room.tick(t0 + 200, where, new Map([['p1', { def: 10, level: 40, hp: 9000 }]]));
+  const u = room.snapshot(t0 + 201).find((m) => m.id === UPPER_ID)!;
+  assert.deepEqual([u.level, u.maxHp], [40, 108_000]);
+  assert.deepEqual([H.upperStats(40).atk, H.upperStats(40).def], [6 + 3 * 40, 2 * 40], "the mob table's at 40");
+  // Its foe gone: healed full and back to Lv 14.
+  room.tick(t0 + 500, new Map());
+  room.tick(t0 + 800, new Map());
+  const back = room.snapshot(t0 + 801).find((m) => m.id === UPPER_ID)!;
+  assert.deepEqual([back.level, back.maxHp, back.hp], [DATA.manananggal.upper.level, DATA.manananggal.upper.hp, DATA.manananggal.upper.hp]);
+});
+
 test("the upper half: out with a round, passive until hit, then Claw Swipe on its target (flying straight over anything); gone once carried", () => {
   const { H } = event();
   const room = slums(H);

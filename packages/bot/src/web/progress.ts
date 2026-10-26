@@ -51,7 +51,7 @@ export function progressView(data: StatsData, cls: string | null, p: Partial<Sav
     if (/^\d+$/.test(k) || data.skills.buffs?.list[k]) skills[k] = whole(v);
     else back += whole(v) - 1;
   }
-  return { level, xp: next ? Math.min(whole(p.xp), next - 1) : 0, next, points, statPoints: unspentStatPoints(data, cls, level, points), skills, skillPoints: whole(p.skillPoints) + back };
+  return { level, xp: next ? Math.min(whole(p.xp), next - 1) : 0, next, points, statPoints: Math.max(0, unspentStatPoints(data, cls, level, points)), skills, skillPoints: whole(p.skillPoints) + back };
 }
 
 /** A new character's: Lv 1, no XP, nothing earned or spent. */
@@ -79,7 +79,7 @@ export function refundPoints(data: StatsData, cls: string | null, p: SavedProgre
   return progressView(data, cls, { level: p.level, xp: p.xp, skillPoints: skillPointsAt(data, p.level) });
 }
 
-/** One stat point into `stat`: only the class's main or second stat, and only with a point unspent (none before a
+/** One stat point into `stat`: any stat its class's points go to (stats.json growth.pointsGoTo: all three), and only with a point unspent (none before a
  *  class: they're banked). */
 export function spendPoint(data: StatsData, cls: string | null, p: SavedProgress, stat: StatName): { ok: true; progress: CharacterProgress } | { ok: false; message: string } {
   const now = progressView(data, cls, p);

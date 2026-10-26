@@ -2445,6 +2445,11 @@
       #forge .fg-slots { display: flex; justify-content: center; align-items: center; gap: 18px; padding: 6px 0 2px; }
       #forge .fg-slot { position: relative; display: flex; align-items: center; justify-content: center; width: 96px; height: 96px; box-sizing: border-box; padding: 0; border-style: solid; border-width: 12px; border-image: var(--slot) var(--slot-slice, 4) fill / 12px round; background: none; image-rendering: pixelated; color: #7A8099; font: inherit; font-size: calc(12px * var(--text)); line-height: 1.1; }
       #forge .fg-tool { width: 72px; height: 72px; }
+      #forge .fg-retain-row { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 4px 0; }
+      #forge .fg-retain-words { display: flex; flex-direction: column; gap: 2px; text-align: left; max-width: 220px; }
+      #forge .fg-retain-words .fg-have { text-align: left; }
+      #forge .fg-retain:not(.fg-full) .fg-tool-pic { opacity: 0.35; filter: grayscale(1); }
+      #forge .fg-retain:disabled { opacity: 0.5; cursor: default; }
       #forge .fg-slot .it-frame { margin: -12px; }
       #forge .fg-full { outline: 3px solid #7C2AE8; outline-offset: -3px; }
       #forge .fg-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; }

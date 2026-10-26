@@ -19,7 +19,7 @@ import { itemName,
   isGearDef,
   levelOddsShare,
   newItem,
-  temperedPlus,
+  temperedPlus, retainSaves, toolOf,
   lineText,
   repairKitsFor,
   repairKitsText,
@@ -44,6 +44,9 @@ import { toast } from './toast';
 // Embed; a full slot asks first, as the old agimat breaks). Anything that doesn't fit bounces back with why. Taking gear
 // apart and combining fragments are in the bag's right-click menu (ui/inventory.ts), with confirmDisassemble here.
 // Effects from fx/progress (manifest fx) over the item slot, sounds combat-enhance-* / -repair / -agimat-embed.
+
+/** Where a Retainment Stone goes (the bag's click and right-click, a drop anywhere else in the forge). */
+export const RETAIN_WHERE = "Use it in a filled Temper Stone's Apply popup.";
 
 /** The popup's effects (manifest fx enhance-success, -fail, -break, agimat-embed, disassemble). */
 export interface ForgeArt {
@@ -154,6 +157,7 @@ export class ForgePopup {
   /** Opens it with a whetstone or Repair Kit kind (enhance, repair) or an agimat stack (embed: its uid). */
   open(mode: ForgeMode, tool: string): void {
     if (this.mode !== mode || this.tool !== tool) {
+      this.retain = false;
       this.item = mode === this.mode ? this.item : null;
       this.stones = 0;
       this.keepFull = false;
@@ -226,6 +230,7 @@ export class ForgePopup {
     if (def.forge === 'pliers') return this.open('remove', def.id);
     if (def.forge === 'temper') return this.open('draw', def.id);
     if (def.forge === 'tempered') return this.open('apply', uid);
+    if (def.forge === 'retain') return void (this.putRetain() || this.bounce(RETAIN_WHERE));
     if (def.forge !== 'whetstone') return this.bounce("That's not something the forge uses.");
     if (this.mode !== 'enhance' || this.tool !== def.id) this.open('enhance', def.id);
     this.keepFull = true;
@@ -242,7 +247,7 @@ export class ForgePopup {
     if (this.mode === 'draw') return drawRefusal(D, item);
     if (this.mode === 'apply') {
       const stone = adventure()?.bag.find((b) => b.uid === this.tool);
-      return stone ? applyRefusal(D, item, stone) : 'That Temper Stone is gone.';
+      return stone ? applyRefusal(D, item, stone, this.retain) : 'That Temper Stone is gone.';
     }
     const ag = adventure()?.bag.find((b) => b.uid === this.tool);
     return ag ? embedRefusal(D, item, ag) : 'That agimat is gone.';
@@ -487,24 +492,72 @@ export class ForgePopup {
     parts.push(b);
   }
 
+  /** A Retainment Stone put in the Apply popup's own slot (a click on one in the bag, or on the slot): true if the popup
+   *  is in Apply mode to take it, false otherwise (the caller says where it goes: RETAIN_WHERE). */
+  putRetain(): boolean {
+    if (this.root.hidden || this.mode !== 'apply') return false;
+    const D = itemData();
+    const def = D && toolOf(D, 'retain');
+    if (!def || countOf(adventure()?.bag ?? [], def.id) < 1) return false;
+    this.retain = true;
+    this.message = null;
+    playSound('click');
+    this.render();
+    return true;
+  }
+
   /** A filled Temper Stone: "Crude Stick +2 → +7"; the item's own + is lost, and a gear tier up takes 2 off the stone's
-   *  (asked first: confirmTemper). */
+   *  (asked first: confirmTemper), unless a Retainment Stone is in its slot (CONTEXT.md Retainment Stone): then nothing. */
   private renderApply(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
     const D = itemData()!;
     const stone = adventure()!.bag.find((b) => b.uid === this.tool);
     if (!stone) {
-      parts.push(el('div', 'fg-warn', this.message?.ok ? 'The stone is used up.' : 'That Temper Stone is gone: pick another in your bag.'));
+      parts.push(el('div', 'fg-warn', this.message?.ok ? (this.retainUsed ? 'The stones are used up.' : 'The stone is used up.') : 'That Temper Stone is gone: pick another in your bag.'));
       return;
     }
     toolSlot.append(itemPicture(stone, 'showcase', 2));
     const what = el('div', 'fg-agimat');
     what.append(el('b', undefined, nameOf(stone)));
     parts.push(what);
+
+    // The Retainment Stone's slot: optional; used only when the item is a gear tier up (retainSaves).
+    const kind = toolOf(D, 'retain');
+    if (kind) {
+      const have = countOf(adventure()!.bag, kind.id);
+      if (have < 1) this.retain = false;
+      const saves = !item || retainSaves(D.stats, stone, item);
+      const on = this.retain && saves;
+      const row = el('div', 'fg-retain-row');
+      const slot = el('button', `fg-slot fg-tool fg-retain${on ? ' fg-full' : ''}`);
+      slot.append(this.toolPicture(kind.id, have));
+      slot.setAttribute('aria-label', on ? `${kind.name}: click to take it out` : `${kind.name} slot`);
+      slot.title = on ? 'Click to take it out' : have ? `Click or drag a ${kind.name} in` : '';
+      slot.disabled = !saves;
+      slot.addEventListener('click', () => {
+        if (this.retain) {
+          this.retain = false;
+          this.render();
+        } else if (!this.putRetain()) this.bounce(`You have no ${kind.name}s.`);
+      });
+      this.dropTarget(slot, (k, uid) => {
+        const def = k === 'tool' ? anyDef(adventure()?.bag.find((b) => b.uid === uid)?.defId) : undefined;
+        if (!isGearDef(def) && def?.forge === 'retain') this.putRetain();
+        else this.bounce(`Only a ${kind.name} goes here.`);
+      });
+      const words = el('div', 'fg-retain-words');
+      words.append(
+        el('div', 'fg-have', !saves ? 'Not needed: same gear tier' : on ? `${kind.name}: the full + carries over.` : `Drag a ${kind.name} in to keep the full +.`),
+        el('div', 'fg-have', `You have ${have} ${kind.name}${have === 1 ? '' : 's'}`),
+      );
+      row.append(slot, words);
+      parts.push(row);
+    }
     if (!item) return;
-    const why = applyRefusal(D, item, stone);
-    const plus = temperedPlus(D.stats, stone, item);
+    const kept = this.retain && retainSaves(D.stats, stone, item);
+    const why = applyRefusal(D, item, stone, kept);
+    const plus = temperedPlus(D.stats, stone, item, kept);
     if (!why) {
-      parts.push(el('div', 'fg-next', `${nameOf({ ...item, plus: 0 })} +${item.plus} → +${plus}`));
+      parts.push(el('div', 'fg-next', `${nameOf({ ...item, plus: 0 })} +${item.plus} → +${plus}${kept ? ' (kept by the Retainment Stone)' : ''}`));
       if (plus < stone.plus) parts.push(el('div', 'fg-warn', tierUpLine(stone, item, plus)));
       if (item.plus > 0) parts.push(el('div', 'fg-warn', `Its own +${item.plus} is lost.`));
     }
@@ -513,11 +566,16 @@ export class ForgePopup {
     b.disabled = !!why || this.busy;
     b.classList.toggle('fg-ready', !why);
     b.addEventListener('click', async () => {
-      if (plus < stone.plus && !(await confirmTemper(stone, item, plus))) return;
-      void this.run({ action: 'apply', item: item.uid, stone: stone.uid });
+      // (Nothing lost with a Retainment Stone in: no need to ask.)
+      if (!kept && plus < stone.plus && !(await confirmTemper(stone, item, plus))) return;
+      this.retainUsed = kept;
+      void this.run({ action: 'apply', item: item.uid, stone: stone.uid, ...(kept ? { retain: true } : {}) });
     });
     parts.push(b);
   }
+  /** A Retainment Stone is in the Apply popup's slot; the last apply used one. */
+  private retain = false;
+  private retainUsed = false;
 
   private renderEmbed(toolSlot: HTMLElement, item: Item | null, parts: HTMLElement[]): void {
     const D = itemData()!;

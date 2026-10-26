@@ -6,7 +6,8 @@ export type { CombatWare };
 // 💰 A character's combat bag and Kusing wallet, pure (the bot keeps them with the character, web/adventure.ts; the game's
 // dev server in memory): loot picked up (Kusing always fits; an item only if the bag has room), HP and MP Potions used,
 // the sari-sari store's Healing tab (HP/MP Potions for Kusing) and Smithing tab (whetstones and Repair Kits for Kowens),
-// the Pets tab (pet boxes for Kowens, stats.json pets.boxPrice), by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level (Medium from Lv 10).
+// the Pets tab (pet boxes for Kowens, stats.json pets.boxPrice), by stats.json's prices; only the Low tier is sold until a character reaches the next tier's level (Medium from Lv 10, Large from
+// Lv 25).
 // And dev's ?give=.
 
 /** The parts of a character that hold items and money. */
@@ -35,7 +36,7 @@ export function potionOf(data: ItemData, defId: string): { heals: 'hp' | 'mp'; a
 }
 
 /** The level a potion kind can be used from (its tier's minLevel; 1 for anything else). The town refuses it below that:
- *  a trade can hand a Medium Potion to someone under Lv 10. */
+ *  a trade can hand a Medium Potion to someone under Lv 10, a Large one under Lv 25. */
 export function potionMinLevel(data: ItemData, defId: string): number {
   const def = data.defs.get(defId);
   if (isGearDef(def) || def?.kind !== 'potion' || !def.tier) return 1;

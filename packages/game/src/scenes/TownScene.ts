@@ -1657,7 +1657,7 @@ export class TownScene extends Phaser.Scene {
     if (!this.battleMap || !v || this.knockedOut) return;
     if (v.mp >= need && v.mp >= v.maxMp / 4) return;
     const now = this.time.now;
-    // The strongest MP Potion your level allows (Medium before Low), else any MP Potion.
+    // The strongest MP Potion your level allows (Large before Medium before Low), else any MP Potion.
     const S = adventureData()?.stats;
     const tiers = S ? itemStats(S).potions.tiers : {};
     const level = adventure()?.progress.level ?? 1;
@@ -5155,8 +5155,13 @@ export class TownScene extends Phaser.Scene {
     const o = this.map.objects.find((x) => x.id === 'palengke-silong-hatch');
     const def = o && (this.M.props[o.id] as PropDef | undefined);
     if (!o || !def) return;
+    // (Raised with its ground, as WorldObjects draws it: the Old Market is all at level 1. Without it the click box sat
+    // a level under the art, so a click on the hatch's top half walked you there instead.)
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
     const top = tileToScreen(o.col, o.row);
+    top.y -= lift;
     const mid = tileToScreen(o.col + 2, o.row + 2);
+    mid.y -= lift;
     const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
     const label = new BuildingLabel(this, 'Cellar Hatch', mid.x);
     label.setZoom(this.cameras.main.zoom);
@@ -5399,12 +5404,11 @@ export class TownScene extends Phaser.Scene {
       });
       onAdventure(() => this.mapView?.refresh());
     }
-    // You're at (or else nearest) one of this map's posts: "You are here" on it.
+    // You're at one of this map's posts: "You are here" on it; else on your own spot.
     const t = this.player.tile;
     const at = postAt(this.lanternPosts, t.col, t.row);
-    const nearest = this.lanternPosts.reduce((b, p, i) => (!p.entrance && Math.hypot(t.col - p.tile[0], t.row - p.tile[1]) < Math.hypot(t.col - this.lanternPosts[b].tile[0], t.row - this.lanternPosts[b].tile[1]) ? i : b), 0);
     void this.mapView.open({
-      here: isLanternMap(this.area) && this.lanternPosts.length ? { map: this.area, post: at >= 0 ? at : nearest } : null,
+      here: isLanternMap(this.area) ? { map: this.area, post: at, tile: [t.col, t.row] } : null,
       fromPost: fromPost && at >= 0,
       lanterns: () => countOf(adventure()?.bag ?? [], RETURN_LANTERN),
       travel: (to, post) => this.lanternTo(to, post),

@@ -128,6 +128,13 @@ Each game build is `v<major.minor from packages/game/package.json>.<commits on m
 Data added in this repo that the owner's `mikazuki-assets` copy doesn't have yet; each says so in a `note` beside it
 where JSON allows. When you add one, add it here (and tell the owner, who copies them back):
 
+- The Old Market and the Cellar toughened (25 Oct 2026, the owner): `classes/stats.json` `mobs.list` the eight Old Market
+  mobs' and the Great Scale's `hp` ×2 and `atk` ×1.4 (+ `mobs.toughenedNote`), `mobBehaviour.greatScale.hpPerPlayer` 1.5 (its
+  HP × that ^ players in the Old Market, never under the table's: town-great-scale.ts `hpFor`, MobRoom `setMaxHp`, a
+  `mob-scale`), `classes/palengke-leveling.json` its three mini bosses the same, `classes/dungeons.json` silong's every room
+  mob, mini boss and the Ice Machine the same (+ `toughenedNote`).
+- `classes/stats.json`: `growth.pointsPerLevelUp` 2 and `growth.pointsGoTo` all three stats (+ `pointsNote`; 25 Oct 2026, the
+  owner: was 1 a level-up, main and second only).
 - `classes/stats.json`: `enhancement.cost.repairKits` (Repair Kits by the broken item's +, 11 Oct 2026).
 - `classes/stats.json`: `enhancement.cost.levelPenalty` (enhance odds 10% lower a gear tier up: Lv 30-40 ×0.9) and
   `enhancement.temper.minusPerTier` (a Temper Stone's + less 2 a gear tier up; onto its item level or higher), with their
@@ -137,6 +144,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every slotted item, always one) and its `from` text.
 - `classes/stats.json`: `potions.tiers.mid.minLevel` 10 (was 30; 12 Oct 2026: the Medium HP/MP Potions sold from Lv 10).
   `items/items.json`: `mid-hp-potion`, `mid-mp-potion` (the art folder's items/potions/item-potion-mid-* icons).
+- `classes/stats.json`: `potions.tiers.high` minLevel 25, hp 500, mp 250 (were 50 / 350 / 200; + `potions.highNote`; 25 Oct
+  2026, Mac: the Large HP/MP Potions, 400 Kusing); `items/items.json` `high-hp-potion`, `high-mp-potion` (the art folder's
+  items/potions/item-potion-high-* icons) and `retainment-stone` (100 Kowens, Smithing; items/consumables/item-retainment-stone*),
+  the filled Temper Stone's `about`; `enhancement.temperNote`.
 - `classes/stats.json`: `agimats.valueAtLevel` (22 Oct 2026, Mac: + `valueAtLevelNote`): the flat stats grow twice as fast
   (atk 0.2A+1, hp 0.72A+1, mp / def 0.5A+1, stat 0.1A+1) and the rates with level (0.001A, crit damage 0.004A; were a flat
   1% / 4%): a Lv 20 agimat about twice a Lv 10's.
@@ -275,7 +286,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `pet-cube-common` (bound consumable) and its art in `pets/cube/` (the art folder's pets/cube).
 - Halloween (17 Oct 2026; the art and its numbers are the art folder's events/halloween): `events/halloween.json` (its
   `biikko.maps` (+ `mapsNote`: was `map` "slums") and `biikko.itemsIn` (+ `itemsInNote`): a Biikko in the Old Market too,
-  its loot's Mid Repair Kits and Cellar Key, 25 Oct 2026, the owner;
+  its loot's Mid Repair Kits and Cellar Key, 25 Oct 2026, the owner; `biikko.scaling` and `manananggal.upper.scaling`
+  (26 Oct 2026, the owner: they grow with the players fighting them);
   `biikko.announceSpawn` and `manananggal.announceAppear` left out: no spawn lines, Mac; `manananggal.lowerSpots` moved,
   each to the nearest open grass tile nothing draws over: the art folder's six stood behind tree crowns, `lowerSpotsNote`),
   `items/items.json` `witch-hat-5d` / `witch-robe-5d` (`lastsDays`), the manifest's `characters.wardrobe` `hatCanvas`,
@@ -334,7 +346,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   one page at a time, and whoever waits for images waits for that too (assets/packs.ts `loaded` = the loader's complete
   + `unpacked`: loading.ts, queue.ts, mobs.ts; a weapon skin's page was 400+ ms in one frame, the lag report); another
   player's look is built a few sheets a frame (`buildOutfitSlowly`, ≤ 4 ms, one look at a time: four at once made 60 ms
-  frames; layer pixels read once and copied, each colour's swap looked up once); battle poses a few ms at a time, their clothes' fit searched on
+  frames; layer pixels read once and copied, each colour's swap looked up once; a sheet's layers laid over each other in
+  plain arrays, `blendOver`, and written to its canvas once: a canvas per layer was a GPU round trip each, 30-40 ms a
+  sheet on integrated graphics; every canvas the art is read back from is `willReadFrequently`: packs.ts `cut`, the
+  pose and faint sheets; kit-art's scratch canvases are only resized when their size changes; the faint's Scale2x
+  yields every ~16k px); battle poses a few ms at a time, their clothes' fit searched on
   typed arrays and remembered in the browser per build (kit-art `mk_shifts`); a streamed map's ground (`Terrain.stream`)
   and props (`WorldObjects.stream`: a queue, big ones first, then their cast shadows) at most 4 ms a frame, only the view
   itself on the first frame; mob art loads zone by zone within 30 tiles (`Mobs.near`, twice a second; mobs the server tells
@@ -1314,8 +1330,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   instance (`Item`: uid, defId, level, rarity, plus, broken, bound, luck, agimats (one per slot, null = empty), lines,
   count; an agimat's stat/lock). Kinds: `items/equipment.json` (gear: training, Crude/Sturdy weapons Lv 10/20, Tin/Copper,
   Abaca/Cotton, Hemp/Jute armor, Shell/Bone accessories; base from stats.json gearBase unless a training piece's own
-  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low and Medium HP/MP Potions
-  (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, and the town refuses a potion
+  `stats`) and `items/items.json` (manifest `combatItems`: whetstone, fragment, Low Repair Kit, Low, Medium and Large HP/MP Potions
+  (`heals`, `shop`; a tier is sold from its `potions.tiers` minLevel, Medium from Lv 10, Large from Lv 25, and the town refuses a potion
   under its level: 'level', "You can use this from Lv 10."; the auto MP Potion drinks the strongest your level allows), 11 agimats, the Lamp-head Hat cosmetic). `rollGear` / `rollLines` (3 lines: slot stat, HP, a pool
   stat at rareRollWeight; 80–100% of the line's max), `slotCount`, `bindsOnWear` (orange), `enhancedBase`, `lineValue`
   (accessories by stats.json enhancement.accessories' tiers: +2%/plus to +10, +4% to +15, +10% at +16, +12% from +17; armor's least DEF a plus: enhancement.armorMinDEF), `agimatValue`, `itemTotals` (base+plus, lines, agimats; broken = nothing) → `derivedStats` (caps:
@@ -1463,7 +1479,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Discord, never kept). Biikko Kalabasa: one in each of `biikko.maps` (the Slums and the Old Market since 25 Oct 2026,
   the owner), each on its own schedule (kept as `biikkoAt` by map; an old single time is the Slums'): Lv 15, 100k HP,
   the golem's DEF, still and silent (never attacks), walks its map's height-1 tiles outside the camp and the field
-  boss's pit or arena, full after 300 s unhit, no XP or quest credit; one set of loot (`biikkoLoot(…, map)`, new loot
+  boss's pit or arena, full after 300 s unhit, no XP or quest credit; it grows with its hitters (halloween.json
+  `scaling`, a repo addition, 26 Oct 2026: the director's `hit` hook, MobDirector `hit` called in MobRoom.damage before
+  the roll: its level the highest among the players who have hit it this fight, never lower in it, its HP `hpPerLevel`
+  (10%) more of its own a level above it, its HP's share kept: `MobRoom.restat` → `mob-scale` with `level`, the page's
+  name tag and boss bar follow; DEF the higher of the golem's and the mob table's at that level; back to its own once
+  healed full or out again; shared `scaledEventMob`; the upper half the same, its ATK and DEF the table's; tested); one set of loot (`biikkoLoot(…, map)`, new loot
   contents `{ kowens }` and `{ potion }`, Kowens split like Kusing; the Old Market's Mid Repair Kits and Cellar Key in
   place of the Low Repair Kits and Warren Ticket: `itemsIn`) held 10 s for the last hitter's party. The Manananggal: a
   round every 60–180 min, the legs at a `lowerSpots` tile in town up to 60 min, the upper half a flying mob in the
@@ -1529,7 +1550,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   30-40; shared `temperedPlus`; the popup asks first: `confirmTemper`), its own is lost; "Needs a Weapon" / "Needs a Lv
   10 item or higher." / "This item is already +7 or higher." / "Its +2 is too little to carry up a tier."; training gear
   never) (shared `removeRefusal` / `drawRefusal` / `applyRefusal`, `toolOf`; actions 'remove' {item, slot}, 'draw' {item},
-  'apply' {item, stone}; the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
+  'apply' {item, stone, retain?}: a Retainment Stone (items.json `forge: retain`, 100 Kowens) in the Apply popup's second
+  slot keeps the full + up a gear tier, used up only then (shared `retainSaves`, `temperedPlus(…, retain)`, `applyRefusal(…,
+  retain)`; "You need a Retainment Stone."; the bag's click puts it in an open Apply popup, else "Use it in a filled Temper
+  Stone's Apply popup."); the popup's Remove / Draw / Apply modes, opened from the tool in the bag; fx-agimat-embed or
   fx-enhance-success with their sounds; tested); a success at +15 and up (`enhanceFeedLine`, any gear, from the weapon aura's first tier) is a system feed line for the whole town and Discord's town log (kind 'forge', 🔨; "Mara enhanced their Sturdy Slingshot +15!", coloured by the aura's tier: blue 'rare', gold 'legendary', prismatic 'secret'; the dev town's /__forge too; tested), and several at once: 'disassemble-many' / 'sell-many' {items} (`many`: each by
   the one-item rules on a copy, every one or none, the refusal names the item; one message adding up what came back; tested).
   The bag's Combat tab multi-selects (Select, or Ctrl/⌘/Shift-click; Select all gear) → Disassemble N / Sell N with
@@ -1694,14 +1718,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   knocks you out), `/__golem?demo=1&as=Name` (someone else).
 - Stat points (`POST /town/points` { spend, stat } | { reset }, `pointsStep` / `townPoints` in web/adventure.ts,
   `spendPoint` / `resetStatPoints` in progress.ts, tested; `Town.progress` after, so fights use them): one point into
-  the class's main or second stat only; Reset free, all back (skills stay); none before a class (banked; choosing a class
+  any of STR, DEX and INT (stats.json growth.pointsGoTo all three, pointsPerLevelUp 2: 25 Oct 2026, the owner; were 1
+  and main / second only; points spent before stayed); Reset free, all back (skills stay); none before a class (banked; choosing a class
   applies its growth at once, base stats being computed). Equipment panel's stats box (`renderStats`): ATK (Power), DEF,
   HP, MP | STR, DEX, INT, Crit rate from the stats rules (class, level, points, worn gear), then a "More stats" fold
   (`ui/more-stats.ts`, shared `moreStats`; Info's too, `InspectStats` carries them): crit damage, damage amp, attack rate,
   DEF rate, lifesteal, manasteal, HP regen (gear + a buff's % of max HP), MP regen, drop rate, and accuracy / cooldown
   while a buff gives them; a buff's part in green; open at first on screens 900 px tall or more, remembered (localStorage
-  `mk_more_stats`); the stats box scrolls inside the panel when it's too tall, "Points: N", a + on the main and
-  second stat while N > 0, Reset; classless: "Choose a class to spend points". Dev: `/__points?as=&stat=|reset=1`
+  `mk_more_stats`); the stats box scrolls inside the panel when it's too tall, "Points: N", a + on each of STR, DEX and
+  INT while N > 0, Reset; classless: "Choose a class to spend points". Dev: `/__points?as=&stat=|reset=1`
   (progress.ts in the dev server; the page's pretend store calls it).
 - Skills unlock at their classes.json `level` (damage skills; mobility: Dash 5, the Lv 8 move 8): before it the server
   refuses `attack` ('locked') and doesn't pass on the `move` (`TownOptions.moveLevel`, web/adventure.ts `moveLevel`; also

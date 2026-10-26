@@ -23,8 +23,9 @@ export type TownForgeAction =
   | { action: 'remove'; item: string; slot: number }
   /** An empty Temper Stone: the item's + into a filled one (the item back to +0). */
   | { action: 'draw'; item: string }
-  /** A filled Temper Stone (`stone`: its uid): its + onto the item. */
-  | { action: 'apply'; item: string; stone: string }
+  /** A filled Temper Stone (`stone`: its uid): its + onto the item; `retain`: a Retainment Stone keeps all of it (used up
+   *  only when the item is a gear tier up: retainSaves). */
+  | { action: 'apply'; item: string; stone: string; retain?: boolean }
   | { action: 'disassemble'; item: string }
   | { action: 'combine'; item: string }
   /** Training gear, agimats and potions sold from the bag for Kusing (`sellPrice`); `count`: how many of a stack (all of
@@ -82,7 +83,7 @@ export function agimatBrightness(stats: StatsData, level: number): number {
 }
 
 /** What an HP or MP Potion sells for, each (stats.json potions.sellShare, a repo addition: that share of its tier's
- *  kusing, rounded; Low 25, Medium 75); null without the setting or a price. */
+ *  kusing, rounded; Low 25, Medium 75, Large 200); null without the setting or a price. */
 export function potionSellPrice(stats: StatsData, def: CombatItemDef): number | null {
   const P = (stats as StatsData & { potions?: { sellShare?: number; tiers?: Record<string, { kusing?: number }> } }).potions;
   const buy = def.tier ? P?.tiers?.[def.tier]?.kusing : undefined;
@@ -289,8 +290,9 @@ export const rareAgimat = (data: StatsData, stat: string) => itemStats(data).agi
 /** "a, b and c". */
 export const wordList = (words: string[]) => (words.length < 2 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`);
 
-/** The Agimat Pliers' and Temper Stones' item ids (items/items.json `forge`: pliers, temper, tempered). */
-export const toolOf = (data: ItemData, forge: 'pliers' | 'temper' | 'tempered'): CombatItemDef | undefined =>
+/** The Agimat Pliers', Temper Stones' and Retainment Stone's kinds (items/items.json `forge`: pliers, temper, tempered,
+ *  retain). */
+export const toolOf = (data: ItemData, forge: 'pliers' | 'temper' | 'tempered' | 'retain'): CombatItemDef | undefined =>
   [...data.defs.values()].find((d): d is CombatItemDef => !isGearDef(d) && d.forge === forge);
 
 /** Why the pliers can't pull the agimat out of this gear's `slot` (any filled one when left out), or null. Broken gear
@@ -322,12 +324,20 @@ function tiersUp(data: StatsData, from: number, to: number): number {
 }
 
 /** The + a filled Temper Stone gives an item: its own, less stats.json enhancement.temper.minusPerTier for every gear
- *  tier up the item is (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). */
-export function temperedPlus(data: StatsData, stone: Item, item: Item): number {
-  return stone.plus - (itemStats(data).enhancement.temper?.minusPerTier ?? 0) * tiersUp(data, stone.level, item.level);
+ *  tier up the item is (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20); `retain` (a Retainment Stone): all of it. */
+export function temperedPlus(data: StatsData, stone: Item, item: Item, retain = false): number {
+  return retain ? stone.plus : stone.plus - (itemStats(data).enhancement.temper?.minusPerTier ?? 0) * tiersUp(data, stone.level, item.level);
 }
 
-export function applyRefusal(data: ItemData, item: Item, stone: Item): string | null {
+/** Whether a Retainment Stone saves anything on this apply (CONTEXT.md Retainment Stone): only when the item is a gear
+ *  tier or more up from the stone, so one is never used up for nothing. */
+export function retainSaves(data: StatsData, stone: Item, item: Item): boolean {
+  return (itemStats(data).enhancement.temper?.minusPerTier ?? 0) > 0 && tiersUp(data, stone.level, item.level) > 0;
+}
+
+/** Why a filled Temper Stone can't go onto this item, or null; `retain`: with a Retainment Stone (its full +, when that
+ *  saves anything). */
+export function applyRefusal(data: ItemData, item: Item, stone: Item, retain = false): string | null {
   const def = data.defs.get(item.defId);
   const sdef = data.defs.get(stone.defId);
   if (isGearDef(sdef) || sdef?.forge !== 'tempered' || !stone.lock) return "That isn't a filled Temper Stone.";
@@ -336,7 +346,7 @@ export function applyRefusal(data: ItemData, item: Item, stone: Item): string | 
   if (def.slot !== stone.lock) return `Needs ${an(SLOT_WORD[stone.lock])}.`;
   if (item.level < stone.level) return `Needs a Lv ${stone.level} item or higher.`;
   if (item.broken) return 'Repair it first.';
-  const plus = temperedPlus(data.stats, stone, item);
+  const plus = temperedPlus(data.stats, stone, item, retain && retainSaves(data.stats, stone, item));
   if (plus <= 0) return `Its +${stone.plus} is too little to carry up a tier.`;
   if (item.plus >= plus) return `This item is already +${plus} or higher.`;
   return null;

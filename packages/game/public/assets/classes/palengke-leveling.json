@@ -233,8 +233,8 @@
     "id": "sibuyas-sobber-shallot-holmes",
     "name": "Shallot Holmes",
     "level": 25,
-    "hp": 17319,
-    "atk": 105,
+    "hp": 34638,
+    "atk": 147,
     "defense": 50,
     "xp": 1118
    }
@@ -244,8 +244,8 @@
     "id": "monobloc-stack-chairman-mono",
     "name": "Chairman Mono",
     "level": 31,
-    "hp": 39983,
-    "atk": 129,
+    "hp": 79966,
+    "atk": 181,
     "defense": 62,
     "xp": 1466
    }
@@ -255,8 +255,8 @@
     "id": "sangkalan-chomper-butch-block",
     "name": "Butch Block",
     "level": 34,
-    "hp": 71153,
-    "atk": 140,
+    "hp": 142306,
+    "atk": 196,
     "defense": 68,
     "xp": 2872
    }

@@ -32,6 +32,7 @@ import { sellPrice,
   stonesFor,
   successFor,
   temperedPlus,
+  retainSaves,
   takeKind,
   tidyLuck,
   toolFor,
@@ -155,17 +156,21 @@ export function drawPlus(data: ItemData, s: ForgeHolder, uid: string, newUid: ()
 /** A filled Temper Stone's + onto an item of its type at the stone's item level or above, with a lower +: the item takes
  *  the stone's + (less 2 for each gear tier up: shared temperedPlus; its own is lost) and the stone is used up. Its
  *  agimats, lines, rarity and binding stay as they were. */
-export function applyPlus(data: ItemData, s: ForgeHolder, uid: string, stoneUid: string): Result {
+export function applyPlus(data: ItemData, s: ForgeHolder, uid: string, stoneUid: string, retain = false): Result {
   const item = findItem(s, uid)?.item;
   const stone = s.bag.find((b) => b.uid === stoneUid);
   if (!item || !stone) return no("You don't have that item.");
-  const why = applyRefusal(data, item, stone);
+  // A Retainment Stone: only when it saves something (a gear tier up); the same tier ignores it and uses none.
+  const keep = retain && retainSaves(data.stats, stone, item) ? toolOf(data, 'retain') : undefined;
+  if (keep && countOf(s.bag, keep.id) < 1) return no('You need a Retainment Stone.');
+  const why = applyRefusal(data, item, stone, !!keep);
   if (why) return no(why);
   const was = item.plus;
-  item.plus = temperedPlus(data.stats, stone, item);
+  item.plus = temperedPlus(data.stats, stone, item, !!keep);
   item.luck = 0;
   s.bag.splice(s.bag.indexOf(stone), 1);
-  return { ok: true, outcome: 'applied', message: `${itemName(data, item)}: +${was} → +${item.plus}.`, item };
+  if (keep) takeKind(s.bag, keep.id, 1);
+  return { ok: true, outcome: 'applied', message: `${itemName(data, item)}: +${was} → +${item.plus}${keep ? ' (kept by the Retainment Stone)' : ''}.`, item };
 }
 
 /** "Crit Damage Agimat Lv 20". */
@@ -289,7 +294,7 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
     case 'draw':
       return drawPlus(data, s, a.item, newUid);
     case 'apply':
-      return applyPlus(data, s, a.item, a.stone);
+      return applyPlus(data, s, a.item, a.stone, a.retain === true);
     case 'disassemble':
       return disassemble(data, s, a.item, random, newUid);
     case 'combine':
@@ -318,7 +323,7 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   if (b.action === 'embed' && id(b.agimat) && Number.isInteger(b.slot)) return { action: 'embed', item, agimat: b.agimat as string, slot: b.slot as number, ...(b.replace === true ? { replace: true } : {}) };
   if (b.action === 'remove' && Number.isInteger(b.slot)) return { action: 'remove', item, slot: b.slot as number };
   if (b.action === 'draw') return { action: 'draw', item };
-  if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string };
+  if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string, ...(b.retain === true ? { retain: true } : {}) };
   if (b.action === 'sell') return { action: 'sell', item, ...(Number.isInteger(b.count) && (b.count as number) >= 1 && (b.count as number) <= 999 ? { count: b.count as number } : {}) };
   if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'destroy') return { action: b.action, item };
   return null;

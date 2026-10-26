@@ -685,8 +685,9 @@ export type TownServerMessage =
   /** Mobs that weren't there (the golem's Adds, as they crawl out), and mobs that are gone for good (the Adds when the
    *  fight ends). */
   | { t: 'mob-add'; mobs: TownMob[] }
-  /** Mobs' most HP changed (a Warrens run's party scaling: their HP keeps its share). */
-  | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number }[] }
+  /** Mobs' most HP changed (a Warrens run's party scaling: their HP keeps its share), and a Halloween event mob's level
+   *  with it (`level`: it grows with the players fighting it). */
+  | { t: 'mob-scale'; mobs: { id: string; hp: number; maxHp: number; level?: number }[] }
   /** A boss's untargetable or block-all window began or ended. */
   | { t: 'mob-flag'; id: string; untargetable?: boolean; blockAll?: boolean; hidden?: boolean; dormant?: boolean }
   /** A mob stunned for `ms` (CONTEXT.md Stun): it stands where it is (col, row) meanwhile. */
