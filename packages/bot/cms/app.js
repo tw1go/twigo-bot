@@ -762,16 +762,20 @@ async function mail() {
     extra.replaceChildren(...(!k ? [] : k.gear ? [field('Rarity', rarity), field('+', plus)] : [field('How many', count), ...(k.level ? [field('Level', level)] : [])]));
   }
   kind.addEventListener('change', drawExtra);
-  addItem.addEventListener('click', () => {
+  // The item picked (with its rarity and + or how many) into the attachments; the picker back to "Pick an item…", so a
+  // picked item is never left out of a send or attached twice.
+  function attachPicked() {
     const k = kindOf(kind.value);
-    if (!k) return;
+    if (!k || items.length >= R.itemsMax) return;
     const spec = k.gear
       ? { defId: k.id, rarity: rarity.value, plus: Number(plus.value) || 0, label: `${k.name} (${RARITY_NAMES[rarity.value]}${Number(plus.value) ? ` +${plus.value}` : ''})` }
       : { defId: k.id, count: Number(count.value) || 1, ...(k.level ? { level: Number(level.value) || 1 } : {}), label: `${k.name}${k.level ? ` Lv ${level.value}` : ''} ×${count.value}` };
     items.push(spec);
+    kind.value = '';
     drawAttached();
     drawExtra();
-  });
+  }
+  addItem.addEventListener('click', attachPicked);
   function drawAttached() {
     attached.replaceChildren(...(items.length
       ? items.map((it, i) => h('span', { class: 'tag' }, it.label, ' ', h('button', { class: 'x', title: 'Remove', onclick: () => (items.splice(i, 1), drawAttached(), drawExtra()) }, '×')))
@@ -801,6 +805,7 @@ async function mail() {
   });
 
   sendBtn.addEventListener('click', () => act(sendBtn, async () => {
+    attachPicked(); // (an item picked but not attached yet goes too: Send used to leave it out)
     const who = everyone.checked ? `everyone (${fmt(data.everyone)} players)` : `${to.size} player(s)`;
     const k = Number(kowensIn.value) || 0;
     const ku = Number(kusingIn.value) || 0;

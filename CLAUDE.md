@@ -569,7 +569,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   delete-read; a letter with something still attached can't be deleted; Kowens into the wallet with `add`),
   `purgeMail` hourly; every send and claim in the bot's log). Only the game and its GMs send: the CMS's Mail tab (to
   everyone with a character, `mailMembers` = the nicknames table, or picked players; from, title, the letter in the
-  news board's markdown, Kowens, Kusing, items with rarity / + / count / level; the latest sends with how many read and
+  news board's markdown, Kowens, Kusing, items with rarity / + / count / level (`attachPicked`: Send takes an item
+  still picked but not attached too, and the picker clears after each, 26 Oct 2026); the latest sends with how many read and
   claimed: GET /api/mail, POST /api/mail/send). Game: GET/POST `/town/mail`, `/me` `mailUnread`, the town's `mail`
   message (`Town.mail`, `onMail`: the dot and a toast "New mail from …"); `net/mail.ts` (the unread count);
   `ui/mail.ts` (the reward box: the list, the open letter with its attachments' tooltips and Claim, Claim all and
