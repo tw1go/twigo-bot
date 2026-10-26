@@ -54,6 +54,11 @@
     },
     "itemsIn": { "palengke": { "low-repair-kit": "mid-repair-kit", "warren-ticket": "susi-ng-silong" } },
     "itemsInNote": "A repo addition (25 Oct 2026, the owner): the Old Market's Biikko drops Mid Repair Kits in place of Low ones and a Cellar Key in place of the Warren Ticket, at the same chances and counts.",
+    "scaling": {
+      "note": "A repo addition (26 Oct 2026, the owner): it grows with the players fighting it, so Lv 40s don't melt it. Its level follows the highest level among the players who have hit it this fight (never below its own 15, never lower mid-fight), its HP 10% more of its own for each level above 15 (Lv 40: 350,000), its DEF the higher of the golem's and the mob table's for that level; back to its own once it's healed full or comes out again. Rewards as ever.",
+      "follows": "the highest level among the players who have hit it this fight",
+      "hpPerLevel": 0.1
+    },
     "announceKill": "{name} landed the last hit on Biikko Kalabasa!"
   },
 
@@ -70,7 +75,12 @@
       "aggro": "passive until hit",
       "flies": true,
       "speedTilesPerSec": 2.2,
-      "attack": "Claw Swipe: one target in front, every 1.8 s, the mob table's normal ATK for its level"
+      "attack": "Claw Swipe: one target in front, every 1.8 s, the mob table's normal ATK for its level",
+      "scaling": {
+        "note": "A repo addition (26 Oct 2026, the owner): as Biikko's. Its level follows the highest level among the players who have hit it this fight (never below its own 14), its HP 10% more of its own for each level above 14 (Lv 40: 108,000), its ATK and DEF the mob table's for that level; back to its own once it's healed full (its foe lost) or comes out again.",
+        "follows": "the highest level among the players who have hit it this fight",
+        "hpPerLevel": 0.1
+      }
     },
     "carry": "the killer gets the dazed upper half floating behind them (not an item); it follows them across maps until they reach the lower half, log out, or the lower half's time runs out",
     "reuniteReach": 2,

@@ -845,12 +845,15 @@ first player to click it within reach finds it.
 _Avoid_: pumpkin (alone), Mikko (fine in talk)
 
 **Biikko Kalabasa**:
-The Halloween event's big jack-o'-lantern event mob in the Slums: it wanders and never fights back; its loot is held
-for the last hitter and their party, then anyone's.
+The Halloween event's big jack-o'-lantern event mob, one in the Slums and one in the Old Market: it wanders and never
+fights back; its loot is held for the last hitter and their party, then anyone's. It grows with the players fighting
+it: its level rises to the highest level among those who have hit it this fight, its HP with it, and it's back to its
+own once it heals full.
 
 **Manananggal**:
 The Halloween event's split creature: its **lower half** stands among the trees in town for a while, its **upper half**
-flies in the Slums as an event mob. A round ends when they're reunited, or when it flies away.
+flies in the Slums as an event mob, growing with the players fighting it as Biikko does. A round ends when they're
+reunited, or when it flies away.
 _Avoid_: ghost, witch
 
 **Dazed** (the upper half):

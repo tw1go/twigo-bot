@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, HALLOWEEN_MOBS, decorationsOn, eventStart, halloweenRules, mobRules, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
+import { type EventPotion, type HalloweenData, type HalloweenReward, type HalloweenView, type ItemData, HALLOWEEN_MOBS, decorationsOn, scaledEventMob, eventStart, halloweenRules, mobRules, isEventOn, linear, mobStats, newItem, pickOne, rollRange } from '@mikazuki/shared';
 import type { LootContent } from './combat-bag.js';
 import { type GolemBoss, pitTiles } from './town-golem.js';
 import { type MobDirector, type MobEvent, type MobRoom, type MobZoneData, facingTo } from './town-mobs.js';
@@ -136,6 +136,8 @@ export class Halloween {
   private upperHome: [number, number] | null = null;
   private upperSwing = 0;
   private upperNext = 0;
+  /** An event mob's level in its fight, by `<map>:<id>`, while it's above its own (it grows with its hitters: `hit`). */
+  private readonly fightLevel = new Map<string, number>();
   /** The upper half's tiles to come out on (the Slums' walking tiles: height 1, open, outside the camp and the pit). */
   private readonly wanderTiles: [number, number][];
   /** The numbers halloween.json writes in words (Mikko's clearance, Biikko's walks and rests, the first spawns, the
@@ -465,6 +467,7 @@ export class Halloween {
     return {
       tick: (now, players) => this.directorTick(map, now, players),
       hurt: (id, now) => this.hurt(map, id, now),
+      hit: (id, level) => this.hit(map, id, level),
     };
   }
 
@@ -478,19 +481,26 @@ export class Halloween {
       // (The window closed: the event mobs go.)
       return room.removeMobs([BIIKKO_ID, UPPER_ID]);
     }
+    // An event mob healed full with its fight over (its own heal below, the upper half's lost foe, or the room's own
+    // give-up): back to its own numbers.
+    for (const id of [BIIKKO_ID, UPPER_ID]) {
+      const m = this.fightLevel.has(`${map}:${id}`) ? room.mobInfo(id, now) : null;
+      if (m && !m.dead && !m.foe && m.hp >= m.maxHp) events.push(...this.ownLevel(map, room, id));
+    }
     // Biikko: out when it's due; wandering; full again after a while unhit.
     const due = this.saved.biikkoAt[map] ?? null;
     if (b && !biikko && due !== null && now >= due && b.tiles.length) {
       const near = b.devNear;
       b.devNear = null;
       const tile = near ? b.tiles.reduce((x, y) => (cheb(y, near) < cheb(x, near) ? y : x)) : pickOne(b.tiles, this.random);
+      this.fightLevel.delete(`${map}:${BIIKKO_ID}`);
       events.push(...room.addMobs([{ id: BIIKKO_ID, kind: BIIKKO_KIND, zone: EVENT_ZONE, tile, stats: this.biikkoStats(room), name: this.data.biikko.name, title: this.data.biikko.title, still: true, silent: true }], now));
       this.saved.biikkoAt[map] = null;
       b.hitAt = now;
       b.next = now + 2000;
       this.keep();
     } else if (b && biikko && !biikko.dead) {
-      if (biikko.hp < biikko.maxHp && now - b.hitAt >= this.data.biikko.healAfterSecondsUnhit * 1000) events.push(...room.healFull(BIIKKO_ID));
+      if (biikko.hp < biikko.maxHp && now - b.hitAt >= this.data.biikko.healAfterSecondsUnhit * 1000) events.push(...room.healFull(BIIKKO_ID), ...this.ownLevel(map, room, BIIKKO_ID));
       if (now >= b.next) events.push(...this.biikkoWalk(room, b, biikko.at, now));
     }
     if (map !== this.data.manananggal.upper.map) return events;
@@ -500,6 +510,7 @@ export class Halloween {
     if (r && !r.carrier && !upper) {
       const tile = pickOne(this.wanderTiles, this.random);
       if (tile) {
+        this.fightLevel.delete(`${map}:${UPPER_ID}`);
         events.push(...room.addMobs([{ id: UPPER_ID, kind: UPPER_KIND, zone: EVENT_ZONE, tile, stats: this.upperStats(), name: this.data.manananggal.name, still: true, silent: true }], now));
         this.upperHome = tile;
         this.upperNext = now + 1500;
@@ -509,19 +520,40 @@ export class Halloween {
     return events;
   }
 
-  /** Biikko's numbers: its level and HP (halloween.json), the golem's DEF; it never attacks and gives no XP. */
-  biikkoStats(room: MobRoom) {
-    const B = this.data.biikko;
-    return { level: B.level, hp: B.hp, atk: 0, def: mobStats(room.statsData(), 'scrapheap-golem')?.def ?? 0, xp: 0 };
+  /** Biikko's numbers at a level (its own, halloween.json's, unless it's grown with its hitters: `scaling`): its HP
+   *  10% more a level above its own (`hpPerLevel`), the higher of the golem's DEF and the mob table's for that level; it
+   *  never attacks and gives no XP. */
+  biikkoStats(room: MobRoom, top = 0) {
+    const { level, hp } = scaledEventMob(this.data.biikko, top);
+    const table = Math.round(linear(room.statsData().mobs.formula?.def ?? '0', { lv: level }));
+    return { level, hp, atk: 0, def: Math.max(mobStats(room.statsData(), 'scrapheap-golem')?.def ?? 0, table), xp: 0 };
   }
 
-  /** The upper half's numbers: its level and HP (halloween.json), the mob table's ATK and DEF for its level (stats.json
-   *  mobs.formula: "6 + 3 * lv", "2 * lv"); no XP. */
-  upperStats() {
-    const U = this.data.manananggal.upper;
+  /** The upper half's numbers at a level (its own unless it's grown with its hitters: `scaling`): its HP as Biikko's
+   *  grows, the mob table's ATK and DEF for that level (stats.json mobs.formula: "6 + 3 * lv", "2 * lv"); no XP. */
+  upperStats(top = 0) {
+    const { level, hp } = scaledEventMob(this.data.manananggal.upper, top);
     const f = this.room!.statsData().mobs.formula;
-    const at = (formula: string | undefined) => (formula ? Math.round(linear(formula, { lv: U.level })) : 0);
-    return { level: U.level, hp: U.hp, atk: at(f?.atk), def: at(f?.def), xp: 0 };
+    const at = (formula: string | undefined) => (formula ? Math.round(linear(formula, { lv: level })) : 0);
+    return { level, hp, atk: at(f?.atk), def: at(f?.def), xp: 0 };
+  }
+
+  /** A hit about to land on an event mob by a fighter of `level`: it grows to the highest level among its hitters this
+   *  fight (never lower in it), its HP keeping its share (halloween.json `scaling`). */
+  private hit(map: string, id: string, level: number): MobEvent[] {
+    if (id !== BIIKKO_ID && id !== UPPER_ID) return [];
+    const room = this.biikkos.get(map)?.room ?? (map === this.data.manananggal.upper.map ? this.room : null);
+    const base = id === BIIKKO_ID ? this.data.biikko : this.data.manananggal.upper;
+    const k = `${map}:${id}`;
+    if (!room || !base.scaling || level <= (this.fightLevel.get(k) ?? base.level)) return [];
+    this.fightLevel.set(k, level);
+    return room.restat(id, id === BIIKKO_ID ? this.biikkoStats(room, level) : this.upperStats(level));
+  }
+
+  /** An event mob back to its own numbers (healed full, its fight over). */
+  private ownLevel(map: string, room: MobRoom, id: string): MobEvent[] {
+    if (!this.fightLevel.delete(`${map}:${id}`)) return [];
+    return room.restat(id, id === BIIKKO_ID ? this.biikkoStats(room) : this.upperStats());
   }
 
   /** A Biikko sets off: a spot wanderTiles away on its walking tiles, walked at its pace; then a pause. */
@@ -577,7 +609,7 @@ export class Halloween {
     const foe = upper.foe ? players.get(upper.foe) : undefined;
     if (upper.foe && (!foe || cheb(foe, home) > mobRules(room.statsData(), UPPER_KIND).leashTiles)) {
       // Lost them: healed and back where it came out.
-      const events = room.healFull(UPPER_ID);
+      const events = [...room.healFull(UPPER_ID), ...this.ownLevel(this.data.manananggal.upper.map, room, UPPER_ID)];
       return [...events, ...room.moveMob(UPPER_ID, this.flight(upper.at, home), now, speed)];
     }
     if (foe) {
@@ -637,6 +669,7 @@ export class Halloween {
     if (id === BIIKKO_ID && b) b.hitAt = now;
     const room = b?.room ?? (map === this.data.manananggal.upper.map ? this.room : null);
     const info = room?.mobInfo(id, now);
+    if (info?.dead) this.fightLevel.delete(`${map}:${id}`);
     return info?.dead ? (room?.removeMobs([id]) ?? []) : [];
   }
 }
