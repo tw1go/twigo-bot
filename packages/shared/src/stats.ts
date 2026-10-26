@@ -159,11 +159,12 @@ export function gainXp(data: StatsData, level: number, xp: number, gained: numbe
 
 // ── Stats ──
 
-/** Stat points a character has earned by `level` (one a level-up), and skill points (three a level-up). */
+/** Stat points a character has earned by `level` (stats.json growth.pointsPerLevelUp a level-up), and skill points (three a
+ *  level-up). */
 export const statPointsAt = (data: StatsData, level: number) => (lvl(data, level) - 1) * data.growth.pointsPerLevelUp;
 export const skillPointsAt = (data: StatsData, level: number) => (lvl(data, level) - 1) * data.skills.skillPointsPerLevelUp;
 
-/** The stats a class's points may go into (its main and second); none before a class. */
+/** The stats a class's points may go into (stats.json growth.pointsGoTo: every one of the three); none before a class. */
 export function pointStats(data: StatsData, cls: string | null | undefined): StatName[] {
   const c = cls ? data.classes[cls] : undefined;
   return c ? data.growth.pointsGoTo.map((place) => c[place]) : [];
@@ -174,8 +175,8 @@ export function unspentStatPoints(data: StatsData, cls: string | null | undefine
   return statPointsAt(data, level) - pointStats(data, cls).reduce((n, s) => n + Math.max(0, spent[s] ?? 0), 0);
 }
 
-/** Base stats (what gear requirements check): the class's growth at `level` plus the points spent on its main and second
- *  stat; before a class, the classless stats (points are banked, not spent). */
+/** Base stats (what gear requirements check): the class's growth at `level` plus the points spent (any of its
+ *  stats: pointsGoTo); before a class, the classless stats (points are banked, not spent). */
 export function baseStats(data: StatsData, cls: string | null | undefined, level: number, spent: StatPoints = {}): StatBlock {
   const c = cls ? data.classes[cls] : undefined;
   if (!c) return { ...data.classless };

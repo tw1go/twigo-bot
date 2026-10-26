@@ -192,7 +192,7 @@ export interface CharacterProgress {
   xp: number;
   /** XP this level takes to the next; 0 at the cap (MAX: XP stops). */
   next: number;
-  /** Stat points spent, per stat (only the class's main and second stat take them). */
+  /** Stat points spent, per stat (any of the three: stats.json growth.pointsGoTo). */
   points: StatPoints;
   /** Stat points earned and not spent (banked before a class). */
   statPoints: number;
@@ -257,7 +257,7 @@ export type TownPetAction =
   | { action: 'spend'; node: PetNode }
   | { action: 'reset' };
 
-/** POST /town/points: one stat point into the class's main or second stat, or every stat point back (free). */
+/** POST /town/points: one stat point into STR, DEX or INT, or every stat point back (free). */
 export type TownPointsAction = { action: 'spend'; stat: StatName } | { action: 'reset' };
 
 /** POST /town/skills: one skill point into a skill (its key: a damage skill's place '0'…'6', or a move's id), or every

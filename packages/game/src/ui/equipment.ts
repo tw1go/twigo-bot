@@ -18,7 +18,7 @@ import { type PetArt, PetTab } from './pet-tab';
 // without art yet: its place's silhouette). Your character idles in the middle (3×, facing SE, with the resting weapon)
 // over a faint crescent moon; a drag turns it. Under it your class and level, and the stats box (the stats rules,
 // @mikazuki/shared: ATK = Power, DEF, HP, MP, STR, DEX, INT, Crit from your class, level, stat points and what's worn),
-// with your unspent stat points: a + on your class's main and second stat (POST /town/points), and a free Reset;
+// with your unspent stat points: a + on each of STR, DEX and INT (POST /town/points), and a free Reset;
 // before a class they're banked. Double-click or drag an item from the bag onto its place to wear it (if its
 // requirements are met: base stats only; refused with what's missing, "Needs DEX 26"); right-click or double-click a
 // worn one to take it off. While the forge popup (ui/forge.ts) is open, a click or a drag puts a worn item into it.

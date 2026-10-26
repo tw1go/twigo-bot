@@ -475,7 +475,7 @@ export const wornHeadCosmetic = (): string | null => {
   return it ? (anyDef(it.defId)?.name ?? it.defId) : null;
 };
 
-/** One stat point into `stat` (your class's main or second stat), or every stat point back (free). */
+/** One stat point into `stat` (STR, DEX or INT), or every stat point back (free). */
 export const spendPoint = (stat: StatName) => act('/town/points', { action: 'spend', stat });
 export const resetPoints = () => act('/town/points', { action: 'reset' });
 
