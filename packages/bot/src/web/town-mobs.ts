@@ -81,8 +81,8 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // back, the first to hit them. It lets its target go when they're gone, knocked out, out of its zone, more than
 // `leashTiles` from its spawn (it can't follow further) or more than its target range (stats.json aggro.keepTiles) from
 // it, and takes the next player within its aggro range at once (aggressive: the one there longest; passive: whoever hit
-// it earliest this fight); nobody, or (a passive one) no hit on it from anyone for GIVE_UP_MS: it heals to full
-// (`mob-heal`) and walks home. A taunt takes it over at once, and the taunter stays its target after (the latest wins). At 0 HP it dies (its XP to whoever killed it:
+// it earliest this fight); nobody, or (a passive one) no hit on it from anyone for GIVE_UP_MS: it walks home, keeping
+// the HP it has left (never healed back up: owner, 26 Oct 2026; a boss's reset is its own, `healFull`). A taunt takes it over at once, and the taunter stays its target after (the latest wins). At 0 HP it dies (its XP to whoever killed it:
 // `kills`, which the town turns into levels). A skill can only be used from its unlock level (classes.json; refused
 // 'locked' before). Each has its own cooldown by its unlock level (baseCooldown in @mikazuki/shared, stats.json
 // skills.cooldownByUnlock: Lv 1 the quickest),
@@ -92,7 +92,7 @@ import { Golem, type GolemArt, type GolemBoss, type GolemEvent, type PitTiles, p
 // Mini bosses (classes/leveling.json miniBosses, at the spots in each zone's `miniBosses` in the map): one mob each, ids
 // `<zone>:mini:<id>`, its kind's art, moves and rules with its own level, HP, ATK, DEF and XP; all up at once, each back
 // at its own spot miniBoss.respawnSeconds after it dies, never part of a zone's count. Its kill goes to every member who
-// did miniBoss.kill_credit's share of its HP (`dealt`, cleared when it heals or dies), each getting its XP and their own
+// did miniBoss.kill_credit's share of its HP (`dealt`, cleared when it dies or a boss resets), each getting its XP and their own
 // loot (`mini` on the kill; the town adds their party nearby).
 //
 // The field boss (the map's `boss`, given its art): town-golem.ts runs it on this room's clock; hits on it come through
@@ -1238,15 +1238,10 @@ export class MobRoom {
     // (A passive one gets bored GIVE_UP_MS after the last hit on it by anyone: a tank holding it needn't keep hitting.)
     const bored = m.zone.aggro !== 'aggressive' && now - (m.fightAt ?? foe.at) > GIVE_UP_MS;
     if (!p || bored) {
-      // Nobody left to fight, or done with it: healed to full, home.
+      // Nobody left to fight, or done with it: home, hurt as it is (owner, 26 Oct 2026: it never heals back up; its
+      // damage tally and a Monobloc's lost chairs stay with its HP until it dies).
       this.endFight(m);
-      m.dealt?.clear();
-      m.chairsLost = 0; // (healed: its chairs back)
       if (m.kind.ambush) m.hideAt = now + m.kind.ambush.hideMs;
-      if (m.hp < m.maxHp) {
-        m.hp = m.maxHp;
-        events.push({ t: 'mob-heal', id: m.id, hp: m.hp });
-      }
       const [hc, hr] = m.home;
       const home = this.route(m, (c, r) => c === hc && r === hr, leash);
       if (home?.length) this.startHop(m, home, now, events);

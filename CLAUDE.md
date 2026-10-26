@@ -258,6 +258,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: the Lv 21-40 damage skills cheaper and quicker (26 Oct 2026, the owner): `skills.mpCost.damageByTier`
   places 7-12 40% less (rounded; + a sentence in its `rules`) and `skills.cooldownByUnlock` 21-40 a flat 8 s (was 15 s;
   its `note` and `unlocksAbove20` say so); the utilities unchanged.
+- `classes/dungeons.json` `silong.practiceRun`: `mobHpPct` 40 and `mobAtkPct` 35 (+ `mobPctNote`; 26 Oct 2026, the owner: a
+  practice run nerfed, as the Warrens' practice; was `mobHpAtkPct` 60); `kusingPct` 50, `retryHours` 24 (+ `gateNote`) and
+  its `loot` text (the normal loot; was XP and Kusing only); `silong.loot.mobGearChance` 0.12 (+ `mobGearNote`; was the
+  Old Market's 3%).
+- `classes/dungeons.json` `silong.lastBoss.exitWarp` [[51,29],[52,29],[51,30],[52,30]] (+ `exitWarpNote`; 26 Oct 2026, the
+  owner: B3's way out once the Ice Machine falls).
 - `classes/dungeons.json` silong B2 Sangkalancelot's `shell`: `share` 0.5, `openMs` 3000 (+ `note`; 26 Oct 2026, the owner:
   he blocked more than he took; was every front hit blocked, open 1.2 s).
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
@@ -810,7 +816,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (in its zone, on its level; players are sorted per zone once a tick). Sticky aggro (CONTEXT.md Aggro; stats.json mobBehaviour.aggro, a repo change 26 Oct 2026 that replaced targetPriority; tested in town-mobs.test.ts and town-golem.test.ts): an aggressive mob's target is the first player to step within its aggro range (`MobRoom.watch` notes when each did: `seen`; several at once, the nearest), a passive one's the first to hit it (`struck` → `rally`; `hitters` by first hit); hits never switch it; it lets them go past `keepTiles` (6, from its body's edge for a boss: `away`), gone, knocked out, out of its zone or past its leash (`keeps`) and takes the next within its aggro range at once (`nextFoe`: aggressive the longest there, passive the earliest hitter, a field boss the earliest hitter in its arena, then the nearest), else gives up; a passive one gets bored GIVE_UP_MS after the last hit by anyone (`fightAt`); a taunt sets the target and it stays after; a director's flying mob asks `retarget` (the Manananggal's upper half); the golem's target is its first hitter while they're in its fight, then the earliest other hitter there (`firstHits`), then the nearest, a taunter kept after. It goes to the nearest free tile within
   its reach (`rangeTiles`: melee 1, the Wire Tangle zaps from 4) and attacks every `attackEverySeconds` (2 s) (`mob-attack` with its `dir`, its `hit`
   rolled against the player (Player HP, below) and on a hit the Bag's `slow` ms); it gives up when they leave its zone, are more than `leashTiles` (10) from its spawn (it can't follow further), or (passive) after 12 s without a
-  hit: healed to full (`mob-heal` {id, hp}) it walks home; at 0 it dies (`mob-hit` dead: its death pose, gone)
+  hit: it walks home with the HP it has left (never healed back up, its `dealt` and a Monobloc's lost chairs kept: owner,
+  26 Oct 2026; `mob-heal` is only a boss's reset now, `healFull`); at 0 it dies (`mob-hit` dead: its death pose, gone)
   and is back as above. The game shows damage numbers (`world/damage-number.ts` `floatNumber`, 16 world px, players' 14 / yours 17; a crit gold at 22,
   dropping in big and slamming down with a gold ring, a shake, then rising: reduced motion just big and gold; "Blocked" off a shell; "Miss"), an HP bar
   of its `maxHp` over it while it's your target and for `hpBar.hideAfterSeconds` (5 s, `mobBarMs`) after each hit (`Mob.hitAt`), in the target's info bar, its death pose then a fade out. A mob's attack
@@ -1158,8 +1165,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   elevator of the deepest floor reached (town.ts `respawn` sends `silong-go`). The key's spent once a mini boss falls
   (until then no XP or quest credit from its mobs, and a run that ends gives it back, kv 'silong-open' through
   restarts); closes when time's up, 3 min after the last boss (PR 3), or 2 min empty (`silong-out`: back beside the
-  hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given once by palengke-15's rewards):
-  solo, 60% HP and ATK. Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
+  hatch, `arrive.silong`). A practice run (the bound Practice Susi ng Silong, given by palengke-15's rewards):
+  solo, 40% HP and 35% ATK (dungeons.json `practiceRun.mobHpPct` / `mobAtkPct`, a repo change 26 Oct 2026; was 60% both),
+  the normal loot with half its Kusing (`kusingPct`). A real run needs a practice run cleared first (26 Oct 2026, the
+  owner: `SilongAccess.practiced` = quests.flags `silong-practice-cleared` (SILONG_FLAGS.practiced, set as the Ice Machine
+  falls in one: `cleared(team, practice)`, the page's `silong-cleared` `practice`) or `silong-cleared`; else the hatch's
+  `blocked` 'practice' and its line, open / join refused 'practice'); one failed: Mang Pido's "🔑 Practice Cellar Key"
+  (TownScene `needsPracticeKey`; `silong-practice-key` → adventure.ts `practiceKeyFor`: palengke-15 done, not practiced,
+  none held, no practice run open, `practiceRun.retryHours` (24) after the last he gave, `silong-practice-key:<ms>`). Game: `world/silong.ts` `SilongView` (the cages and door drawn by it: `silongDrawn`; lamp
   glows), `ui/silong.ts` (the hatch's panel, the tracker with a row per floor, the ride prompts), the cold blue tint,
   the Palengke's hatch label, click and glow after palengke-14 (the hatch and the Warren Gate: a left or right click or a tap on one is its own, `entranceBoxes` / `entranceClick`, never also the map's walk to the tile under it, and asks for the panel again even when it showed before; E beside one opens it again). Its mini bosses' moves (part 2, 21 Oct 2026: bot
   `web/town-silong-bosses.ts` `FloorBosses`, each floor's MobRoom director, numbers from their `mechanics`, tested):
@@ -1184,12 +1197,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   between them and the fan: `shielded`; `data.chill` 2 for part 4), Belt Rush (a line down one belt, `data.belt`,
   `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
   the Frost at 75 / 50 / 25% (the plant's west side), its enrage at 25% (moves 1.3× sooner); it down: the run cleared,
-  `boss-move` 'melt' on every floor. Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
+  `boss-move` 'melt' on every floor; B3's way out then (26 Oct 2026, the owner: like the Warrens' clear warp; dungeons.json
+  `lastBoss.exitWarp`, a 2x2 east of its body clear of its loot; `SilongView.openExit`: the Warren Gate's exit art and
+  portal frost-tinted, its sheets queued on B3; a click (left, right or a tap) walks you onto it; stepping on it while
+  the run is cleared sends `silong-leave`, TownScene `gateOn`, so `silong-out` takes you up beside the hatch). Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
   block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
   bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
   `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
-  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; a practice run Kusing only) and the Great
+  in 10; town.ts `silongDrop`, everything on the floor for anyone on it; room mobs a Lv 40 piece at `loot.mobGearChance` 12%, a
+  repo change 26 Oct 2026, was the Old Market's 3%; a practice run the same, Kusing halved) and the Great
   Scale's Susi ng Silong 1 in 4 (`fieldBossLoot`'s `key`); Chill (CONTEXT.md Chill; shared `chillRules` / `chillMove` /
   `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Freezer Breath's
   (`FloorBosses.chilled`) and the Brine Flood's 1 a second, cleared by walking 1 s (`stepped`), a lamp within 2, a

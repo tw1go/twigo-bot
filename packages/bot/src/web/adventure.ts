@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { AdventureState, ClassesFile, EquipPlace, Item, QuestDef, QuestReward, QuestsFile, StatName, TownAdventureResponse, TownEquipAction, TownForgeAction, TownForgeResponse, TownPointsAction, TownQuestAction, TownSkillsAction, CosmeticPlace, TownPetAction } from '@mikazuki/shared';
-import { type ShopEvents, type PalengkeData, addToBag, markCutscene, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
+import { type ShopEvents, type PalengkeData, addToBag, markCutscene, advanceCollects, ringBell, buyCosmetic, dishOf, dishPrice, dishRefusal, PRACTICE_KEY_FLAG, RAMON, SILONG_FLAGS, countOf, expireItems, finishQuest, freeDishOf, itemName, heldCount, objectiveCount, offeredBy, palengkeQuests, questItemDrops, startDaily, startInArea, takeFromBag, unlockedAt } from '@mikazuki/shared';
 import { STAT_NAMES, bagSlots, classSkills, classBuffs, buffSkillLevels, damageSkillLevels, skillLevelOf, equipFromBag, giveGear, giveQuestRewards, giveQuestPieces, questKill, questVisit, areasBeen, readyToReport, withLeveling, missingTraining, moveUnlock, newItem, placesFor, swapTrainingGear, trainingGear, takeKind, unequipToBag, wearCheck, COSMETIC_PLACES, wearCosmetic, unwearCosmetic, wornItems, gainPetXp, petAction, petIdOf, petRules } from '@mikazuki/shared';
 import { db } from '../db/db.js';
 import { type LevelGain, type SavedProgress, addXp, freshProgress, killXp, levelTo, progressView, raiseSkill, refundPoints, resetSkillPoints, resetStatPoints, spendPoint } from './progress.js';
@@ -550,9 +550,11 @@ export const usePracticeSusiFor = (userId: string): boolean => useKindFor(userId
 export const refundPracticeSusiFor = (userId: string): boolean => refundKindFor(userId, PRACTICE_SUSI);
 
 /** Who may come into Ang Silong: "Now's the Time" done, and how many Practice Susi they hold. */
-export function silongAccessOf(userId: string): { done: boolean; practiceKeys: number } {
+export function silongAccessOf(userId: string): { done: boolean; practiceKeys: number; practiced: boolean } {
   const s = load(userId);
-  return { done: s.quests.done.includes(SILONG_QUEST), practiceKeys: heldCount(s.bag, PRACTICE_SUSI) };
+  // (A real run needs a practice run cleared; the Cellar cleared before that rule counts.)
+  const flags = s.quests.flags ?? [];
+  return { done: s.quests.done.includes(SILONG_QUEST), practiceKeys: heldCount(s.bag, PRACTICE_SUSI), practiced: flags.includes(SILONG_FLAGS.practiced) || flags.includes(SILONG_FLAGS.cleared) };
 }
 
 /** A Susi ng Silong from Aling Conching (after the Great Scale's finale): its Kusing spent, the key into the bag. Null:
@@ -687,10 +689,36 @@ function flag(s: AdventureState, f: string): boolean {
   return true;
 }
 
-/** They were inside as Ang Makinang Yelo fell: cleared Ang Silong (Aling Conching's Atchara refill at half price). */
-export function silongClearedFor(userId: string): void {
+/** They were inside as Ang Makinang Yelo fell: cleared Ang Silong (Aling Conching's Atchara refill at half price); in a
+ *  practice run, cleared the practice (the real Cellar opens to them). */
+export function silongClearedFor(userId: string, practice = false): void {
   const s = load(userId);
-  if (flag(s, SILONG_FLAGS.cleared)) save(userId, s);
+  if (flag(s, practice ? SILONG_FLAGS.practiced : SILONG_FLAGS.cleared)) save(userId, s);
+}
+
+/** Mang Pido's Practice Cellar Key again (a practice run that wasn't cleared): once "Now's the Time" is done, while the
+ *  practice isn't cleared and none is held, `retryHours` after the last he gave (the quest's own doesn't count). Null:
+ *  given; else why not. (The town checks first that no practice run of theirs is open.) */
+export function practiceKeyFor(userId: string, now = Date.now()): string | null {
+  const data = loadItemData();
+  const def = data.defs.get(PRACTICE_SUSI);
+  const hours = loadDungeons().silong?.practiceRun.retryHours ?? 24;
+  return withItems(
+    userId,
+    (s): string | null => {
+      const flags = (s.quests.flags ??= []);
+      if (!s.quests.done.includes(SILONG_QUEST)) return "It isn't time yet.";
+      if (flags.includes(SILONG_FLAGS.practiced) || flags.includes(SILONG_FLAGS.cleared)) return "You've had your practice. Go on down for real.";
+      if (heldCount(s.bag, PRACTICE_SUSI)) return 'You still have a Practice Cellar Key.';
+      const last = flags.find((f) => f.startsWith(PRACTICE_KEY_FLAG));
+      const wait = last ? Number(last.slice(PRACTICE_KEY_FLAG.length)) + hours * 3_600_000 - now : 0;
+      if (wait > 0) return `Come back in ${Math.ceil(wait / 3_600_000)} h for another Practice Cellar Key.`;
+      if (!def || !takeLoot(data, s, { item: newItem(data.stats, def, newUid()) }, newUid)) return 'Your bag is full.';
+      s.quests.flags = [...flags.filter((f) => !f.startsWith(PRACTICE_KEY_FLAG)), `${PRACTICE_KEY_FLAG}${now}`];
+      return null;
+    },
+    (why) => why === null,
+  );
 }
 
 /** Mang Ramon's box on B2: his note into their bag (its quest pocket), unless they hold it or have handed it in. */

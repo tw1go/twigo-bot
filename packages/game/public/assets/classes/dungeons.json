@@ -1491,6 +1491,8 @@
    "art": "mobs/makinang-yelo/ (Mac PixelLab view, flipped; script animations)",
    "facing": "down-left (screen SW) only",
    "moves": false,
+   "exitWarp": [[51, 29], [52, 29], [51, 30], [52, 30]],
+   "exitWarpNote": "Repo addition (owner, 26 Oct 2026): like the Warrens' clear warp, the way out once the Ice Machine falls: these 2x2 tiles on B3 beside it (east of its body, clear of where its loot lands round its fan), drawn with the Warren Gate's exit art (frost-tinted); stepping on them leaves the run (back beside the Cellar Hatch).",
    "tile": [
     44,
     28
@@ -1579,18 +1581,25 @@
   "practiceRun": {
    "from": "the free key from palengke-15",
    "once": true,
-   "mobHpAtkPct": 60,
+   "mobHpPct": 40,
+   "mobAtkPct": 35,
+   "kusingPct": 50,
+   "retryHours": 24,
+   "gateNote": "Repo change (owner, 26 Oct 2026): a real run needs a practice run cleared first (the Ice Machine down in one); a practice run drops the normal loot with half its Kusing (kusingPct), as the Warrens' practice; Mang Pido gives another Practice Cellar Key retryHours after the last, while none is held, no practice run is open and the practice isn't cleared.",
+   "mobPctNote": "Repo change (owner, 26 Oct 2026): a practice run nerfed to 40% of the mobs' and bosses' HP and 35% of their ATK, as the Warrens' practice (was mobHpAtkPct 60).",
    "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Freezer Breath warning (hide behind an ice block)",
    "ramonBox": {
     "tile": "the R mark on B2 (Meat Lockers, far corner)",
     "click": "opens a short note: Mang Ramon hid his honest weights down here",
     "gives": "quest item ramon-note; hand it to Kuya Jun for a short scene and a free Mid Repair Kit"
    },
-   "loot": "XP and Kusing only (no gear, whetstones or keys)"
+   "loot": "the normal loot, its Kusing at kusingPct (repo change 26 Oct 2026; was XP and Kusing only, no gear, whetstones or keys)"
   },
   "loot": {
    "shared": "like the Warrens: drops on the floor for the run, first come; Kusing split like other party Kusing",
    "gearLevel": 40,
+   "mobGearChance": 0.12,
+   "mobGearNote": "Repo change (owner, 26 Oct 2026): room mobs drop a Lv 40 gear piece 12% of kills (was the Old Market's 3%).",
    "gearClass": "a class picked at random from the classes of the players inside",
    "miniBoss": {
     "rolls": "one per player inside at the kill",

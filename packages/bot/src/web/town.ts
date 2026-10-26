@@ -270,8 +270,11 @@ export interface TownOptions {
     keys: { count(userId: string): number; use(userId: string): boolean; refund?(userId: string): boolean };
     practice?: { use(userId: string): boolean; refund?(userId: string): boolean };
     access?(userId: string): SilongAccess;
-    /** Those inside as Ang Makinang Yelo fell: they've cleared Ang Silong (its Atchara refill after). */
-    cleared?(members: string[]): void;
+    /** Those inside as Ang Makinang Yelo fell: they've cleared Ang Silong (its Atchara refill after), or in a practice
+     *  run its practice (the real Cellar opens to them). */
+    cleared?(members: string[], practice: boolean): void;
+    /** Mang Pido's Practice Cellar Key again: null given, else why not. */
+    practiceKey?(userId: string): string | null;
     /** Mang Ramon's box (his note) and Kuya Jun's thanks for it (null, given; else why not). */
     ramon?: { box(userId: string): 'given' | 'have' | 'done' | 'full'; give(userId: string): string | null };
     /** A Susi ng Silong from Aling Conching's menu (after the finale): null, bought; else why not. */
@@ -981,10 +984,10 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // Cleared just now: everyone inside has cleared Ang Silong (Aling Conching's Atchara refill at half price).
         if (was !== 'cleared' && srun.phase === 'cleared') {
           const team = silongInside(srun).map((x) => x.member);
-          opts.silong?.cleared?.(team);
+          opts.silong?.cleared?.(team, srun.practice);
           for (const member of team) {
             const o = conns.get(member);
-            if (o) send(o, { t: 'silong-cleared' });
+            if (o) send(o, { t: 'silong-cleared', ...(srun.practice ? { practice: true } : {}) });
           }
         }
       }
@@ -1769,6 +1772,16 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       case 'silong-up':
       case 'silong-ramon':
         return silongMessage(c, m);
+      case 'silong-practice-key': {
+        // Mang Pido's Practice Cellar Key again, in the Old Market (never while a practice run of theirs is open).
+        if (!opts.silong?.practiceKey || c.room !== PALENGKE) return;
+        const why = SL?.runOf(c.userId)?.practice ? 'Finish your practice run first.' : opts.silong.practiceKey(c.userId);
+        if (!why) {
+          console.log(`[silong] ${c.userId} got a Practice Cellar Key from Mang Pido`);
+          tellItems(c);
+        }
+        return send(c, { t: 'silong-practice-key', ok: !why, message: why ?? 'Here, take another Practice Cellar Key. Clear it this time, then the Cellar is yours.' });
+      }
       case 'ramon-give': {
         // Mang Ramon's note to Kuya Jun, in the Lumang Palengke.
         if (!opts.silong?.ramon || c.room !== PALENGKE) return;

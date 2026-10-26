@@ -20,7 +20,7 @@ import { FloorBosses } from './town-silong-bosses.js';
 //   (scaling); a mini boss with no living player in its room for bossResetSeconds heals to full. Death: back after 3 s
 //   at the arrival elevator of the deepest floor reached (the host's respawn).
 // • The opener's key (a Susi ng Silong; a practice run's Practice Susi) counts as spent only once a mini boss falls:
-//   until then the run's mobs give nothing, and a run that ends gives it back. A practice run (60% HP and ATK) is solo.
+//   until then the run's mobs give nothing, and a run that ends gives it back. A practice run (40% HP, 35% ATK) is solo.
 // • It closes when time's up, 3 minutes after the last boss falls, or after 2 minutes with nobody inside; everyone still
 //   in goes back up to the Market Hall beside the hatch.
 // Pure (the host gives the clock, who's where, the party and the quest), tested in town-silong.test.ts.
@@ -217,7 +217,7 @@ export class SilongRun {
     /** The opener's party (the host's key for it), or null: a solo run. */
     readonly party: unknown,
     now: number,
-    /** A practice run (the Practice Susi ng Silong: 60% HP and ATK, solo). */
+    /** A practice run (the Practice Susi ng Silong: 40% HP, 35% ATK, solo). */
     readonly practice = false,
   ) {
     this.room = `silong:${id}`;
@@ -231,11 +231,11 @@ export class SilongRun {
     for (const f of SILONG_FLOORS) this.placeBosses(this.floors[f], now);
   }
 
-  /** A mob's or boss's numbers in this run: a practice run's HP and ATK × practiceRun.mobHpAtkPct. */
+  /** A mob's or boss's numbers in this run: a practice run's HP × practiceRun.mobHpPct, ATK × mobAtkPct. */
   weaker<T extends { hp: number; atk: number }>(s: T): T {
     if (!this.practice) return s;
-    const k = this.S.practiceRun.mobHpAtkPct / 100;
-    return { ...s, hp: Math.max(1, Math.round(s.hp * k)), atk: Math.max(1, Math.round(s.atk * k)) };
+    const { mobHpPct, mobAtkPct } = this.S.practiceRun;
+    return { ...s, hp: Math.max(1, Math.round((s.hp * mobHpPct) / 100)), atk: Math.max(1, Math.round((s.atk * mobAtkPct) / 100)) };
   }
 
   /** Each room's mini boss on its tile (its room's mobs' art at miniBossLook.drawScale) with its guards beside it. (The
@@ -540,8 +540,8 @@ export class SilongRun {
 
   /** A kill's loot on a floor (silong.loot; all of it on the floor for anyone inside, first come): a mini boss's Kusing
    *  pile and a roll per player inside, Ang Makinang Yelo's heap for each (in front of its fan), a room mob's own; gear
-   *  for the classes of those inside, boosted by the highest Drop rate inside. A practice run: its Kusing only (XP and
-   *  Kusing, nothing else). */
+   *  for the classes of those inside, boosted by the highest Drop rate inside. A practice run: the same, its Kusing at
+   *  practiceRun.kusingPct (as the Warrens' practice). */
   lootFor(floor: SilongFloor, kill: MobKill, classes: (string | null)[], uid: () => string, random: () => number, plusRandom = random): { contents: LootContent[]; at: Tile } {
     const data = this.deps.fightData;
     const n = Math.max(1, this.inside.size);
@@ -553,7 +553,8 @@ export class SilongRun {
       : b
         ? { contents: silongMiniLoot(data, this.S, rooms.find((x) => x.miniBoss?.id === b.id)?.miniBoss ?? kill, classes, n, random, uid, plusRandom, boost), at: kill.at }
         : { contents: silongMobDrops(data, this.S, kill.kind, kill.level, rooms.find((x) => x.mobs.kind === kill.kind || x.mobs.kind === kill.kind.replace(/-frost$/, ''))?.mobs.kusing ?? 0, random, uid, plusRandom, boost), at: kill.at };
-    if (this.practice) r.contents = r.contents.filter((c) => 'kusing' in c);
+    const pct = this.S.practiceRun.kusingPct ?? 100;
+    if (this.practice && pct !== 100) r.contents = r.contents.map((c) => ('kusing' in c ? { kusing: Math.max(1, Math.round((c.kusing * pct) / 100)) } : c));
     return r;
   }
 
@@ -603,6 +604,8 @@ function guardSpots(floor: Floor, at: Tile, n: number): Tile[] {
 export interface SilongAccess {
   done: boolean;
   practiceKeys?: number;
+  /** A practice run cleared (or the Cellar itself, before the rule): a real run needs it. Not given: yes. */
+  practiced?: boolean;
 }
 
 const ANYONE: SilongAccess = { done: true };
@@ -660,9 +663,11 @@ export class Silong {
     for (const r of this.runs.values()) if (r.party === party) r.members.delete(member);
   }
 
-  private entryRefusal(level: number, a: SilongAccess): { reason: 'level' | 'quest'; message: string } | null {
+  /** Why a member can't come into a real run: their level, "Now's the Time" not done, no practice run cleared yet. */
+  private entryRefusal(level: number, a: SilongAccess): { reason: 'level' | 'quest' | 'practice'; message: string } | null {
     if (level < this.S.entry.minLevel) return { reason: 'level', message: `The Cellar is for Lv ${this.S.entry.minLevel} and up.` };
     if (!a.done) return { reason: 'quest', message: 'Mang Pido says it isn\'t time yet.' };
+    if (a.practiced === false) return { reason: 'practice', message: 'Clear a practice run first: beat the Ice Machine alone with a Practice Cellar Key (Mang Pido has one for you).' };
     return null;
   }
 
@@ -681,7 +686,7 @@ export class Silong {
   }
 
   /** Opens a run (a Susi ng Silong: `useKey`), or why not. It starts at once. */
-  open(member: string, name: string, level: number, useKey: () => boolean, now: number, a: SilongAccess = ANYONE): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'quest' | 'full' | 'key' | 'party'; message: string } {
+  open(member: string, name: string, level: number, useKey: () => boolean, now: number, a: SilongAccess = ANYONE): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'quest' | 'practice' | 'full' | 'key' | 'party'; message: string } {
     const no = this.entryRefusal(level, a);
     if (no) return { ok: false, ...no };
     if (this.runFor(member)) return { ok: false, reason: 'party', message: 'Your party already has a run open: join it instead.' };
@@ -705,7 +710,7 @@ export class Silong {
   }
 
   /** A party member joins their party's run (the invite's Join, or later at the hatch): no key. */
-  join(member: string, level: number, runId?: string, a: SilongAccess = ANYONE): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'quest' | 'gone' | 'party'; message: string } {
+  join(member: string, level: number, runId?: string, a: SilongAccess = ANYONE): { ok: true; run: SilongRun } | { ok: false; reason: 'level' | 'quest' | 'practice' | 'gone' | 'party'; message: string } {
     const asked = runId ? this.get(runId) : undefined;
     if (asked?.practice && asked.opener.member !== member) return { ok: false, reason: 'party', message: 'Practice runs are solo.' };
     const no = this.entryRefusal(level, a);

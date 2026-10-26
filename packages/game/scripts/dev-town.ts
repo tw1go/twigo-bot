@@ -116,7 +116,7 @@ export function devTown(): Plugin {
           return posts.map((_, i) => postKey(m, posts, i));
         });
       /** Each player's pretend quests (the page sends them: on connect with &kit=, then /__quests), for the Warren Gate. */
-      const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[] }>();
+      const questsOf = new Map<string, { active: { id: string; step: number }[]; done: string[]; flags?: string[] }>();
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
       const items = loadItemData();
       const gear = new Map<string, TownItems>();
@@ -446,6 +446,8 @@ export function devTown(): Plugin {
       );
       const warrensLive = loadWarrens(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const ramonDone = new Set<string>();
+      // Who has cleared a practice run of the Cellar here (the real one opens to them).
+      const practicedHere = new Set<string>();
       const silongLive = loadSilong(Object.fromEntries(classes.map((c) => [c.id, c.skills.map((k) => k.level)])));
       const town = attachTown(httpServer as Parameters<typeof attachTown>[0], {
         map: { size: json.size, spawn: json.spawn, blocked: json.blocked, avoid: Object.values((json.gates ?? {}) as Record<string, [number, number][]>).flat(), lanterns: lanternPostsOf(json) },
@@ -534,7 +536,9 @@ export function devTown(): Plugin {
           access: (name) => {
             const q = questsOf.get(name);
             const bag = gearOf(name).bag;
-            return { done: !q || q.done.includes('palengke-15'), practiceKeys: bag.reduce((n, i) => n + (i?.defId === 'practice-susi-ng-silong' ? (i.count ?? 1) : 0), 0) };
+            // (A practice run cleared here, or the page's pretend quests say so: ?practiced=1.)
+            const practiced = !q || practicedHere.has(name) || !!q.flags?.some((f) => f === 'silong-practice-cleared' || f === 'silong-cleared');
+            return { done: !q || q.done.includes('palengke-15'), practiceKeys: bag.reduce((n, i) => n + (i?.defId === 'practice-susi-ng-silong' ? (i.count ?? 1) : 0), 0), practiced };
           },
           buyKey: (name) => {
             const g = gearOf(name);
@@ -543,7 +547,17 @@ export function devTown(): Plugin {
             g.kusing -= 200_000;
             return null;
           },
-          cleared: (names) => server.config.logger.info(`[silong] cleared by ${names.join(', ')}`, { timestamp: true }),
+          cleared: (names, practice) => {
+            if (practice) for (const n of names) practicedHere.add(n);
+            server.config.logger.info(`[silong] ${practice ? 'practice ' : ''}cleared by ${names.join(', ')}`, { timestamp: true });
+          },
+          // Mang Pido's Practice Cellar Key again (in memory: no 24 h wait here).
+          practiceKey: (name) => {
+            const g = gearOf(name);
+            if (practicedHere.has(name)) return "You've had your practice. Go on down for real.";
+            if (g.bag.some((i) => i?.defId === 'practice-susi-ng-silong')) return 'You still have a Practice Cellar Key.';
+            return devGive(items, g, 'practice-susi-ng-silong', {}, devUid) ? null : 'Your bag is full.';
+          },
           // Mang Ramon's box and Kuya Jun's thanks on the kept bag (whether he has the note: in memory here).
           ramon: {
             box: (name) => {

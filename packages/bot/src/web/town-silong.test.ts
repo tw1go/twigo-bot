@@ -4,6 +4,7 @@ import { type PalengkeData, type QuestDef, mobName, palengkeQuests } from '@mika
 import type { MobKill } from './town-mobs.js';
 import { loadPalengkeLeveling } from './stats-data.js';
 import { Silong, type SilongInside, type SilongRun, loadSilong } from './town-silong.js';
+import { silongMobDrops } from './loot.js';
 
 // Ang Silong's runs (classes/dungeons.json silong, maps/silong-b1..b3.json) on the real data: opening (a key, the
 // quest, a practice run alone), the floors' mobs and mini bosses, the elevator down opening as a floor's mini bosses
@@ -33,7 +34,7 @@ function fell(run: SilongRun, floor: 'b1' | 'b2' | 'b3', boss: string, now: numb
   return r.kills.find((k) => k.id === info.id)!;
 }
 
-test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 60%', () => {
+test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a practice run alone at 40% HP and 35% ATK', () => {
   const s = silong();
   assert.equal(s.open('a', 'A', 36, () => true, 0).ok, false);
   const q = s.open('a', 'A', 40, () => true, 0, { done: false });
@@ -48,7 +49,8 @@ test('opening: Lv 37, "Now\'s the Time" done, a key; a party\'s for its party; a
   assert.ok(p.ok && p.run.practice && !p.run.party);
   const real = run.floors.b1.mobs.mobInfo('boss:atsarah', 0)!;
   const prac = p.run.floors.b1.mobs.mobInfo('boss:atsarah', 0)!;
-  assert.equal(prac.maxHp, Math.round(real.maxHp * 0.6));
+  assert.equal(prac.maxHp, Math.round(real.maxHp * 0.4));
+  assert.deepEqual(p.run.weaker({ hp: 1000, atk: 100 }), { hp: 400, atk: 35 });
   assert.equal(s.join('b', 40, p.run.id).ok, false, 'practice runs are solo');
 });
 
@@ -349,7 +351,7 @@ test('Call the Frost at 75%, 50%, 25% (two Frost Scales from the tanks side); it
 
 // ── Loot (silong.loot) ──
 
-test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear, 50,000 Kusing, Polished Whetstones, a key now and then; a practice run Kusing only', () => {
+test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear, 50,000 Kusing, Polished Whetstones, a key now and then; a practice run the same with half its Kusing', () => {
   let n = 0;
   const uid = () => `u${++n}`;
   const run = open(silong());
@@ -371,8 +373,38 @@ test('loot: a mini boss its pile and a roll a player; the Ice Machine Lv 40 gear
   const s = silong();
   const p = s.openPractice('z', 'Z', 40, () => true, 0);
   assert.ok(p.ok);
-  const only = p.run.lootFor('b1', fell(p.run, 'b1', 'atsarah', 0), ['stick'], uid, () => 0);
-  assert.ok(only.contents.length && only.contents.every((c) => 'kusing' in c), 'Kusing only');
+  const prac = p.run.lootFor('b1', fell(p.run, 'b1', 'atsarah', 0), ['stick'], uid, () => 0);
+  assert.ok(prac.contents.some((c) => 'item' in c && 'slot' in (L.deps.fightData.defs.get(c.item.defId) ?? {})), 'gear too');
+  assert.ok(prac.contents.some((c) => 'kusing' in c && c.kusing === Math.round(pile / 2)), 'half its pile');
+  assert.ok(items.some((i) => 'slot' in (L.deps.fightData.defs.get(i.defId) ?? {})), 'the Ice Machine drops gear');
+});
+
+test("a real run needs a practice run cleared: the hatch says so, opening and joining refuse; a practice run still opens", () => {
+  const s = silong();
+  const no = { done: true, practiceKeys: 1, practiced: false };
+  const g = s.gate('a', 40, 1, no);
+  assert.equal(g.blocked, 'practice');
+  assert.match(g.questLine ?? '', /practice run first/);
+  assert.ok(g.practice && !g.practice.blocked, 'the practice run on offer');
+  const o = s.open('a', 'A', 40, () => true, 0, no);
+  assert.ok(!o.ok && o.reason === 'practice');
+  const run = open(s, 'b');
+  const j = s.join('c', 40, run.id, no);
+  assert.ok(!j.ok && j.reason === 'practice', 'nor join a party run');
+  assert.ok(s.openPractice('a', 'A', 40, () => true, 0).ok);
+  assert.ok(s.open('d', 'D', 40, () => true, 0, { ...no, practiced: true }).ok, 'practiced: in');
+});
+
+test("the Cellar's room mobs: a Lv 40 gear piece at silong.loot.mobGearChance (12%), never the Old Market's 3% on top", () => {
+  let n = 0;
+  const uid = () => `u${++n}`;
+  const data = L.deps.fightData;
+  const gear = (r: number) => silongMobDrops(data, L.data, 'garapon-jars', 39, 1000, () => r, uid).filter((c) => 'item' in c && 'slot' in (data.defs.get(c.item.defId) ?? {}));
+  assert.equal(L.data.loot.mobGearChance, 0.12);
+  const hit = gear(0.1);
+  assert.equal(hit.length, 1);
+  assert.ok(hit.every((c) => 'item' in c && c.item.level === 40));
+  assert.equal(gear(0.2).length, 0, 'over 12%: none');
 });
 
 // ── Chill (floorRules.chill) ──

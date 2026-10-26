@@ -153,7 +153,7 @@ const TOPICS: Topic[] = [
       '• Get more than **6 tiles** from a mob that’s after you and it lets you go, turning to whoever else is close (the one there longest, or who hit it first)',
       '• A **Pot lid**’s taunt pulls a mob off anyone, and it stays on the Pot lid after the taunt ends. A second Pot lid can taunt it away',
       '• Hit one Bottle Cap and its **whole pack** comes for you',
-      '• Lead a mob more than **10 tiles** from where it lives and it gives up: it walks home and **heals to full**',
+      '• Lead a mob more than **10 tiles** from where it lives and it gives up: it walks home, **keeping the damage you did** (mobs never heal back up)',
       '• Mobs attack every **2 s** from the next tile; the Wire Tangle zaps from **4 tiles**. The Scrap Crab keeps its own pace, and its shell blocks every hit except just after it attacks',
       '• A mob’s **HP bar** shows while it’s your target and for **5 s** after a hit. Over players you only see your **party**’s bars and your own',
       '• A mob’s name is **grey** 5+ levels below you, **red** 3+ above, else white',

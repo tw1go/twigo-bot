@@ -225,7 +225,7 @@ Who a mob is after (its **target**), and how it keeps them. An aggressive mob ta
 sticks: hits from anyone else do damage and count for the kill, but never pull it off. It lets its target go once they
 are past its **target range** (6 tiles), gone, knocked out, out of its zone or past its leash, and at once takes the next
 player within its aggro range: an aggressive mob the one who has been there longest, a passive one whoever hit it
-earliest in this fight (never someone who never touched it). Nobody: it gives up, heals and walks home. A pack's first hit
+earliest in this fight (never someone who never touched it). Nobody: it gives up and walks home, keeping the HP it has left (it never heals back up; only a boss resets). A pack's first hit
 pulls every cap that isn't fighting yet onto that player. Only a taunt takes a target away. The field bosses keep
 theirs while they're in their fight. Class plays no part.
 _Avoid_: threat, hate, priority
@@ -825,8 +825,10 @@ _Avoid_: gate (alone, a gate is a map edge between maps: town ↔ Slums)
 The item a run costs, used up by whoever opens it; joining a party's run is free.
 
 **Practice run**:
-A run for one player alone, opened with a Practice Warren Ticket during Aling Nena's quest: the same map, mobs and
-bosses with weaker numbers and less Kusing; nobody else can join it. Barong-Barong drops her binoculars in it.
+A run for one player alone, opened with a practice key: the same map, mobs and bosses with weaker numbers and less
+Kusing, the same loot otherwise; nobody else can join it. The Warrens': a Practice Warren Ticket during Aling Nena's
+quest (Barong-Barong drops her binoculars in it). The Cellar's: a Practice Cellar Key from "Now's the Time", and
+clearing one (the Ice Machine down) is what opens the real Cellar; failed, Mang Pido gives another a day later.
 _Avoid_: tutorial run, easy mode
 
 **Clear time**:
