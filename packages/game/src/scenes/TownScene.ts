@@ -1642,7 +1642,7 @@ export class TownScene extends Phaser.Scene {
     if (!this.battleMap || !v || this.knockedOut) return;
     if (v.mp >= need && v.mp >= v.maxMp / 4) return;
     const now = this.time.now;
-    // The strongest MP Potion your level allows (Medium before Low), else any MP Potion.
+    // The strongest MP Potion your level allows (Large before Medium before Low), else any MP Potion.
     const S = adventureData()?.stats;
     const tiers = S ? itemStats(S).potions.tiers : {};
     const level = adventure()?.progress.level ?? 1;

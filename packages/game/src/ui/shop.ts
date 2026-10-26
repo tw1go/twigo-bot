@@ -392,7 +392,7 @@ function fakeBuy(id: string, quantity: number): TownShopBuyResponse {
 // ── Dev: the combat tabs (the dev town buys them from your items there: /__shop) ──
 
 /** Dev: the combat wares at your level, by the bot's own rules (shared combat-wares.ts: the Polished Whetstone and Mid
- *  Repair Kit from Lv 30, the Medium potions from Lv 10, the pet boxes, the tickets at dungeons.json's price). */
+ *  Repair Kit from Lv 30, the Medium potions from Lv 10, the Large from Lv 25, the pet boxes, the tickets at dungeons.json's price). */
 function fakeCombat(): TownShopItem[] {
   const D = itemData();
   if (!D) return [];

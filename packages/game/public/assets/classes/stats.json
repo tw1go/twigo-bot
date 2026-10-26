@@ -1198,7 +1198,7 @@
       "currency": "none, whetstones only"
     },
     "temper": { "minusPerTier": 2 },
-    "temperNote": "Repo addition (23 Oct 2026, the owner): a filled Temper Stone goes onto gear of its type at its own item level or above; each gear tier up it crosses (gearTiers: Low Lv 1-20, Mid 30-40) takes minusPerTier off its + (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). Shared forge.ts temperedPlus.",
+    "temperNote": "Repo addition (23 Oct 2026, the owner): a filled Temper Stone goes onto gear of its type at its own item level or above; each gear tier up it crosses (gearTiers: Low Lv 1-20, Mid 30-40) takes minusPerTier off its + (a Lv 10 +20 onto Lv 30 gear: +18; onto Lv 20: +20). Shared forge.ts temperedPlus. A Retainment Stone (items.json retainment-stone, 25 Oct 2026, Mac) in the Apply popup keeps the full +, used up only when the item is a gear tier up (forge.ts retainSaves).",
     "weaponAura": {
       "appliesTo": "weapons only, in hand and resting, all directions, visible to everyone; also the item icon",
       "tiers": [
@@ -1528,7 +1528,8 @@
   "potions": {
     "placeholder": true,
     "sellShare": 0.5,
-    "sellShareNote": "Repo addition (13 Oct 2026): HP and MP Potions sell from the combat bag for this share of their tier's kusing (Low 25, Medium 75 each), as many of a stack as you pick",
+    "sellShareNote": "Repo addition (13 Oct 2026): HP and MP Potions sell from the combat bag for this share of their tier's kusing (Low 25, Medium 75, Large 200 each), as many of a stack as you pick",
+    "highNote": "Repo change (25 Oct 2026, Mac): the high tier is the Large HP and MP Potions (items.json high-*-potion), sold from Lv 25 (was 50), healing 500 HP / 250 MP (were 350 / 200)",
     "tiers": {
       "low": {
         "minLevel": 1,
@@ -1543,9 +1544,9 @@
         "kusing": 150
       },
       "high": {
-        "minLevel": 50,
-        "hp": 350,
-        "mp": 200,
+        "minLevel": 25,
+        "hp": 500,
+        "mp": 250,
         "kusing": 400
       },
       "superior": {

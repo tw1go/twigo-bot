@@ -15,6 +15,8 @@ import {
   enhanceView,
   successFor,
   temperedPlus,
+  applyRefusal,
+  retainSaves,
   fragmentsFor,
   itemAura,
   itemName,
@@ -425,7 +427,7 @@ test('training gear sells from the bag for stats.json trainingGear.sellKusing; o
 });
 
 test('HP and MP Potions sell for half their tier\'s price (stats.json potions.sellShare), as many of a stack as asked; the rest stays', () => {
-  assert.deepEqual(['low-hp-potion', 'low-mp-potion', 'mid-hp-potion', 'mid-mp-potion'].map((id) => potionSellPrice(D.stats, thing(id))), [25, 25, 75, 75]);
+  assert.deepEqual(['low-hp-potion', 'low-mp-potion', 'mid-hp-potion', 'mid-mp-potion', 'high-hp-potion', 'high-mp-potion'].map((id) => potionSellPrice(D.stats, thing(id))), [25, 25, 75, 75, 200, 200]);
   const low = newItem(D.stats, thing('low-hp-potion'), 'low', 10);
   const mid = newItem(D.stats, thing('mid-mp-potion'), 'mid', 4);
   assert.equal(sellPrice(D, low), 250, 'the whole stack');
@@ -624,6 +626,75 @@ test('Temper Stone up the gear tiers: Lv 10 +20 onto Lv 20 keeps +20, onto Lv 30
   two.s.bag.push(mid0);
   assert.equal(forge(D, two.s, { action: 'apply', item: mid0.uid, stone: two.stone.uid }, always(0), uid).message, 'Its +2 is too little to carry up a tier.');
   assert.equal(mid0.plus, 0);
+});
+
+test('Retainment Stone: a Lv 10 +20 onto Lv 30 gear keeps +20 and uses one of each stone; without it +18 and none; the same tier ignores it; none in the bag refused, nothing changed; a + too little for the tier carries whole; weapons, armor and accessories alike', () => {
+  const RET = 'retainment-stone';
+  const count = (s: ReturnType<typeof holder>, id: string) => s.bag.filter((b) => b.defId === id).reduce((n, b) => n + b.count, 0);
+  const draw = (id: string, plus: number, retainments = 0) => {
+    const s = holder([piece(id, plus)]);
+    tools(s, 'temper-stone', 1);
+    if (retainments) tools(s, RET, retainments);
+    forge(D, s, { action: 'draw', item: s.bag[0].uid }, always(0), uid);
+    return { s, stone: s.bag.find((b) => b.defId === 'temper-stone-filled')! };
+  };
+  const apply = (s: ReturnType<typeof holder>, to: Item, stone: Item, retain?: boolean) => forge(D, s, { action: 'apply', item: to.uid, stone: stone.uid, ...(retain ? { retain } : {}) }, always(0), uid);
+  // With one: the full +, both stones used.
+  for (const [from, onto] of [['weapon-crude-slingshot', 'weapon-fine-stick'], ['armor-tin-body', 'armor-bronze-body'], ['acc-shell-necklace', 'acc-amber-necklace']] as const) {
+    const { s, stone } = draw(from, 20, 2);
+    const to = piece(onto, 0);
+    s.bag.push(to);
+    assert.ok(retainSaves(D.stats, stone, to));
+    assert.equal(temperedPlus(D.stats, stone, to, true), 20);
+    const r = apply(s, to, stone, true);
+    assert.equal(r.outcome, 'applied', `${onto}: ${r.message}`);
+    assert.equal(to.plus, 20, onto);
+    assert.match(r.message, /kept by the Retainment Stone/);
+    assert.deepEqual([count(s, 'temper-stone-filled'), count(s, RET)], [0, 1], `${onto}: one of each used`);
+  }
+  // Without it: +18, the Retainment Stone kept.
+  {
+    const { s, stone } = draw('weapon-crude-slingshot', 20, 1);
+    const to = piece('weapon-fine-stick', 0);
+    s.bag.push(to);
+    apply(s, to, stone);
+    assert.deepEqual([to.plus, count(s, RET)], [18, 1]);
+  }
+  // The same tier: nothing to save, so it's ignored and kept.
+  {
+    const { s, stone } = draw('weapon-crude-slingshot', 20, 1);
+    const to = piece('weapon-sturdy-stick', 0);
+    s.bag.push(to);
+    assert.equal(retainSaves(D.stats, stone, to), false);
+    const r = apply(s, to, stone, true);
+    assert.deepEqual([r.outcome, to.plus, count(s, RET)], ['applied', 20, 1]);
+  }
+  // None in the bag: refused, nothing changed.
+  {
+    const { s, stone } = draw('weapon-crude-slingshot', 20);
+    const to = piece('weapon-fine-stick', 3);
+    s.bag.push(to);
+    const r = apply(s, to, stone, true);
+    assert.deepEqual([r.ok, r.message], [false, 'You need a Retainment Stone.']);
+    assert.deepEqual([to.plus, count(s, 'temper-stone-filled')], [3, 1]);
+  }
+  // A + too little to carry up a tier carries whole with one (and is refused without).
+  for (const plus of [1, 2]) {
+    const { s, stone } = draw('weapon-crude-slingshot', plus, 1);
+    const to = piece('weapon-fine-stick', 0);
+    s.bag.push(to);
+    assert.equal(applyRefusal(D, to, stone), `Its +${plus} is too little to carry up a tier.`);
+    assert.equal(applyRefusal(D, to, stone, true), null);
+    assert.equal(apply(s, to, stone, true).outcome, 'applied');
+    assert.deepEqual([to.plus, count(s, RET)], [plus, 0]);
+  }
+  // The store sells it in Smithing for Kowens after the Temper Stones; `retain` parses as a boolean only.
+  const w = combatWares(D, 1);
+  const at = (id: string) => w.findIndex((x) => x.def.id === id);
+  assert.deepEqual([w[at(RET)].tab, w[at(RET)].currency, w[at(RET)].cost], ['smithing', 'kowens', 100]);
+  assert.ok(at(RET) > at('temper-stone'));
+  assert.deepEqual(parseForgeAction({ action: 'apply', item: 'a', stone: 'b', retain: true }), { action: 'apply', item: 'a', stone: 'b', retain: true });
+  assert.deepEqual(parseForgeAction({ action: 'apply', item: 'a', stone: 'b', retain: 'yes' }), { action: 'apply', item: 'a', stone: 'b' });
 });
 
 test('enhancing higher gear: each try\'s odds 10% lower (of themselves) for Mid gear (Lv 30-40), as the table for Low (Lv 1-20); luck adds after', () => {

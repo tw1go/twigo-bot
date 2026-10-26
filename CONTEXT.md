@@ -427,6 +427,16 @@ An item's bonus to its next enhance, grown by each failure and cleared by a succ
 **Broken**:
 An item that failed an enhance past +15: it keeps its plus but gives nothing until repaired with a Repair Kit.
 
+**Temper Stone**:
+A stone that draws an item's plus out (an empty one) and puts it onto another item of the same type at its item level or
+higher (a filled one); each gear tier up the item is takes 2 off the plus. The item it goes onto loses its own.
+_Avoid_: transfer stone, plus scroll
+
+**Retainment Stone**:
+A stone put beside a filled Temper Stone so the plus carries up a gear tier whole; used up only when it saves something
+(never on the same tier).
+_Avoid_: protection stone, keep stone
+
 **Agimat**:
 A charm with one stat and level, set into an item's agimat slot for good.
 _Avoid_: gem, socket, rune
@@ -447,6 +457,11 @@ _Avoid_: drop (the act), item (once picked up)
 **HP Potion / MP Potion**:
 Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the
 sari-sari potions.
+
+**Potion tier**:
+Low, Medium or Large: how much an HP or MP Potion heals and from what level it's sold and can be drunk (Large from Lv
+25). In data the Large tier is `high`.
+_Avoid_: small / big, grade
 
 **Sari-sari potion**:
 One of the four potions sold at the sari-sari store for Kowens: Kalawang Potion (thrown at a house's Bakod to rust
