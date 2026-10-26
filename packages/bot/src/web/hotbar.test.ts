@@ -13,7 +13,7 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { HOTBAR_ROWS, cleanHotbar, hotbarsOf, isClassId, saveHotbar } = await import('./hotbar.js');
+const { HOTBAR_ROWS, cleanHotbar, hotbarLockOf, hotbarsOf, isClassId, saveHotbar, saveHotbarLock } = await import('./hotbar.js');
 const { closeDatabase } = await import('../db/db.js');
 
 test.after(() => {
@@ -53,4 +53,26 @@ test('saved per member and class, the same back from hotbarsOf; another class or
   assert.deepEqual(hotbarsOf('ben'), {});
   assert.equal(saveHotbar('ana', 'slingshot', 'nonsense'), null);
   assert.deepEqual(hotbarsOf('ana').slingshot.main[0], { t: 'skill', name: 'Quick Shot' }); // (a refused save changes nothing)
+});
+
+test('open slots: a potion in the 1–0 row and a skill in the - = ~ row are kept where they are', () => {
+  const skill = { t: 'skill', name: 'Quick Shot' };
+  const potion = { t: 'item', id: 'low-hp-potion', name: 'Low HP Potion', emoji: '🧪', rarity: 'common', cooldown: 'potion-hp' };
+  const clean = cleanHotbar({ main: [potion, skill], util: [skill, null, potion], top: [potion] })!;
+  assert.deepEqual(clean.main.slice(0, 2), [potion, skill]);
+  assert.deepEqual(clean.util, [skill, null, potion]);
+  assert.deepEqual(clean.top[0], potion);
+  assert.deepEqual(saveHotbar('m-open', 'slingshot', { main: [potion], util: [skill] })?.util[0], skill);
+  assert.deepEqual(hotbarsOf('m-open').slingshot.main[0], potion);
+});
+
+test('the hotbar lock: one switch per member (every class), a boolean only; never set: left out', () => {
+  assert.equal(hotbarLockOf('m-lock'), undefined);
+  assert.equal(saveHotbarLock('m-lock', true), true);
+  assert.equal(hotbarLockOf('m-lock'), true);
+  assert.equal(saveHotbarLock('m-lock', 'yes'), false, 'not a boolean: refused');
+  assert.equal(hotbarLockOf('m-lock'), true, 'unchanged');
+  assert.equal(saveHotbarLock('m-lock', false), true);
+  assert.equal(hotbarLockOf('m-lock'), false);
+  assert.equal(hotbarLockOf('someone-else'), undefined);
 });

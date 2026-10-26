@@ -484,6 +484,23 @@ _Avoid_: drop (the act), item (once picked up)
 Bottles that heal at once from the hotbar, each kind with its own cooldown; never just "potions", which are the
 sari-sari potions.
 
+**Hotbar**:
+The two rows of slots at the bottom of the screen (1–0 and - = ~, then the Alt row), each slot's key a keybind. Any slot
+holds a skill or an HP / MP Potion (sari-sari potions never go on it); a class's first bar has its skills in the first
+ten.
+_Avoid_: action bar, skill bar
+
+**Hotbar lock**:
+A player's switch (the padlock on the bar, or Settings → Game) that keeps everything on their hotbar where it is: nothing
+dragged off, moved or swapped, nothing dropped onto a filled slot. Empty slots still fill (a skill or potion put there, a
+new skill as it unlocks), and every slot still works. One switch for every class and device.
+_Avoid_: freeze, pin
+
+**Keybind**:
+An action's keys (two at most): a key, or the middle, back or forward mouse button, with Ctrl, Alt or Shift if held. Left
+and right click are never keybinds (left uses things, right walks). Kept for every device.
+_Avoid_: hotkey, shortcut
+
 **Sari-sari potion**:
 One of the four potions sold at the sari-sari store for Kowens: Kalawang Potion (thrown at a house's Bakod to rust
 half of it away), Tago Tonic (30 minutes the Tanod can't see you gamble), Swerte Elixir (your next 3 digs reroll junk

@@ -592,7 +592,13 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   what differs from the defaults); Settings → Keybinds: click a key, press the new one (Esc never mind, Backspace none; a
   key another action had moves over, with a toast), Reset all. Everything listening asks `matches` / `actionOf` /
   `held`; labels (hotbar slots, emote picker, quest tracker, bag and Skills buttons) follow `keyLabel` on 'mk-keys'.
-  Enter (chat), Escape, Tab and the arena's 1–3 stay fixed.
+  Enter (chat), Escape, Tab and the arena's 1–3 stay fixed. Mouse buttons (26 Oct 2026; CONTEXT.md Keybind): the middle,
+  back and forward buttons bind like keys ('MouseMiddle', 'Mouse4', 'Mouse5', with Ctrl+/Alt+/Shift+: `comboOfMouse`;
+  shown "Mouse 3/4/5"); the press hub (window capture mousedown / mouseup) hands each on as a keydown / keyup with that
+  code, so every listener answers it (walking held, charge-ups) and Settings' capture binds it (a left or right click
+  still cancels); back / forward never navigate (mousedown, mouseup and auxclick prevented everywhere), the middle
+  button's autoscroll prevented on the game. Target's second key is MouseMiddle by default (TownScene's hard-wired
+  middle button is gone). Left and right click can't be bound. Safari on a Mac sends no back / forward button events.
 - Emotes (`ui/emotes.ts` picker beside the chat input, keys F1–F8; `EmotePop` in `ui/labels.ts`): the art's emote
   icons over the head for ~2 s (laugh also cheers, wave waves); `emote` goes to the others, rate-limited; its sound yours
   always, someone else's only within hearing (`playFrom`: 12 tiles, a little quieter).
@@ -1825,8 +1831,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   (`pickForHotbar`), and the hotbar rises over the panels while one is carried (`hb-dragging`, `hb-picking`,
   `hb-lesson`). Forge answers reach listeners (`onForge`). Dev: each pretend login has its own id (`dev:<name>`);
   `?quest=tanod-01`, `?give=rough-whetstone-fragment::10`, `__town.scene.trail`.
-- Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena): bottom row 10 skill slots
-  (keys 1–0) and 3 for potions/usables (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled "Alt+1"…) for either.
+- Hotbar (`ui/hotbar.ts`, bottom centre, members, hidden on phones and in the casino/arena; CONTEXT.md Hotbar): bottom
+  row 10 slots (keys 1–0) and 3 more (- = `, shown ~), evenly spaced; top row 13 more (Alt + the same keys, labelled
+  "Alt+1"…). Any slot takes a skill or a usable (26 Oct 2026: the rows' old rule, skills in 1–0 and potions in - = ~, is
+  gone; saved bars load as they were; a slot dragged onto another is a plain swap); a class's first bar has its skills
+  in the first ten; a new Lv 21-40 skill takes the first empty slot in key order (main, util, top: `KEY_ORDER`, the
+  auto-cast's order too). The hotbar lock (CONTEXT.md Hotbar lock; `ui/hotbar-lock.ts`: localStorage `mk_hotbar_lock`,
+  the server's wins: bot `web/hotbar.ts` kv `hotbarLock:<userId>`, `/me` `hotbarLocked`, `POST /town/hotbar-lock
+  { locked }`, tested in hotbar.test.ts): the padlock tab over the bar's right edge (`.hb-lockbtn`, inline pixel SVG;
+  left of ▲ where that shows) and Settings → Game's "Lock hotbar" are one switch; locked, slots aren't draggable, nothing
+  is dropped off, swapped or put on a filled slot ("Your hotbar is locked.", once every 3 s), empty slots still fill.
+  Slot key labels follow `shortKeyLabel` (a mouse button "M4", "Sh+M4").
   A level-up that unlocks skills (the town's `progress`, TownScene `newSkills`): a toast each with its icon ("New skill
   unlocked: Dash! Open Skills (K) …"), one after another, and a gold dot on the K button until the panel opens (`markNew`).
   Hovering a skill (a hotbar slot, a Skills panel row) shows its details card (`ui/skill-tip.ts`, the item tooltip's

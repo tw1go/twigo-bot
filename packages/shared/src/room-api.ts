@@ -123,6 +123,8 @@ export interface MeResponse {
   questPieces?: Item[];
   /** Their hotbars, one per class they've arranged (saved by POST /town/hotbar; the same on every device). */
   hotbars?: Record<string, HotbarLayout>;
+  /** Their hotbar locked (CONTEXT.md Hotbar lock; POST /town/hotbar-lock, every class and device); left out: never set. */
+  hotbarLocked?: boolean;
   /** Their keybinds: only the actions changed from the defaults, each its two keys (null = none); saved by
    *  POST /town/keybinds, the same on every device. */
   keybinds?: KeybindMap;

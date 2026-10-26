@@ -57,6 +57,7 @@ import { setPrivacy, setPrivacyLink } from '../net/privacy';
 import { setTesting, setTestingLink, testing } from '../net/testing';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
+import { syncHotbarLock } from '../ui/hotbar-lock';
 import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
@@ -1292,6 +1293,7 @@ export class TownScene extends Phaser.Scene {
       if (this.me?.status === 'ok' && !fakeLogin()) {
         hotbar.setSynced(this.me.me.hotbars ?? {});
         syncKeybinds(this.me.me.keybinds ?? {}, (keys) => queueSave('/town/keybinds', { keys }));
+        syncHotbarLock(this.me.me.hotbarLocked, (locked) => queueSave('/town/hotbar-lock', { locked }));
       }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => hotbar.root.remove());
       hotbar.setClass(classInfo(adventure()?.cls) ?? null);
@@ -3710,11 +3712,9 @@ export class TownScene extends Phaser.Scene {
       this.pressAt = { x: p.x, y: p.y };
       if (p.wasTouch) { this.touchDownAt = performance.now(); this.touchHoldTile = null; }
       if (import.meta.env.DEV) console.log('[touch] down wasTouch=%s leftButton=%s', p.wasTouch, p.leftButtonDown());
-      // The middle button: as Z (the nearest mob, again: the next). Never the browser's autoscroll.
-      if (p.middleButtonDown()) {
-        p.event.preventDefault();
-        if (this.mobs && !this.intro && !this.inside) this.mobs.targetNext(this.player.tile);
-      }
+      // The middle button: never the browser's autoscroll. What it does is its keybind's (Target by default: the press
+      // hub in ui/keybinds.ts hands it on as a key).
+      if (p.middleButtonDown()) p.event.preventDefault();
     });
     watchClicks(this.game.canvas);
     // Touch hold-walk: after TAP_MS of holding, dragging the finger walks continuously toward the pointer tile.
@@ -3728,7 +3728,7 @@ export class TownScene extends Phaser.Scene {
       this.moveTo({ col, row });
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-      if (p.button === 1) return; // the middle button only targets
+      if (p.button === 1 || p.button === 3 || p.button === 4) return; // (the middle, back and forward buttons: keybinds)
       if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
       if (this.watching) return; // (a cutscene: the map isn't yours to click)
       if (p.wasTouch) {
@@ -3784,7 +3784,7 @@ export class TownScene extends Phaser.Scene {
       // Pick up (F) and Space: the nearest loot in reach; Space otherwise enters, sits or talks as ever.
       if (matches('pickup', e) && !e.repeat) this.pickUpNearest();
       else if (matches('interact', e) && !(e.code === 'Space' && !e.repeat && this.pickUpNearest())) this.interact();
-      // Target (Z, or the middle button): the nearest mob (again: the next nearest); Escape lets it go.
+      // Target (Z, or the middle button: a keybind like any key): the nearest mob (again: the next nearest); Escape lets it go.
       if (this.mobs && matches('target', e) && !e.repeat) this.mobs.targetNext(this.player.tile);
       // The Map menu (M): to look at; again closes it.
       if (matches('map', e) && !e.repeat) {

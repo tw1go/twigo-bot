@@ -1842,6 +1842,10 @@
       #hotbar .hb-book:hover, #hotbar .hb-book[aria-expanded='true'] { background: #7C2AE8; color: #fff; }
       #hotbar .hb-book { position: relative; }
       #hotbar .hb-expand { display: none; } /* portrait-phone only; shown in the media block below */
+      /* The lock (ui/hotbar-lock.ts): a small tab over the bar's right edge, the ▲ tab's look; left of ▲ where that shows. */
+      body.hotbar-on #hotbar .hb-lockbtn { position: absolute; top: -26px; right: 0; padding: 4px 10px 3px; line-height: 0; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; cursor: var(--cur-hand, pointer); }
+      body.hotbar-on #hotbar .hb-lockbtn:hover { background: #1E1B3A; }
+      body.hotbar-on #hotbar .hb-lockbtn svg { image-rendering: pixelated; }
       #hotbar .hb-book.hb-new::after { content: ''; position: absolute; top: -4px; right: -4px; width: 8px; height: 8px; border-radius: 50%; background: #FCDA4A; box-shadow: 0 0 0 2px #0B0A1A; }
       #skill-book { position: fixed; right: 12px; top: 50%; z-index: 3; display: flex; flex-direction: column; width: 336px; max-height: calc(100vh - 220px); box-sizing: border-box; padding: 10px 12px 12px; border: 2px solid #7C2AE8; background: rgba(17, 24, 39, 0.97); color: #E6E9F2; font: calc(13px * var(--text))/1.3 var(--ui-font); transform: translateY(-50%); }
       #skill-book[hidden] { display: none; }
@@ -1899,6 +1903,7 @@
         /* Expand toggle: small tab above the hotbar's right edge */
         body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
         body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #hotbar .hb-lockbtn { right: 48px; }
         body.hotbar-on #hotbar .hb-slot, body.hotbar-on #hotbar .hb-book { width: 100%; height: 40px; box-sizing: border-box; }
         body.hotbar-on #hotbar .hb-slot { border-width: 4px; border-image-width: 4px; }
         body.hotbar-on #hotbar .hb-slot .it-frame { margin: -4px; }
@@ -1926,6 +1931,7 @@
         body.hotbar-on #hotbar .hb-key { display: none; }
         body.hotbar-on #hotbar .hb-expand { display: block; position: absolute; top: -26px; right: 0; padding: 2px 14px 3px; border: 1px solid #3D4256; border-bottom: none; border-radius: 3px 3px 0 0; background: #111827; color: #C4B5FD; font: 700 calc(12px * var(--text))/1 var(--ui-font); cursor: var(--cur-hand, pointer); }
         body.hotbar-on #hotbar .hb-expand:hover { background: #1E1B3A; color: #E6E9F2; }
+        body.hotbar-on #hotbar .hb-lockbtn { right: 48px; }
         body.hotbar-on #skill-book:not([hidden]) { display: flex; top: 8px; bottom: 52px; transform: none; max-height: none; }
         body.hotbar-on #skill-book .sb-stage { height: 100px; overflow: hidden; }
         body.hotbar-on #skill-book .sb-stage > * { transform: translateY(-76px); }

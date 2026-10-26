@@ -42,3 +42,8 @@ test('saved per member; an empty map (a reset) is kept as empty; a refused save 
   saveKeybinds('ana', {});
   assert.deepEqual(keybindsOf('ana'), {});
 });
+
+test('mouse buttons bind like keys: the middle, back and forward buttons, with a modifier too', () => {
+  const clean = cleanKeybinds({ target: ['KeyZ', 'MouseMiddle'], main1: ['Mouse4', null], map: ['KeyM', 'Shift+Mouse5'], pickup: ['Ctrl+Alt+Mouse4'] })!;
+  assert.deepEqual(clean, { target: ['KeyZ', 'MouseMiddle'], main1: ['Mouse4', null], map: ['KeyM', 'Shift+Mouse5'], pickup: ['Ctrl+Alt+Mouse4'] });
+});

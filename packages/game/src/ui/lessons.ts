@@ -64,9 +64,9 @@ const picked = (uid: string | undefined) => !!cellOf(uid)?.classList.contains('i
 /** The details row's button with that label (Wear, Combine, Put on hotbar). */
 const action = (label: string) => [...document.querySelectorAll<HTMLButtonElement>('#inventory .iv-detail .iv-act')].find((b) => b.textContent?.trim() === label && shown(b)) ?? null;
 const forgeOpen = () => shown($('#forge'));
-/** The first empty hotbar slot a potion fits (- = ~, then the top row). (A slot pulsing for a lesson lifts the hotbar
- *  over the bag and the equipment panel, which can cover it on a short screen.) */
-const freeSlot = () => [...document.querySelectorAll<HTMLElement>('#hotbar .hb-slot.hb-util.hb-free'), ...document.querySelectorAll<HTMLElement>('#hotbar .hb-slot.hb-top.hb-free')].find(shown) ?? null;
+/** The first empty hotbar slot for a potion (any slot takes one: - = ~ first, then the top row, then 1–0). (A slot
+ *  pulsing for a lesson lifts the hotbar over the bag and the equipment panel, which can cover it on a short screen.) */
+const freeSlot = () => (['util', 'top', 'main'] as const).flatMap((row) => [...document.querySelectorAll<HTMLElement>(`#hotbar .hb-slot.hb-${row}.hb-free`)]).find(shown) ?? null;
 /** The bag's key after "Open your bag" (none on a touch screen). */
 const bagKey = () => (keyLabel('bag') && !matchMedia('(hover: none) and (pointer: coarse)').matches ? ` (${keyLabel('bag')})` : '');
 
