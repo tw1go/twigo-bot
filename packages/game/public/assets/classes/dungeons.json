@@ -1123,7 +1123,10 @@
        "mechanics": [
         {
          "id": "shell",
-         "rule": "the Chomper block: 100% of hits from its front quarter are blocked, except for 1.2 s after each Cleaver Charge"
+         "rule": "the Chomper block: half of every hit from its front quarter is taken off (in place of the Chomper's own), none for 3 s after each Cleaver Charge",
+         "share": 0.5,
+         "openMs": 3000,
+         "note": "Repo change (owner, 26 Oct 2026): he blocked more than he took. Was 100% of front hits blocked (and the Chomper's own half on top while open), open 1.2 s after a charge."
         },
         {
          "id": "cleaverCharge",

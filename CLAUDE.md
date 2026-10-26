@@ -264,6 +264,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Old Market's 3%).
 - `classes/dungeons.json` `silong.lastBoss.exitWarp` [[51,29],[52,29],[51,30],[52,30]] (+ `exitWarpNote`; 26 Oct 2026, the
   owner: B3's way out once the Ice Machine falls).
+- `classes/dungeons.json` silong B2 Sangkalancelot's `shell`: `share` 0.5, `openMs` 3000 (+ `note`; 26 Oct 2026, the owner:
+  he blocked more than he took; was every front hit blocked, open 1.2 s).
 - `classes/stats.json`: `skills.moveDodge` (Step Back dodges every hit for 500 ms; 17 Oct 2026) and `classes/classes.json`
   Step Back's `desc` saying so.
 - The mailbox (16 Oct 2026): `maps/town.json`'s `mailbox` object at (33,28), its blocked tile and `doors.mailbox` (33,29)
@@ -1177,8 +1179,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Delemon's Brine Splash (its hit slows to 70%: `PlayerLanding.slowFactor`, `Vitals.slow`'s factor, the page's `slowMe`
   too) and Lid Spin (out and back along its line), Sakristan's Rice Rain (each circle's spilled rice:
   `MobRoom.spill`) and Belly Flop (he lands there), Mono Lisa's Chair Barrage and Split (two fakes, blocked, all three
-  small: Mobs `rescale`, a glint on her; gone after 6 s), Sangkalancelot's shell (`MobRoom.frontBlock` 100% from his
-  front, open 1.2 s after each Cleaver Charge) and his hook shadows from 50%, Frosty Tubbs' Ambush (under the ice:
+  small: Mobs `rescale`, a glint on her; gone after 6 s), Sangkalancelot's shell (`MobRoom.frontBlock`: half of a hit
+  from his front off, in place of the Chomper's own, open 3 s after each Cleaver Charge: the shell's `share` / `openMs`
+  in dungeons.json, a repo change 26 Oct 2026; was every front hit blocked, open 1.2 s) and his hook shadows from 50%, Frosty Tubbs' Ambush (under the ice:
   `setFlags` hidden) and Ice Slick (a cone of ice for 5 s), the calls; a mini boss's moves stop as it resets or falls.
   The ice slide (page only, TownScene `iceSlide`): stopping on the floor's `ice` or Ice Slick's tiles you slide 2 more
   tiles the way you were going (`SLIDE_TILES`), stopping at walls. Game: `world/silong.ts` draws the moves (Mac's

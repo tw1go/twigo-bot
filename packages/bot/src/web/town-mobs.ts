@@ -1711,8 +1711,10 @@ export class MobRoom {
     this.struck(m, player, now);
     if (this.opts.director?.hit) this.pending.push(...this.opts.director.hit(m.id, by.level, now));
     if (m.blockAll || (m.kind.shell && now >= m.openUntil)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
-    // A director's front block (its shell): all of a hit from its front, unless it's open.
-    if (m.frontBlock && m.frontBlock.share >= 1 && now >= m.frontBlock.openUntil && from && this.fromFront(m, [mc, mr], from, now)) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
+    // A director's front block (its shell, in place of its kind's): its share off a hit from its front (all of it:
+    // blocked), nothing while it's open.
+    const shell = m.frontBlock ? (now >= m.frontBlock.openUntil && !!from && this.fromFront(m, [mc, mr], from, now) ? m.frontBlock.share : 0) : null;
+    if (shell !== null && shell >= 1) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, blocked: true };
     // (Its debuffs: Armor Crack and Provoke take DEF off; Marked makes every hit on it harder.)
     const D = this.debuffOf(m, now);
     const on = D.defPct ? { ...m.stats, def: m.stats.def * Math.max(0, 1 + D.defPct) } : m.stats;
@@ -1722,8 +1724,8 @@ export class MobRoom {
     if (miss) return { id: m.id, damage: 0, crit: false, hp: m.hp, dead: false, miss };
     // A front block (the Chomper always, the Payong while it opens): its share off a hit from the quarter it faces.
     const B = m.kind.block;
-    const reduced = !!B && !!from && (!B.frames || (m.attackAt !== undefined && now - m.attackAt <= (m.kind.openMs ?? 0))) && this.fromFront(m, [mc, mr], from, now);
-    const damage = reduced ? Math.max(1, Math.round(rolled.damage * B!.share)) : rolled.damage;
+    const reduced = shell !== null ? shell > 0 : !!B && !!from && (!B.frames || (m.attackAt !== undefined && now - m.attackAt <= (m.kind.openMs ?? 0))) && this.fromFront(m, [mc, mr], from, now);
+    const damage = reduced ? Math.max(1, Math.round(rolled.damage * (shell !== null ? 1 - shell : B!.share))) : rolled.damage;
     if (m.dealt) m.dealt.set(member, (m.dealt.get(member) ?? 0) + Math.min(damage, m.hp));
     m.hp = Math.max(0, m.hp - damage);
     if (m.hp === 0) {
