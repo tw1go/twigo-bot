@@ -1278,8 +1278,11 @@ export function attachTown(server: Server, opts: TownOptions): Town {
       }
       return;
     }
+    // Their first word about where they are (`here`: a gate's way in, the hatch, a Lantern Post) is taken as their spot;
+    // anything else before it (a turn, a chat line) leaves it be. (A `face` sent before the welcome reached them used to
+    // spend it: up out of the Cellar they were snapped back to the Old Market's spawn.)
     const fresh = c.fresh;
-    c.fresh = false;
+    if (m.t === 'here' || m.t === 'step' || m.t === 'sit' || m.t === 'stand' || m.t === 'move') c.fresh = false;
     // Knocked out: they can't walk, sit, move or fight until they respawn (chat and the rest go on).
     if (p.out) {
       if (m.t === 'here' || m.t === 'step' || m.t === 'sit') return send(c, { t: 'snap', col: p.col, row: p.row });

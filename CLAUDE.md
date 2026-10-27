@@ -130,8 +130,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 
 - The Old Market and the Cellar toughened (25 Oct 2026, the owner): `classes/stats.json` `mobs.list` the eight Old Market
   mobs' and the Great Scale's `hp` ×2 and `atk` ×1.4 (+ `mobs.toughenedNote`), `mobBehaviour.greatScale.hpPerPlayer` 1.5 (its
-  HP × that ^ players in the Old Market, never under the table's: town-great-scale.ts `hpFor`, MobRoom `setMaxHp`, a
-  `mob-scale`), `classes/palengke-leveling.json` its three mini bosses the same, `classes/dungeons.json` silong's every room
+  HP × that ^ players in the Old Market, the knocked out and loading too (MobDirector.tick's `present`, as the golem's;
+  27 Oct 2026: counting only those standing, it lost a third of its HP with each knocked out), never under the table's:
+  town-great-scale.ts `hpFor`, MobRoom `setMaxHp`, a `mob-scale`), `classes/palengke-leveling.json` its three mini bosses the same, `classes/dungeons.json` silong's every room
   mob, mini boss and the Ice Machine the same (+ `toughenedNote`).
 - `classes/stats.json`: `growth.pointsPerLevelUp` 2 and `growth.pointsGoTo` all three stats (+ `pointsNote`; 25 Oct 2026, the
   owner: was 1 a level-up, main and second only).
@@ -1713,7 +1714,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   while their page still loaded): every join sets `Conn.loadingUntil` (LOADING_MS 30 s, `TownOptions.loadingMs`), so
   `watching` holds for them as for a cutscene (left out of the mobs' tick, nothing lands) until the page sends `ready`
   (TownScene `reveal`, and again on a reconnect's welcome; handled before `fresh`, so it's never taken for their `here`)
-  or they attack; `ready` also `forget`s hits rolled meanwhile; tested in town-vitals.test.ts (its pretend page sends
+  or they attack; `ready` also `forget`s hits rolled meanwhile; only a move (here / step / sit / stand / move) takes
+  `fresh`, so a `face` sent before the welcome never costs them their `here` (27 Oct 2026: up out of the Cellar they were
+  snapped to the Old Market's spawn; the page also sends no turn before its welcome, TownScene `welcomed`); tested in town-vitals.test.ts (its pretend page sends
   `ready` on welcome). 0 HP: knocked out (`knocked-out` to the room; no here/step/sit/face/move,
   `attack-refused` 'out'; left out of the mobs' tick, so mobs walk home and the golem looks elsewhere; `forget` drops
   hits on their way), after `RESPAWN_MS` 3 s `respawn` at the room's arrival tile (the Slums' spawn = `arrive.town`),
