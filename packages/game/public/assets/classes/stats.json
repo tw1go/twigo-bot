@@ -1715,7 +1715,7 @@
       "white": "otherwise",
       "red": "mob 3+ levels above"
     },
-    "greatScale": { "hpPerPlayer": 1.5, "hpPerPlayerNote": "Repo addition (25 Oct 2026, the owner): the Great Scale's HP is the mob table's x hpPerPlayer^(players in the Old Market), never under the table's, kept up to date as they come and go (its HP % stays), as the golem's" },
+    "greatScale": { "hpPerPlayer": 1.5, "hpPerPlayerNote": "Repo addition (25 Oct 2026, the owner): the Great Scale's HP is the mob table's x hpPerPlayer^(players in the Old Market, the knocked out too: 27 Oct 2026), never under the table's, kept up to date as they come and go (its HP % stays), as the golem's" },
     "golem": {
       "leavesPit": false,
       "resetAfterSecondsEmpty": 30,

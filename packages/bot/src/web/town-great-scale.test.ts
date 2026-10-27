@@ -312,3 +312,12 @@ test("its HP grows with the players in the Old Market, like the golem's (×1.5 e
   assert.equal(max(), Math.round(row.hp * 1.5 ** 3));
   assert.equal(scale.hpFor(0), row.hp);
 });
+
+test('its most HP counts everyone in the Old Market, the knocked out too (as the golem): one standing of five is five players', () => {
+  const { room, scale } = setup(0);
+  const where = new Map<string, [number, number]>([['A', beside(4)]]);
+  for (let t = 0; t <= 500; t += 250) room.tick(t, where, new Map([['A', guard]]), 5);
+  assert.equal(room.mobInfo(boss.id, 500)!.maxHp, scale.hpFor(5), 'five in the room, one standing');
+  for (let t = 750; t <= 1250; t += 250) room.tick(t, where, new Map([['A', guard]]), 1);
+  assert.equal(room.mobInfo(boss.id, 1250)!.maxHp, scale.hpFor(1), 'the others gone: one');
+});

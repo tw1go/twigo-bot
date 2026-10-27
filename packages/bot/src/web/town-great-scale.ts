@@ -198,13 +198,15 @@ export class GreatScale implements MobDirector {
 
   // ── The director (the Palengke's mob room's) ──
 
-  tick(now: number, players: ReadonlyMap<string, Tile>): MobEvent[] {
+  tick(now: number, players: ReadonlyMap<string, Tile>, present = players.size): MobEvent[] {
     const room = this.room;
     if (!room) return [];
     const events: MobEvent[] = [];
-    // Its mob: there from the start, asleep; its most HP for the players in the Old Market (its share kept).
+    // Its mob: there from the start, asleep; its most HP for everyone in the Old Market (its share kept), the knocked out
+    // too, as the golem's: counting only those standing, its HP fell by a third with each knocked out, so a big fight's
+    // Great Scale melted as players fell.
     if (!room.mobInfo(this.id, now)) events.push(...this.place(now, true));
-    events.push(...room.setMaxHp(this.id, this.hpFor(players.size)));
+    events.push(...room.setMaxHp(this.id, this.hpFor(present)));
     // Moves landing now.
     const due = this.pending.filter((p) => p.at <= now);
     if (due.length) {

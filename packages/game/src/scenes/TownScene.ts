@@ -535,6 +535,9 @@ export class TownScene extends Phaser.Scene {
   private settleFrom = 0;
   private smoothFrames = 0;
   private gotWelcome = false;
+  /** This connection's welcome has come (each reconnect waits for its own): till then nothing about where you are or
+   *  which way you face goes out, so your `here` is the first word the server hears (it takes no other as your spot). */
+  private welcomed = false;
   private gotMobs = false;
   private linkDown = false;
 
@@ -3323,6 +3326,7 @@ export class TownScene extends Phaser.Scene {
         this.closedAreas = m.closed ?? {}; // (maps not open yet: their gates say when)
         this.setRestored(m.restored ?? null); // (the Lantern Posts you've restored: the rest drawn broken)
         this.gotWelcome = true;
+        this.welcomed = true;
         if (this.revealed) link.send({ t: 'ready' }); // (a reconnect: loaded already, so no arrival safety)
         // (Knocked out when the link dropped: the server has you up again, full.)
         if (this.knockedOut) {
@@ -3454,6 +3458,7 @@ export class TownScene extends Phaser.Scene {
     link.onStatus = (up) => {
       reconnecting(!up);
       if (!up) this.linkDown = true; // (no server to wait for while it settles)
+      if (!up) this.welcomed = false;
     };
     link.onKicked = (until) => {
       playSound('error');
@@ -3492,7 +3497,7 @@ export class TownScene extends Phaser.Scene {
   /** Turning on the spot, sitting down and standing up (steps go out as they start; see connect). */
   private tellServer(): void {
     const link = this.link;
-    if (!link) return;
+    if (!link || !this.welcomed) return;
     const p = this.player;
     if (p.isSitting && !this.sent.sit) {
       const t = p.tile;

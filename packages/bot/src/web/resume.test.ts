@@ -88,3 +88,42 @@ test('over the town\'s socket: each arrival keeps its area (the town as the neig
     server.close();
   }
 });
+
+test("over the town's socket: the first word about where they are is taken as their spot, a turn sent before it or not (up out of the Cellar: beside the hatch, not the spawn)", async () => {
+  const server = createServer();
+  const palengke = loadTownMap('palengke');
+  attachTown(server, {
+    map: loadTownMap(),
+    rooms: { palengke: () => palengke },
+    authenticate: async (req) => new URL(req.url ?? '/', 'http://x').searchParams.get('as'),
+    profile: (name) => ({ nickname: name, title: { name: 'Townfolk', color: '#fff' }, outfit: {} as never }),
+  });
+  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
+  const port = (server.address() as AddressInfo).port;
+  const got: { t: string }[] = [];
+  const ws = await new Promise<WebSocket>((ok, no) => {
+    const w = new WebSocket(`ws://127.0.0.1:${port}/ws?as=mara&room=palengke`);
+    // (A page whose first frames turn it before the welcome reaches it: its `face` goes out first.)
+    w.on('open', () => w.send(JSON.stringify({ t: 'face', dir: 'nw' })));
+    w.on('message', (d) => {
+      const m = JSON.parse(String(d));
+      got.push(m);
+      if (m.t === 'welcome') ok(w);
+    });
+    w.on('error', no);
+  });
+  try {
+    // Beside the Cellar Hatch (palengke.json arrive.silong), far from the Old Market's spawn.
+    const [c, r] = [120, 126];
+    ws.send(JSON.stringify({ t: 'here', col: c, row: r, dir: 'nw' }));
+    await new Promise((ok) => setTimeout(ok, 200));
+    assert.ok(!got.some((m) => m.t === 'snap'), 'their spot taken, not snapped back to the spawn');
+    // Once placed, a second `here` is no teleport.
+    ws.send(JSON.stringify({ t: 'here', col: palengke.spawn[0], row: palengke.spawn[1], dir: 'nw' }));
+    await new Promise((ok) => setTimeout(ok, 200));
+    assert.ok(got.some((m) => m.t === 'snap'), 'a later here is refused');
+  } finally {
+    ws.close();
+    server.close();
+  }
+});

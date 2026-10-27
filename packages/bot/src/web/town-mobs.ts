@@ -132,7 +132,8 @@ export type MobEvent =
 /** A Scrap Warrens run's say over its room's mobs (town-warrens.ts): its bosses' moves on the room's clock. */
 export interface MobDirector {
   /** Each tick (players: where each one up is, by town id): what its bosses do; events to send. */
-  tick(now: number, players: ReadonlyMap<string, [number, number]>): MobEvent[];
+  /** `present`: everyone in the room, the knocked out and loading too (a field boss's HP follows it, as the golem's). */
+  tick(now: number, players: ReadonlyMap<string, [number, number]>, present?: number): MobEvent[];
   /** A mob's HP fell (a hit or a burn's tick), or it died: its thresholds (calls, vanish, hunker, enrage); events. */
   hurt(id: string, now: number): MobEvent[];
   /** A player's hit is about to land on a mob (a miss too: it starts the fight), by a fighter of `level`: before it's
@@ -145,7 +146,7 @@ export interface MobDirector {
 export function bothDirectors(...ds: (MobDirector | null | undefined)[]): MobDirector {
   const all = ds.filter((d): d is MobDirector => !!d);
   return {
-    tick: (now, players) => all.flatMap((d) => d.tick(now, players)),
+    tick: (now, players, present) => all.flatMap((d) => d.tick(now, players, present)),
     hurt: (id, now) => all.flatMap((d) => d.hurt(id, now)),
     hit: (id, level, now) => all.flatMap((d) => d.hit?.(id, level, now) ?? []),
   };
@@ -1159,7 +1160,7 @@ export class MobRoom {
       for (const h of e.hits ?? []) this.landings.push({ at, player: h.id, by: e.id, damage: h.damage, ...(h.miss ? { miss: true } : {}) });
       for (const id of e.blinded ?? []) this.landings.push({ at, player: id, by: e.id, damage: 0, blind: e.blindMs });
     }
-    if (this.opts.director) events.push(...this.opts.director.tick(now, players));
+    if (this.opts.director) events.push(...this.opts.director.tick(now, players, present));
     // Who each zone's mobs could notice (a few players at most: looked up once a tick, not per mob): an aggressive one
     // notes who comes within its aggro range, and goes for the first there.
     const watched = new Map<MobZoneData, [string, [number, number]][]>();
