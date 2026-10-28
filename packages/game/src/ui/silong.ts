@@ -12,7 +12,7 @@ import { toast } from './toast';
 // - "Going down?": someone stepped into the open elevator down: Ride along / Stay, while it waits.
 // - The arrival elevator's box: the floors above the run has reached, to ride up alone.
 // - Mang Pido on his radio (`pidoSays`, once a run each, kept in the tab): the first Chill, the first work lamp, the B3
-//   door, the first Freezer Breath. Mang Ramon's note (`showRamonNote`).
+//   door, the first Cold Vents (its moment keeps the breath's name). Mang Ramon's note (`showRamonNote`).
 
 const gateLine = (minLevel: number) => `Lv ${minLevel}+ · solo or party · needs 1 Cellar Key (back if no mini boss falls)`;
 
@@ -228,7 +228,7 @@ export const PIDO_LINES = {
   chill: "Pido here. It's cold down there. Don't stand still too long: keep moving, or stay by a lamp.",
   lamp: 'Those work lamps are warm. Stand by one when the cold gets to you.',
   door: 'The Ice Tanks door is open. The machine is through there. Be careful.',
-  breath: 'Hide behind the ice!',
+  breath: 'Stand beside the ice blocks!',
 } as const;
 export type PidoMoment = keyof typeof PIDO_LINES;
 

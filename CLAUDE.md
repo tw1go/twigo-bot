@@ -178,7 +178,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `polished-whetstone` (5 Kowens), `polished-whetstone-fragment`, `mid-repair-kit` (20 Kowens; Mac), their icons the same;
   Ang Silong's (23 Oct 2026, the owner): B1's jar mini boss is Delemon (was Atsarah: dungeons.json and the floors'
   layout), the Ice Machine's body on the Ice Plant's north wall (the layout's K, cols 40-49; `bossTile` and
-  `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7); the B3 door opens as the
+  `lastBoss.tile` [44,28]; two pallets to its old corner), its Freezer Breath 10 tiles (was 7; gone since 28 Oct 2026: Cold Vents); the B3 door opens as the
   closed door mirrored (world/silong.ts `swingOpen`), the art folder's silong-door-open left unused.
   `maps/palengke.json` its `opensAt` (+ `opensAtNote`; 25 Oct 2026, the owner: the Old Market opens 26 Oct 2026 9:00 AM
   Manila, see the Lumang Palengke below), the Entrance plaza's 85 more props (24 Oct 2026, the owner: two baletes, carts, umbrellas, Aling
@@ -1195,29 +1195,37 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   on B3, `last`): placed on its body's (K) middle, still and silent, its reach as far as the body goes (5) so the tiles
   round it are next to it, with Call the Frost's two Frost Scales by its fan (the map's `bossTile`, [44,28]: its body moved to the middle of the Ice Plant's north wall, cols 40-49, and the fan under the middle of its face, 23 Oct 2026; the breath 10 tiles long, its art scaled to it: `breathScale`); Ice Block
   Drop (tiles under up to 3 players, 5 enraged; each a wall on the floor's map for 12 s: `iceBlocks`, then open again),
-  Freezer Breath (a 120° cone of 7 from the fan along +row, i.e. down-left; nothing for whoever an ice block stands
-  between them and the fan: `shielded`; `data.chill` 2 for part 4), Belt Rush (a line down one belt, `data.belt`,
-  `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
+  Cold Vents (28 Oct 2026, the owner, in place of the Freezer Breath, the rework in dungeons.json `lastBoss.reworkNote`:
+  every standable tile of the Ice Plant vents but the pocket round each standing ice block, `data.pockets`; its hit and
+  `data.chill` 2 on whoever stands on a vented tile, `data.vented`; none standing: a 2-block drop first), Frost Sweep
+  (bands of 3 rows from the north wall, a boss-move each keyed `:k`, landing 0.7 s apart), Icicle Chase (a radius-1
+  circle on each player's tile, then the next on where they stand as it lands, 3 each, keyed `:id:k`), Intake (from
+  90%: 5 pulls a tile toward the fan every 0.5 s unless an ice block is on the line, `shielded`, then the Fist Slam on
+  radius 3; the pulls and the ice blocks' shove are `boss-pull`, applied to the players' tiles in web/town.ts where
+  the room's events are sent, slid on the page), ice blocks 3x and the rest 2.5x what they were, Belt Rush (a line down
+  one belt, `data.belt`, `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
   the Frost at 75 / 50 / 25% (the plant's west side), its enrage at 25% (moves 1.3× sooner); it down: the run cleared,
   `boss-move` 'melt' on every floor; B3's way out then (26 Oct 2026, the owner: like the Warrens' clear warp; dungeons.json
   `lastBoss.exitWarp`, a 2x2 east of its body clear of its loot; `SilongView.openExit`: the Warren Gate's exit art and
   portal frost-tinted, its sheets queued on B3; a click (left, right or a tap) walks you onto it; stepping on it while
   the run is cleared sends `silong-leave`, TownScene `gateOn`, so `silong-out` takes you up beside the hatch). Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
-  block on the walk grid and its break; the breath's warn at the fan then `breath`; the brine on every flooded tile;
+  block on the walk grid and its break; the vents' safe pockets outlined then the plumes (one per 2 x 2 of the even
+  grid) with `breath`; the sweep's frost rolling over each band; the icicles timed to their frame 4; Intake's whirl
+  at the fan then its slam ring; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
   bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
   `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
   in 10; town.ts `silongDrop`, everything on the floor for anyone on it; room mobs a Lv 40 piece at `loot.mobGearChance` 12%, a
   repo change 26 Oct 2026, was the Old Market's 3%; a practice run the same, Kusing halved) and the Great
   Scale's Susi ng Silong 1 in 4 (`fieldBossLoot`'s `key`); Chill (CONTEXT.md Chill; shared `chillRules` / `chillMove` /
-  `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Freezer Breath's
+  `chillAttack`; `SilongRun.chill` each second: a stack per 5 s still on a `chill` floor, the Cold Vents'
   (`FloorBosses.chilled`) and the Brine Flood's 1 a second, cleared by walking 1 s (`stepped`), a lamp within 2, a
   Sinigang or Lugaw (`immune`), a knock-out, gone for good once cleared; `chill` {id, stacks, puff} to the floor; the
   step budget × `chillMove`; the page's walk and cast gap too, fx-silong-chill over the head on its stack's frame and
   fx-silong-chill-puff); belts (CONTEXT.md Belt; `Floor.carry` moves mobs standing on one a tile at its speed,
   `MobRoom.standingOn`; the page's `beltCarry` steps you along, free of the step budget: `Floor.alongBelt`; Belt Rush
   both at 5 for its time, the belts' animation faster: `Terrain.speedUp`); Mang Pido's radio (ui/silong.ts
-  `pidoSays`/`PIDO_LINES`: the first Chill, the first work lamp, the B3 door, the first Freezer Breath, once a run in
+  `pidoSays`/`PIDO_LINES`: the first Chill, the first work lamp, the B3 door, the first Cold Vents ("Stand beside the ice blocks!"), once a run in
   the tab, a toast with his face: palengke-npcs `npcFace`); Mang Ramon's box on B2 (`silong-ramon` from 2 tiles:
   `ramonBoxFor`, his note once; the note pop-up) and Kuya Jun's "📜 Mang Ramon's note" (`ramon-give` → `ramonGiveFor`:
   a Mid Repair Kit, `quests.flags` ramon-note-done; his three lines); a clear (`silong-cleared`, `silongClearedFor`:

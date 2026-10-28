@@ -271,8 +271,10 @@ test('Frosty Tubbs: Ambush (under the ice, up under the circle), Ice Slick (a co
 
 // ── Ang Makinang Yelo (the last boss, B3's Ice Plant) ──
 
-/** Players round the Ice Plant: A and D in the Freezer Breath's cone (down-left of its fan), B and C away from it. */
+/** Players round the Ice Plant: A and D down-left of its fan, B and C away from it. */
 const PLANT: Record<string, [number, number]> = { A: [44, 34], D: [48, 34], B: [30, 30], C: [35, 25] };
+/** The Ice Plant's south-west corner (the first drop's blocks fall under whoever stands there). */
+const CORNER: Record<string, [number, number]> = { A: [29, 44], B: [33, 44], C: [29, 42], D: [31, 44] };
 
 test('Ang Makinang Yelo: on its body, still, its two Frost Scales by the fan; Ice Block Drop leaves walls for 12 s', () => {
   const run = open(silong());
@@ -294,19 +296,240 @@ test('Ang Makinang Yelo: on its body, still, its two Frost Scales by the fan; Ic
   assert.ok(blocks.every(([c, r]) => f.map.blocked[r][c] === 0), 'gone after 12 s');
 });
 
-test("Freezer Breath: a 120° cone down-left of its fan, 2 Chill; nothing for whoever an ice block stands between", () => {
+test('Ice Block Drop: a player a block lands on takes its hit and is shoved out beside it (a boss-pull); one a tile away stays', () => {
   const run = open(silong());
   run.skipTo('b3');
   const f = run.floors.b3;
-  // (Blocks on the line from the fan [44,28] to A.)
-  for (const t of ['44,30', '44,31', '44,32', '44,33']) f.bosses.iceBlocks.set(t, 60_000);
-  const ev = play(run, 'b3', 0, 10_000, PLANT);
-  const warn = of(ev, 'boss-move').find((m) => m.move === 'freezerBreath')!;
-  assert.equal(warn.shape?.kind, 'cone');
-  const breath = of(ev, 'boss-hit').find((h) => h.move === 'freezerBreath')!;
-  const hit = new Set(breath.hits.map((h) => h.id));
-  assert.ok(hit.has('D') && !hit.has('A') && !hit.has('B'), 'D in the open, A behind the ice, B out of it');
-  assert.equal(breath.data?.chill, 2);
+  // (Four in the corner: three blocks fall under three of them.)
+  const ev = play(run, 'b3', 0, 6000, CORNER);
+  const drop = of(ev, 'boss-hit').find((h) => h.move === 'iceBlockDrop')!;
+  const blocks = new Set((drop.data!.blocks as [number, number][]).map((t) => t.join()));
+  assert.equal(blocks.size, 3);
+  const under = Object.entries(CORNER).filter(([, t]) => blocks.has(t.join())).map(([id]) => id);
+  const aside = Object.keys(CORNER).find((id) => !under.includes(id))!;
+  assert.equal(under.length, 3);
+  assert.ok(under.every((id) => drop.hits.some((h) => h.id === id)), 'they took its hit: they were under it');
+  const pull = of(ev, 'boss-pull').find((p) => p.id === 'boss:makinang-yelo')!;
+  assert.ok(pull && pull.ms === 250 && ev.indexOf(pull) > ev.indexOf(drop), 'one boss-pull, right after the hit');
+  assert.deepEqual(pull.players.map((p) => p.id).sort(), under.sort(), 'everyone under a block, nobody else');
+  assert.ok(!pull.players.some((p) => p.id === aside), `${aside} a tile away stays`);
+  for (const p of pull.players) {
+    const from = CORNER[p.id];
+    assert.ok(Math.max(Math.abs(p.to[0] - from[0]), Math.abs(p.to[1] - from[1])) === 1, `${p.id} beside its block`);
+    assert.ok(f.map.blocked[p.to[1]][p.to[0]] === 0 && !blocks.has(p.to.join()), `${p.id} on an open tile`);
+  }
+  const tos = new Set(pull.players.map((p) => p.to.join()));
+  assert.equal(tos.size, pull.players.length, 'each on a tile of their own');
+});
+
+test('Cold Vents: every floor tile vents but the 8 round each ice block (its pocket); a player beside a block takes nothing, one two tiles off and one on a belt are hit, 2 Chill', () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  // (The first drop out of the way in the corner, then two blocks standing in the open: A in a pocket, B two tiles from
+  // a block, C on the east belt.)
+  play(run, 'b3', 0, 5500, CORNER);
+  const mine: [number, number][] = [[36, 27], [52, 24]];
+  for (const [c, r] of mine) {
+    f.bosses.iceBlocks.set(`${c},${r}`, 60_000);
+    f.map.blocked[r][c] = 1;
+  }
+  const belt = f.map.silong.belts.e.find(([c]) => c === 45)!;
+  const who = { A: [37, 28] as [number, number], B: [38, 29] as [number, number], C: belt };
+  const ev = play(run, 'b3', 5750, 12_000, who);
+  const warn = of(ev, 'boss-move').find((m) => m.move === 'coldVents')!;
+  assert.equal(warn.shape?.kind, 'tiles');
+  assert.equal(warn.ms, 2500);
+  const tiles = new Set((warn.shape as { tiles: [number, number][] }).tiles.map((t) => t.join()));
+  const pockets = (warn.data!.pockets as [number, number][]).map((t) => t.join());
+  const round = (c: number, r: number) => [-1, 0, 1].flatMap((dr) => [-1, 0, 1].filter((dc) => dc || dr).map((dc) => [c + dc, r + dr] as [number, number])).filter(([x, y]) => !f.map.blocked[y][x]);
+  const expected = mine.flatMap(([c, r]) => round(c, r)).map((t) => t.join());
+  assert.equal(expected.length, 16, 'both blocks stand in the open');
+  for (const t of expected) assert.ok(pockets.includes(t) && !tiles.has(t), `pocket ${t}`);
+  for (const t of pockets) assert.ok(!tiles.has(t) && [...f.bosses.iceBlocks.keys()].some((k) => { const [c, r] = k.split(',').map(Number); const [x, y] = t.split(',').map(Number); return Math.max(Math.abs(x - c), Math.abs(y - r)) === 1; }), `${t} beside a block`);
+  assert.ok(tiles.size > 700 && tiles.has(belt.join()) && tiles.has('38,29') && !tiles.has('36,27'), 'the room vents, belts too, never a block');
+  assert.equal(warn.data?.chill, 2);
+  const vent = of(ev, 'boss-hit').find((h) => h.move === 'coldVents')!;
+  const hit = new Set(vent.hits.map((h) => h.id));
+  assert.ok(!hit.has('A') && hit.has('B') && hit.has('C'), 'A in a pocket, B in the open, C on the belt');
+  assert.equal(vent.data?.chill, 2);
+  assert.deepEqual((vent.data?.vented as unknown[]).length, tiles.size);
+  assert.deepEqual(f.bosses.chilled.filter(([id]) => id === 'B' || id === 'C').map(([, n]) => n), [2, 2]);
+});
+
+test("Cold Vents with no ice block standing: two blocks drop first, and it vents 2 s after they land (the drop's own timer untouched)", () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  // (The first drop lands at 5.2 s; its blocks gone before the vents are due at 7.5 s.)
+  play(run, 'b3', 0, 7250, PLANT);
+  for (const k of [...f.bosses.iceBlocks.keys()]) {
+    const [c, r] = k.split(',').map(Number);
+    f.map.blocked[r][c] = 0;
+  }
+  f.bosses.iceBlocks.clear();
+  // (Its other moves come between: the window is long.)
+  const ev = play(run, 'b3', 7500, 26_000, PLANT);
+  const moves = of(ev, 'boss-move').filter((m) => m.id === 'boss:makinang-yelo');
+  const first = moves.find((m) => m.move === 'iceBlockDrop')!;
+  assert.equal((first.shape as { tiles: unknown[] }).tiles.length, 2, 'two blocks first');
+  const vents = moves.find((m) => m.move === 'coldVents')!;
+  assert.ok(vents, 'then the vents');
+  const at = (m: { key: string }) => ev.indexOf(ev.find((e) => e.t === 'boss-move' && e.key === m.key)!);
+  assert.ok(at(vents) > at(first));
+  const landed = of(ev, 'boss-hit').find((h) => h.key === first.key)!;
+  assert.ok(landed && (landed.data!.blocks as unknown[]).length === 2);
+  assert.ok(ev.indexOf(vents) > ev.indexOf(landed), 'the vents once they stand');
+  assert.ok((vents.data!.pockets as unknown[]).length >= 10, 'pockets round the two new blocks');
+  // (The regular drop still comes on its own clock: 12 s after the first, three blocks.)
+  assert.ok(moves.some((m) => m.move === 'iceBlockDrop' && (m.shape as { tiles: unknown[] }).tiles.length === 3), "the drop's own timer");
+});
+
+/** A floor's room ticked with players who move: `at(t)` says where everyone stands at each tick (every 250 ms). */
+function playMoving(run: SilongRun, floor: 'b1' | 'b2' | 'b3', from: number, to: number, at: (t: number, sofar: Ev[]) => Record<string, [number, number]>): Ev[] {
+  const f = run.floors[floor];
+  const out: Ev[] = [];
+  for (let t = from; t <= to; t += 250) {
+    const players = at(t, out);
+    const guards = new Map(Object.keys(players).map((id) => [id, { def: 80, level: 40 }]));
+    out.push(...f.mobs.tick(t, new Map(Object.entries(players)), guards), ...f.mobs.flush());
+  }
+  return out;
+}
+
+test("Frost Sweep: bands of 3 rows from the machine's wall covering the room between them, landing in order 0.7 s apart; a player stepping behind a band once it has landed is safe", () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  const [c0, r0, c1, r1] = f.map.silong.rooms.find((r) => r.id === 'plant')!.rect;
+  // (The first drop out of the way in the corner; then P in the third band, Q in the first, both clear of the blocks.)
+  play(run, 'b3', 0, 6000, CORNER);
+  const open_ = (c: number, r: number) => !f.map.blocked[r][c] && !f.bosses.iceBlocks.has(`${c},${r}`);
+  const spot = (row: number): [number, number] => { for (let c = c0; c <= c1; c++) if (open_(c, row)) return [c, row]; throw new Error(`no open tile on row ${row}`); };
+  // (P in the third band, Q in the first, each on the first open tile of its row as the ticks go: a block the drops
+  // land under them moves them a tile along.)
+  let prow = r0 + 7; // band 2 (rows r0+6..r0+8)
+  const qrow = r0 + 1; // band 0
+  let standable = -1; // (the room's standable tiles as the sweep starts: the blocks standing then are out of it)
+  const count = () => { let n = 0; for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (open_(c, r)) n++; return n; };
+  let moved = false;
+  const ev = playMoving(run, 'b3', 6250, 22_000, (_t, sofar) => {
+    if (standable < 0 && sofar.some((e) => e.t === 'boss-move' && e.move === 'frostSweep')) standable = count();
+    // P steps up into band 1 right after band 1 has landed.
+    const landed = of(sofar, 'boss-hit').find((h) => h.move === 'frostSweep' && h.data?.band === 1);
+    if (landed && !moved) {
+      moved = true;
+      prow = r0 + 4;
+    }
+    return { P: spot(prow), Q: spot(qrow) };
+  });
+  const bands = of(ev, 'boss-move').filter((m) => m.move === 'frostSweep');
+  assert.ok(bands.length >= 9, `${bands.length} bands`);
+  assert.equal(bands[0].data?.anim, 'rush');
+  assert.ok(bands.every((m, k) => m.data?.band === k && m.data?.of === bands.length && m.key.endsWith(`:${k}`)));
+  for (let k = 1; k < bands.length; k++) assert.equal(bands[k].ms - bands[k - 1].ms, 700);
+  // Between them every standable tile of the room once, none shared.
+  const seen = new Map<string, number>();
+  for (const m of bands) for (const t of (m.shape as { tiles: [number, number][] }).tiles) seen.set(t.join(), (seen.get(t.join()) ?? 0) + 1);
+  assert.ok([...seen.values()].every((n) => n === 1), 'none shared');
+  assert.equal(seen.size, standable, 'the whole room');
+  const rowsOf = (m: (typeof bands)[number]) => new Set((m.shape as { tiles: [number, number][] }).tiles.map((t) => t[1]));
+  assert.ok([...rowsOf(bands[0])].every((r) => r < r0 + 3) && [...rowsOf(bands[bands.length - 1])].every((r) => r >= r0 + 3 * (bands.length - 1)), 'from the north wall down, the last taking what is left');
+  // They land in order, 0.7 s apart.
+  const hits = of(ev, 'boss-hit').filter((h) => h.move === 'frostSweep');
+  assert.equal(hits.length, bands.length);
+  assert.ok(hits.every((h, k) => h.key === bands[k].key));
+  assert.ok(hits.find((h) => h.data?.band === 0)!.hits.some((h) => h.id === 'Q'), 'Q in the first band, hit once');
+  assert.equal(hits.filter((h) => h.hits.some((x) => x.id === 'Q')).length, 1);
+  assert.ok(hits.filter((h) => h.hits.some((x) => x.id === 'P')).length <= 1, 'P stepped behind band 1 after it landed: a hit at most');
+  assert.ok(moved);
+});
+
+test('Icicle Chase: three icicles on where each player stands, one after another; a player who keeps walking is never hit, one who stands still is hit three times', () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  play(run, 'b3', 0, 5500, CORNER);
+  const S: [number, number] = [40, 40];
+  let M: [number, number] = [50, 40];
+  let n = 0;
+  const walk = (): [number, number] => {
+    n++;
+    const c = 46 + (n % 12); // (along row 40, a tile a tick, round again every 3 s)
+    return f.map.blocked[40][c] ? M : [c, 40];
+  };
+  const ev = playMoving(run, 'b3', 5750, 12_000, () => ({ S, M: (M = walk()) }));
+  const circles = of(ev, 'boss-move').filter((m) => m.move === 'icicleChase');
+  const forS = circles.filter((m) => m.data?.player === 'S');
+  const forM = circles.filter((m) => m.data?.player === 'M');
+  assert.equal(forS.length, 3);
+  assert.equal(forM.length, 3);
+  assert.ok(circles.every((m) => m.shape?.kind === 'circle' && m.shape.radius === 1 && m.ms === 900));
+  assert.equal(circles.filter((m) => m.data?.anim === 'drop').length, 1, 'the pose on the first only');
+  assert.ok(forS.every((m) => (m.shape as { at: number[] }).at.join() === S.join()), 'on the still player, every time');
+  const ats = forM.map((m) => (m.shape as { at: number[] }).at.join());
+  assert.equal(new Set(ats).size, 3, 'the circles follow the walker');
+  const hits = of(ev, 'boss-hit').filter((h) => h.move === 'icicleChase');
+  assert.equal(hits.filter((h) => h.hits.some((x) => x.id === 'S')).length, 3, 'standing still: hit three times');
+  assert.equal(hits.filter((h) => h.hits.some((x) => x.id === 'M')).length, 0, 'walking: never');
+});
+
+test('Intake (from 90%): five pulls a tile toward the fan, a boss-pull each, then the Fist Slam on radius 3; an ice block on the line holds you; walking out as fast as it pulls keeps you clear', () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  const fan = f.map.silong.bossTile!;
+  const info = f.mobs.mobInfo('boss:makinang-yelo', 0)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.85));
+  // Parked in the room's far corner while its other moves take their turns; as Intake starts, placed for it: A six
+  // tiles straight out from the fan in the open, S with an ice block on the line between it and the fan, W eight
+  // tiles off, stepping a tile farther out after every pull. Every boss-pull moves them as the server would.
+  const pos: Record<string, [number, number]> = { A: [57, 43], S: [59, 43], W: [57, 41] };
+  const dist = (t: [number, number]) => Math.max(Math.abs(t[0] - fan[0]), Math.abs(t[1] - fan[1]));
+  let seen = 0;
+  let placed = false;
+  let pulledW = false;
+  let nearest = Infinity;
+  const ev = playMoving(run, 'b3', 0, 40_000, (_t, sofar) => {
+    for (; seen < sofar.length; seen++) {
+      const e = sofar[seen];
+      if (e.t === 'boss-pull') for (const mv of e.players) {
+        pos[mv.id] = mv.to;
+        if (mv.id === 'W' && placed) pulledW = true;
+      }
+      if (e.t === 'boss-move' && e.move === 'intake' && !placed) {
+        placed = true;
+        pos.A = [fan[0], fan[1] + 6];
+        pos.S = [fan[0] + 6, fan[1] + 6];
+        f.bosses.iceBlocks.set(`${fan[0] + 3},${fan[1] + 3}`, 60_000);
+        f.map.blocked[fan[1] + 3][fan[0] + 3] = 1;
+        pos.W = [fan[0] - 8, fan[1] + 8];
+      }
+    }
+    if (pulledW) {
+      pulledW = false;
+      pos.W = [pos.W[0], pos.W[1] + 1]; // (a tile out again)
+    }
+    if (placed) nearest = Math.min(nearest, dist(pos.W));
+    return { ...pos };
+  });
+  const move = of(ev, 'boss-move').find((m) => m.move === 'intake')!;
+  assert.ok(move, 'Intake came');
+  assert.deepEqual(move.shape, { kind: 'circle', at: fan, radius: 3 });
+  assert.equal(move.ms, 2500);
+  assert.deepEqual(move.data, { anim: 'call', pulls: 5, stepMs: 500 });
+  const i0 = ev.indexOf(move);
+  const slam = of(ev, 'boss-hit').find((h) => h.move === 'intake')!;
+  assert.ok(slam && slam.data?.slam === true, 'then the slam');
+  const pulls = ev.slice(i0, ev.indexOf(slam)).filter((e): e is Extract<Ev, { t: 'boss-pull' }> => e.t === 'boss-pull' && e.ms === 400);
+  assert.equal(pulls.length, 5, 'five pulls between');
+  assert.ok(pulls.every((p) => p.players.some((x) => x.id === 'A')), 'A drawn in by every pull');
+  assert.ok(dist(pos.A) >= 1 && dist(pos.A) <= 2, `A ends ${dist(pos.A)} from the fan`);
+  assert.ok(slam.hits.some((h) => h.id === 'A'), 'A under the slam');
+  assert.ok(!pulls.some((p) => p.players.some((x) => x.id === 'S')), 'S behind the ice never moves');
+  assert.ok(!slam.hits.some((h) => h.id === 'S'));
+  assert.ok(nearest > 3, `W never within 3 (${nearest})`);
+  assert.ok(!slam.hits.some((h) => h.id === 'W'));
 });
 
 test('Belt Rush: a line down one belt; Brine Flood only from 70%, every Ice Plant floor tile but the pallets', () => {
@@ -321,7 +544,7 @@ test('Belt Rush: a line down one belt; Brine Flood only from 70%, every Ice Plan
   assert.ok(!of(ev, 'boss-move').some((m) => m.move === 'brineFlood'), 'not above 70%');
   const info = f.mobs.mobInfo('boss:makinang-yelo', 16_000)!;
   f.mobs.devWound(info.id, Math.round(info.maxHp * 0.65));
-  const flood = of(play(run, 'b3', 16_250, 20_000, PLANT), 'boss-hit').find((h) => h.move === 'brineFlood')!;
+  const flood = of(play(run, 'b3', 16_250, 50_000, PLANT), 'boss-hit').find((h) => h.move === 'brineFlood')!; // (its other moves take their turns first)
   const tiles = new Set((flood.data!.flood as [number, number][]).map((t) => t.join()));
   assert.ok(tiles.size > 100 && tiles.has('40,40') && f.map.silong.belts.e.every((t) => tiles.has(t.join())), 'under the blocks and the belts too');
   for (const [c, r] of f.map.silong.pallets) for (const t of [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]]) assert.ok(!tiles.has(t.join()), `pallet ${t}`);
@@ -440,7 +663,7 @@ test('Chill: a stack every 5 s standing still on B2 (up to 4), none on B1, clear
   assert.equal(run.chillOf('a'), 0, 'B1 is warm');
 });
 
-test("Chill: the Freezer Breath's 2, the Brine Flood's 1 a second; none once the Ice Machine is down", () => {
+test("Chill: the Cold Vents' 2, the Brine Flood's 1 a second; none once the Ice Machine is down", () => {
   const run = open(silong());
   run.skipToPlant();
   const f = run.floors.b3;

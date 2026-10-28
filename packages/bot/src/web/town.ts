@@ -2791,6 +2791,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         // A boss move landing on someone dodging (a Step Back): shown as Dodge (it comes off nothing: the landings above).
         const dodging = new Set(here.filter((o) => (o.dodgeUntil ?? 0) > now).map((o) => o.player.id));
         if (dodging.size) for (const e of events) if (e.t === 'boss-hit') e.hits = e.hits.map((h) => (dodging.has(h.id) ? { id: h.id, damage: 0, miss: true, dodge: true } : h));
+        // A boss moved players (an ice block's shove, Intake's pulls): their tiles follow here, as a step of their own
+        // would set them, so their next step counts from where they were put (CONTEXT.md Shove, Intake).
+        for (const e of events) {
+          if (e.t !== 'boss-pull') continue;
+          for (const mv of e.players) {
+            const o = here.find((x) => x.player.id === mv.id);
+            if (o) Object.assign(o.player, { col: mv.to[0], row: mv.to[1], sit: false });
+          }
+        }
         const listeners = here.filter((o) => o.ws.readyState === WebSocket.OPEN);
         for (const e of events) {
           const text = JSON.stringify(e satisfies TownServerMessage);

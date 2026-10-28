@@ -1507,7 +1507,8 @@
      "count": 3,
      "shape": "tiles",
      "pick": "one under each of 3 players (random floor if fewer)",
-     "atkMult": 3.0,
+     "atkMult": 9.0,
+     "shove": "a player a block lands on takes its hit and is shoved out to the nearest open tile beside it (away from the machine), never left standing inside the block",
      "leaves": {
       "prop": "prop-silong-ice-block",
       "ms": 12000,
@@ -1516,17 +1517,15 @@
      }
     },
     {
-     "id": "freezerBreath",
+     "id": "coldVents",
      "every": 15,
-     "telegraphMs": 2000,
-     "shape": "cone",
-     "angleDeg": 120,
-     "length": 10,
-     "facing": "down-left (its fan)",
-     "atkMult": 2.0,
+     "telegraphMs": 2500,
+     "shape": "tiles",
+     "atkMult": 5.0,
      "chillStacks": 2,
-     "cover": "a player with an ice block between them and the fan takes nothing (line of sight from the fan tile)",
-     "lengthNote": "Repo change (23 Oct 2026, the owner): 10 (was 7: the cone looked small beside the machine); the breath art is scaled to it (world/silong.ts)."
+     "dropsFirst": 2,
+     "ventsAfterDropMs": 2000,
+     "rule": "the fan drives cold through the floor: every floor tile of the Ice Plant vents (belts and pallets too); the only safe tiles are the 8 round each standing ice block (its pocket, outlined during the warning). Whoever stands on a vented tile as it lands takes the hit and 2 Chill. No block standing when it's due: two blocks drop first, and it vents 2 s after they land."
     },
     {
      "id": "beltRush",
@@ -1537,8 +1536,40 @@
      "shape": "line",
      "along": "one belt, picked at random",
      "width": 1,
-     "atkMult": 2.5,
+     "atkMult": 6.25,
      "about": "both belts speed up and an ice fist sweeps down one belt: get off it or ride the other"
+    },
+    {
+     "id": "frostSweep",
+     "every": 18,
+     "telegraphMs": 1200,
+     "bandRows": 3,
+     "bandMs": 700,
+     "shape": "tiles",
+     "atkMult": 4.0,
+     "rule": "the cold rolls from the machine's wall across the room in bands of 3 rows, each landing 0.7 s after the one before (the first 1.2 s after the warning); each band hits whoever stands in it as it lands. Ice blocks don't shield it and the pockets don't help: cross a band just after it has landed (its tiles are safe again then), or outrun it to the south wall and come back."
+    },
+    {
+     "id": "icicleChase",
+     "every": 12,
+     "telegraphMs": 900,
+     "drops": 3,
+     "radius": 1,
+     "shape": "circle",
+     "atkMult": 3.0,
+     "rule": "icicles that keep falling on where each player stands: a 1-tile circle on their tile, landing 0.9 s later, then the next on where they stand then, three in all; keep walking and none lands on you. A player who leaves the room isn't followed."
+    },
+    {
+     "id": "intake",
+     "every": 24,
+     "fromHp": 0.9,
+     "pullMs": 2500,
+     "pulls": 5,
+     "stepMs": 500,
+     "radius": 3,
+     "shape": "circle",
+     "atkMult": 8.0,
+     "rule": "the fan reverses and sucks everyone in the room a tile toward itself every 0.5 s for 2.5 s (never within a tile of it; an ice block on the line between you and the fan holds you where you are), then the ice fist slams the floor: whoever is within 3 tiles of the fan takes the hit. Get an ice block between you and the fan, or walk away faster than it pulls."
     },
     {
      "id": "brineFlood",
@@ -1571,7 +1602,8 @@
     }
    ],
    "death": "the fan grinds to a stop and an ice fist cracks off; then the frost across the whole cellar melts into steam (fx-silong-melt-steam over frosted tiles, then Chill turns off for the run)",
-   "tileNote": "Repo change (23 Oct 2026, the owner): its body (B3's K tiles) moved to the middle of the Ice Plant's north wall, cols 40-49 (was the east corner, 52-61), and its fan tile to [44, 28], under the middle of its face (was [53, 28], by its left end)."
+   "tileNote": "Repo change (23 Oct 2026, the owner): its body (B3's K tiles) moved to the middle of the Ice Plant's north wall, cols 40-49 (was the east corner, 52-61), and its fan tile to [44, 28], under the middle of its face (was [53, 28], by its left end).",
+   "reworkNote": "Repo change (28 Oct 2026, the owner): Freezer Breath replaced by Cold Vents; ice blocks 3x, the rest 2.5x; Frost Sweep, Icicle Chase and Intake added."
   },
   "miniBossLook": {
    "drawScale": 2.5,
@@ -1587,7 +1619,7 @@
    "retryHours": 24,
    "gateNote": "Repo change (owner, 26 Oct 2026): a real run needs a practice run cleared first (the Ice Machine down in one); a practice run drops the normal loot with half its Kusing (kusingPct), as the Warrens' practice; Mang Pido gives another Practice Cellar Key retryHours after the last, while none is held, no practice run is open and the practice isn't cleared.",
    "mobPctNote": "Repo change (owner, 26 Oct 2026): a practice run nerfed to 40% of the mobs' and bosses' HP and 35% of their ATK, as the Warrens' practice (was mobHpAtkPct 60).",
-   "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Freezer Breath warning (hide behind an ice block)",
+   "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Cold Vents warning (stand beside an ice block)",
    "ramonBox": {
     "tile": "the R mark on B2 (Meat Lockers, far corner)",
     "click": "opens a short note: Mang Ramon hid his honest weights down here",

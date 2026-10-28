@@ -126,7 +126,7 @@ export type MobEvent =
   | { t: 'mob-attack'; id: string; target: string; dir: TownMobFacing; slow?: number; hit?: PlayerHit; to?: [number, number] }
   | { t: 'mob-spawn'; id: string; col: number; row: number; hp: number }
   | { t: 'mob-heal'; id: string; hp: number }
-  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-cancel' | 'system' | 'great-scale' | 'mob-stun' | 'mob-debuff' }>
+  | Extract<TownServerMessage, { t: 'mob-scale' | 'mob-flag' | 'mob-fx' | 'boss-move' | 'boss-hit' | 'boss-pull' | 'boss-cancel' | 'system' | 'great-scale' | 'mob-stun' | 'mob-debuff' }>
   | GolemEvent;
 
 /** A Scrap Warrens run's say over its room's mobs (town-warrens.ts): its bosses' moves on the room's clock. */

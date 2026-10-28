@@ -662,6 +662,11 @@ export class Character {
     this.path = this.path.slice(0, 1);
   }
 
+  /** Drops the whole path, the step in progress too (a boss moves them: its slide takes over from where they are). */
+  halt(): void {
+    this.path = [];
+  }
+
   /** Turn on the spot (a movement key pressed against a wall). */
   face(dir: Dir): void {
     if (this.path.length || this.sittingAt || this.dir === dir || this.knockedOut) return;
