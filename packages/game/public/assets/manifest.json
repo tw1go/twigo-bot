@@ -24327,6 +24327,22 @@
       ],
       "note": "the inventory button beside the chat input (opens the bag on the right)"
     },
+    "itemLock": {
+      "file": "ui/ui-item-lock.png",
+      "size": [
+        12,
+        12
+      ],
+      "note": "the padlock badge on a locked item (a bag cell, an equipment slot)"
+    },
+    "itemLockOpen": {
+      "file": "ui/ui-item-lock-open.png",
+      "size": [
+        12,
+        12
+      ],
+      "note": "the open padlock (the Unlock row of the item menus)"
+    },
     "golemHead": {
       "file": "ui/ui-golem-head.png",
       "size": [

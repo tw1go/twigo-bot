@@ -313,6 +313,7 @@ type ItemRow = {
   xp: number;
   points: string | null;
   expires_at: number | null;
+  locked: number;
 };
 const getStmt = db.prepare<[string], Row>(
   'SELECT class, quests, level, xp, str_points, dex_points, int_points, skill_levels, skill_points, training_armor_given, kusing FROM adventurers WHERE user_id = ?',
@@ -326,10 +327,10 @@ const setStmt = db.prepare(
      skill_levels = excluded.skill_levels, skill_points = excluded.skill_points, training_armor_given = excluded.training_armor_given, kusing = excluded.kusing,
      updated = excluded.updated`,
 );
-const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points, expires_at FROM items WHERE owner = ? ORDER BY slot, created, uid');
+const itemsStmt = db.prepare<[string], ItemRow>('SELECT uid, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, xp, points, expires_at, locked FROM items WHERE owner = ? ORDER BY slot, created, uid');
 const dropItemsStmt = db.prepare('DELETE FROM items WHERE owner = ?');
 const addItemStmt = db.prepare(
-  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created, xp, points, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  `INSERT INTO items (uid, owner, def_id, level, rarity, plus, broken, bound, luck, agimats, lines, stat, lock, count, place, slot, created, xp, points, expires_at, locked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 );
 
 const fromRow = (r: ItemRow): Item => ({
@@ -348,6 +349,7 @@ const fromRow = (r: ItemRow): Item => ({
   ...(r.lock ? { lock: r.lock as Item['lock'] } : {}),
   ...(r.points !== null ? { xp: r.xp, points: JSON.parse(r.points) } : {}),
   ...(r.expires_at !== null ? { expiresAt: r.expires_at } : {}),
+  ...(r.locked === 1 ? { locked: true } : {}),
 });
 
 /** Their items: worn by place (gear, and cosmetics as "costume:<place>"), and the combat bag in order. */
@@ -411,7 +413,7 @@ const save = db.transaction((userId: string, s: AdventureState): void => {
   const now = Date.now();
   const put = (i: Item, place: string | null, slot: number | null) =>
     addItemStmt.run(i.uid, userId, i.defId, i.level, i.rarity, i.plus, i.broken ? 1 : 0, i.bound ? 1 : 0, i.luck, JSON.stringify(i.agimats), JSON.stringify(i.lines), i.stat ?? null, i.lock ?? null, i.count, place, slot, now,
-      i.xp ?? 0, i.points ? JSON.stringify(i.points) : null, i.expiresAt ?? null);
+      i.xp ?? 0, i.points ? JSON.stringify(i.points) : null, i.expiresAt ?? null, i.locked ? 1 : 0);
   for (const [place, item] of Object.entries(s.equipped)) if (item) put(item, place, null);
   for (const [place, item] of Object.entries(s.cosmetics)) if (item) put(item, COSTUME_PLACE + place, null);
   if (s.pet) put(s.pet, PET_PLACE, null);
@@ -905,6 +907,8 @@ export function switchClass(userId: string, cls: string): { ok: true; adventure:
   if (s.cls === cls) return { ok: false, message: "That's already your class." };
   s.cls = cls;
   s.progress = refundPoints(loadStats(), cls, s.progress);
+  // (The old class's training pieces go wherever they are, locked or not: a lock keeps an item from a wrong click, and
+  // this is the ticket's own doing.)
   swapTrainingGear(loadItemData(), s, trainingGear(loadStats(), EQUIPMENT.values(), cls), newUid);
   save(userId, s);
   return { ok: true, adventure: s };

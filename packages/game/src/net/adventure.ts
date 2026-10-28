@@ -225,6 +225,9 @@ export async function forgeAction(a: TownForgeAction): Promise<TownForgeResponse
   return r;
 }
 
+/** Locks or unlocks an item (CONTEXT.md Locked), worn or in the bag: the lock forge action (your items come back). */
+export const lockItem = (uid: string, on: boolean): Promise<TownForgeResponse | null> => forgeAction({ action: 'lock', item: uid, on });
+
 const forgeListeners = new Set<(a: TownForgeAction, r: TownForgeResponse) => void>();
 
 /** Hears every forge answer (the lessons: a combine done, an enhance try over). Returns the off switch. */

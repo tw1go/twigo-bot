@@ -333,6 +333,11 @@ one exception to "every item can be").
 **Bound**:
 An item that stays with its owner: it can't be traded.
 
+**Locked**:
+An item its owner has locked: it can't be taken apart, sold, destroyed, dropped, traded or taken off (and nothing can be
+worn in its place) until they unlock it. The forge still works on it. Any item but a quest item; a gold padlock shows it.
+_Avoid_: protected, favourite, pinned
+
 **HP / MP**:
 A character's health and mana; HP only goes down in the Slums, and both refill in the town and the neighbourhood.
 

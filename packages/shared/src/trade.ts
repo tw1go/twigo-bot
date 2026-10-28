@@ -20,10 +20,11 @@ export function tradeRules(data: StatsData): TradeRules {
   return { range: f.rangeTiles ?? 5, timeoutMs: (f.requestTimeoutSeconds ?? 20) * 1000, slots: f.slotsEach ?? 8 };
 }
 
-/** Why an item can't go into a trade (training gear, bound), or null if it can. */
+/** Why an item can't go into a trade (locked, training gear, bound), or null if it can. */
 export function tradeRefusal(data: ItemData, item: Item): string | null {
   const def = data.defs.get(item.defId);
   if (!def) return "That item can't be traded.";
+  if (item.locked) return "Locked items can't be traded.";
   if (!isGearDef(def) && def.kind === 'quest') return "Quest items can't be traded.";
   if (isGearDef(def) && def.training) return "Training gear can't be traded.";
   if (item.bound) return "Bound items can't be traded.";
@@ -31,10 +32,11 @@ export function tradeRefusal(data: ItemData, item: Item): string | null {
 }
 
 /** Why an item can't be dropped on the ground (dragged out of the bag onto the map), or null: it can. The same items as
- *  trading: never training gear or bound items. */
+ *  trading: never a locked item, training gear or bound items. */
 export function dropRefusal(data: ItemData, item: Item): string | null {
   const def = data.defs.get(item.defId);
   if (!def) return "That item can't be dropped.";
+  if (item.locked) return "Locked items can't be dropped.";
   if (!isGearDef(def) && def.kind === 'quest') return "Quest items can't be dropped.";
   if (isGearDef(def) && def.training) return "Training gear can't be dropped.";
   if (item.bound) return "Bound items can't be dropped.";

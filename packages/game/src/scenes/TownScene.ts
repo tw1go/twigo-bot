@@ -2532,11 +2532,13 @@ export class TownScene extends Phaser.Scene {
     const bagIcon = this.M.ui.inventoryIcon;
     const inv = this.M.ui.inventory;
     const url = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    const lockIcon = this.M.ui.itemLock ? url(this.M.ui.itemLock.file) : null; // (the padlock on a locked item)
     const bag = member
       ? new Inventory(
           bagIcon ? url(bagIcon.file) : null,
           inv?.itemFrame ? { url: url(inv.itemFrame.file), slice: inv.itemFrame.nineSlice } : null,
           inv?.slot && inv.selected && inv.nineSlice ? { url: url(inv.slot), picked: url(inv.selected), slice: inv.nineSlice } : null,
+          lockIcon,
         )
       : null;
     // The store's worn preview: your look with the cosmetics picked there on (the rest of what you wear stays), facing
@@ -2576,6 +2578,7 @@ export class TownScene extends Phaser.Scene {
           idle: { frames: C.animations.idle.frames, fps: C.animations.idle.fps },
           freeSlots: () => bag.free,
           pets: this.M.pets ? { node: (node, locked) => url((locked ? this.M.pets!.nodeLocked : this.M.pets!.node).replace('{stat}', this.M.pets!.nodeStats[node] ?? node)) } : null,
+          lockIcon,
         }),
       );
       // The player menu's Info: someone's character, gear and stats (ui/inspect.ts; the server answers `inspect`).

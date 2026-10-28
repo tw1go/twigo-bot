@@ -149,6 +149,9 @@ export interface Manifest {
     classIcons?: { file: string; small: string; large: string; size: Vec2; smallSize: Vec2; largeSize: Vec2 };
     /** The inventory button's bag, beside the chat input. */
     inventoryIcon?: { file: string; size: Vec2 };
+    /** The padlock badge on a locked item (CONTEXT.md Locked), and the open one (the menus' Unlock). */
+    itemLock?: { file: string; size: Vec2 };
+    itemLockOpen?: { file: string; size: Vec2 };
     /** Kusing's coin: 16x16, and 32x32 (showcase). */
     kusingIcon?: { file: string; showcase?: string };
     loadingMoon?: { file: string; size: Vec2; frames: number; fps: number; loopFrames?: Vec2; anchor: Vec2 };

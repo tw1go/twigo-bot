@@ -19,6 +19,7 @@ import { sellPrice,
   toolOf,
   enhanceRefusal,
   findItem,
+  lockedRefusal,
   fragmentsPerWhetstone,
   gearTier,
   isGearDef,
@@ -232,6 +233,8 @@ export function destroy(data: ItemData, s: ForgeHolder, uid: string): Result {
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
   if (!item) return no("You don't have that item.");
+  const locked = lockedRefusal(item);
+  if (locked) return no(locked);
   if (item.expiresAt === undefined) return no("That can't be destroyed.");
   s.bag.splice(at, 1);
   return { ok: true, outcome: 'destroyed', message: `Destroyed your ${itemName(data, item)}.` };
@@ -241,6 +244,8 @@ export function sell(data: ItemData, s: ForgeHolder, uid: string, count?: number
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
   if (!item) return no(Object.values(s.equipped).some((i) => i?.uid === uid) ? 'Take it off first.' : "You don't have that item.");
+  const locked = lockedRefusal(item);
+  if (locked) return no(locked);
   const n = count ?? item.count;
   if (!Number.isInteger(n) || n < 1 || n > item.count) return no(`Sell 1 to ${item.count} of them.`);
   const price = sellPrice(data, item, n);
@@ -249,6 +254,19 @@ export function sell(data: ItemData, s: ForgeHolder, uid: string, count?: number
   else s.bag.splice(at, 1);
   s.kusing = (s.kusing ?? 0) + price;
   return { ok: true, outcome: 'sold', message: `Sold ${n > 1 ? `${n}× ` : ''}${itemName(data, { ...item, count: 1 })} for ${price.toLocaleString('en-US')} Kusing.` };
+}
+
+/** Locks or unlocks an item, worn or in the bag (CONTEXT.md Locked): any item but a quest item (those are never sold,
+ *  traded, dropped or taken apart anyway); refused when it's already in that state. Free, at once. */
+export function lock(data: ItemData, s: ForgeHolder, uid: string, on: boolean): Result {
+  const found = findItem(s, uid);
+  const def = found && data.defs.get(found.item.defId);
+  if (!found || !def) return no("You don't have that item.");
+  if (!isGearDef(def) && def.kind === 'quest') return no("Quest items don't need locking.");
+  if (!!found.item.locked === on) return no(on ? "It's already locked." : "It isn't locked.");
+  if (on) found.item.locked = true;
+  else delete found.item.locked;
+  return { ok: true, outcome: on ? 'locked' : 'unlocked', message: `${on ? 'Locked' : 'Unlocked'} ${itemName(data, found.item)}.` };
 }
 
 /** Several items taken apart or sold at once (the bag's multi-select): each by the one-item rules, in turn on a copy;
@@ -307,6 +325,8 @@ export function forge(data: ItemData, s: ForgeHolder, a: TownForgeAction, random
       return many(data, s, a.items, (h, uid) => disassemble(data, h, uid, random, newUid), 'disassembled');
     case 'sell-many':
       return many(data, s, a.items, (h, uid) => sell(data, h, uid), 'sold');
+    case 'lock':
+      return lock(data, s, a.item, a.on);
   }
 }
 
@@ -326,6 +346,7 @@ export function parseForgeAction(body: unknown): TownForgeAction | null {
   if (b.action === 'apply' && id(b.stone)) return { action: 'apply', item, stone: b.stone as string, ...(b.retain === true ? { retain: true } : {}) };
   if (b.action === 'sell') return { action: 'sell', item, ...(Number.isInteger(b.count) && (b.count as number) >= 1 && (b.count as number) <= 999 ? { count: b.count as number } : {}) };
   if (b.action === 'disassemble' || b.action === 'combine' || b.action === 'destroy') return { action: b.action, item };
+  if (b.action === 'lock' && typeof b.on === 'boolean') return { action: 'lock', item, on: b.on };
   return null;
 }
 

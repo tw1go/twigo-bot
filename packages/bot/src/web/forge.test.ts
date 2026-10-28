@@ -714,3 +714,55 @@ test('the sari-sari store: Agimat Pliers and empty Temper Stones in Smithing for
   assert.deepEqual([of('temper-stone')?.tab, of('temper-stone')?.currency, of('temper-stone')?.cost], ['smithing', 'kowens', thing('temper-stone').price!.kowens]);
   assert.equal(of('temper-stone-filled'), undefined);
 });
+
+// ── Locking (CONTEXT.md Locked) ──
+
+test('lock: on and off, worn or in the bag; refused for a quest item, one already in that state, one that isn\'t theirs; parseForgeAction takes a boolean `on` only', () => {
+  const item = newItem(D.stats, gear('weapon-crude-slingshot'), 'c1');
+  const worn = newItem(D.stats, gear('armor-training-light-head'), 'w1');
+  const quest = newItem(D.stats, thing('nena-binoculars'), 'q1');
+  const s: ForgeHolder = { equipped: { head: worn }, bag: [item, quest], kusing: 0 };
+  assert.deepEqual(forge(D, s, { action: 'lock', item: 'c1', on: true }, Math.random, () => 'x'), { ok: true, outcome: 'locked', message: `Locked ${itemName(D, item)}.` });
+  assert.equal(item.locked, true);
+  assert.equal(forge(D, s, { action: 'lock', item: 'c1', on: true }, Math.random, () => 'x').message, "It's already locked.");
+  assert.ok(forge(D, s, { action: 'lock', item: 'w1', on: true }, Math.random, () => 'x').ok, 'a worn piece too');
+  assert.equal(worn.locked, true);
+  assert.equal(forge(D, s, { action: 'lock', item: 'q1', on: true }, Math.random, () => 'x').message, "Quest items don't need locking.");
+  assert.equal(forge(D, s, { action: 'lock', item: 'nope', on: true }, Math.random, () => 'x').message, "You don't have that item.");
+  assert.deepEqual(forge(D, s, { action: 'lock', item: 'c1', on: false }, Math.random, () => 'x'), { ok: true, outcome: 'unlocked', message: `Unlocked ${itemName(D, item)}.` });
+  assert.equal('locked' in item, false, 'never written as false');
+  assert.equal(forge(D, s, { action: 'lock', item: 'c1', on: false }, Math.random, () => 'x').message, "It isn't locked.");
+  assert.deepEqual(parseForgeAction({ action: 'lock', item: 'c1', on: true }), { action: 'lock', item: 'c1', on: true });
+  assert.deepEqual(parseForgeAction({ action: 'lock', item: 'c1', on: false }), { action: 'lock', item: 'c1', on: false });
+  assert.equal(parseForgeAction({ action: 'lock', item: 'c1', on: 'yes' }), null);
+  assert.equal(parseForgeAction({ action: 'lock', item: 'c1' }), null);
+});
+
+test('a locked item is never taken apart, sold or destroyed (a batch with one in it refuses whole, naming it, and changes nothing); the forge still enhances and repairs it', () => {
+  const a = newItem(D.stats, gear('weapon-crude-slingshot'), 'a');
+  const b = newItem(D.stats, gear('weapon-crude-slingshot'), 'b');
+  const train = newItem(D.stats, gear('weapon-training-slingshot'), 't1');
+  const hat: Item = { ...newItem(D.stats, thing('witch-hat-5d'), 'h'), expiresAt: 1, bound: true };
+  const s: ForgeHolder = { equipped: {}, bag: [a, b, train, hat], kusing: 0 };
+  for (const id of ['a', 't1', 'h']) assert.ok(forge(D, s, { action: 'lock', item: id, on: true }, Math.random, () => 'x').ok);
+  const locked = "It's locked: unlock it first.";
+  assert.equal(forge(D, s, { action: 'disassemble', item: 'a' }, Math.random, () => 'x').message, locked);
+  assert.equal(forge(D, s, { action: 'disassemble-many', items: ['b', 'a'] }, Math.random, () => 'x').message, `${itemName(D, a)}: ${locked}`);
+  assert.deepEqual(s.bag.map((i) => i.uid), ['a', 'b', 't1', 'h'], 'nothing changed');
+  assert.equal(forge(D, s, { action: 'sell', item: 't1' }, Math.random, () => 'x').message, locked);
+  assert.equal(forge(D, s, { action: 'sell-many', items: ['t1'] }, Math.random, () => 'x').message, `${itemName(D, train)}: ${locked}`);
+  assert.equal(s.kusing, 0);
+  assert.equal(forge(D, s, { action: 'destroy', item: 'h' }, Math.random, () => 'x').message, locked);
+  assert.equal(s.bag.length, 4);
+  // The forge: that's what it's kept for.
+  const e = holder([a], 1);
+  a.locked = true;
+  assert.equal(forge(D, e, { action: 'enhance', item: 'a' }, always(0), uid).outcome, 'success');
+  assert.equal(a.plus, 1);
+  const broken: Item = { ...newItem(D.stats, gear('weapon-crude-slingshot'), 'br'), plus: 3, broken: true, locked: true };
+  const r = holder([broken]);
+  addToBag(D, r.bag, newItem(D.stats, thing('low-repair-kit'), uid(), 2), uid);
+  assert.equal(forge(D, r, { action: 'repair', item: 'br' }, Math.random, uid).outcome, 'repaired');
+  assert.equal(broken.broken, false);
+  assert.equal(broken.locked, true, 'still locked after');
+});

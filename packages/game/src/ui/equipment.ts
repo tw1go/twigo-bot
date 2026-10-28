@@ -1,10 +1,11 @@
-import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, cosmeticFits, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
+import { type CosmeticPlace, type AdventureState, type EquipPlace, type EquipSlot, type EquipmentDef, type Item, type StatName, STAT_NAMES, canEquip, combatRating, pointStats, requirements, COSMETIC_PLACES, OTHER_TAB, cosmeticFits, isGearDef, pocketSlots, pocketUsed } from '@mikazuki/shared';
 import { onMyBuffs } from '../net/buffs';
 import { myStats } from './rating';
 import { moreStatsSection, petPart } from './more-stats';
 import type { Dir } from '../assets/types';
 import { playSound } from '../audio/sound';
-import { adventure, adventureData, anyDef, cantWear, classInfo, equipItem, itemData, itemDef, onAdventure, placesFor, resetPoints, spendPoint, takeOffCosmetic, unequipPlace, wearCosmeticItem } from '../net/adventure';
+import { adventure, adventureData, anyDef, cantWear, classInfo, equipItem, itemData, itemDef, lockItem, onAdventure, placesFor, resetPoints, spendPoint, takeOffCosmetic, unequipPlace, wearCosmeticItem } from '../net/adventure';
+import { ContextMenu, type MenuRow, onLongPress } from './context-menu';
 import { type Rarity, RARITY_COLOUR, RARITY_LABEL, RARITY_TEXT, isRarity } from './item-art';
 import { chatItem, itemKeys, itemPicture, itemTipFor, myMainStat, nameOf, rarityOf } from './item-tip';
 import { toast } from './toast';
@@ -82,7 +83,14 @@ export interface EquipmentOptions {
   freeSlots: () => number;
   /** The pet tree's node art (manifest pets), if there are pets. */
   pets?: PetArt | null;
+  /** The padlock badge on a locked item's slot (manifest ui.itemLock). */
+  lockIcon?: string | null;
 }
+
+/** Why a locked worn item stays put, and why nothing goes where one is worn (shared items.ts lockedRefusal / LOCKED_THERE,
+ *  without the full stop: a toast). */
+const LOCKED = "It's locked: unlock it first";
+const LOCKED_THERE_TOAST = "What's there is locked: unlock it first";
 
 export class EquipmentPanel {
   private readonly root = el('div');
@@ -104,6 +112,8 @@ export class EquipmentPanel {
   private dir = DIRS.indexOf('se'); // index into DIRS: facing SE to start
   private raf = 0;
   private busy = false;
+  /** A worn slot's right-click menu: Take off, Lock / Unlock, Show in chat (ui/context-menu.ts). */
+  private readonly menu = new ContextMenu();
 
   constructor(private readonly o: EquipmentOptions) {
     silhouettes = o.silhouettes;
@@ -274,6 +284,7 @@ export class EquipmentPanel {
 
   /** Takes a cosmetic off, into the Costume tab (which must have room). */
   private async takeOffCosmetic(place: CosmeticPlace): Promise<void> {
+    if (adventure()?.cosmetics[place]?.locked) return this.refuseAt(this.cslots.get(place), LOCKED);
     const s = adventure();
     const D = itemData();
     if (this.busy || !s?.cosmetics[place]) return;
@@ -294,6 +305,10 @@ export class EquipmentPanel {
     if (!item) return void toast("That can't be worn.", 2200, 'bad');
     const target = place ?? placesFor(item.slot)[0];
     if (place && KIND[place] !== item.slot) return this.refuse(place, 'Wrong slot');
+    // A locked item worn in the place (every place of its kind, when none is named): nothing goes there (the server says
+    // the same: shared equipFromBag).
+    const worn = adventure()?.equipped ?? {};
+    if (place ? worn[place]?.locked : placesFor(item.slot).every((p) => worn[p]?.locked)) return this.refuse(target, LOCKED_THERE_TOAST);
     if (it.broken) return this.refuse(target, "It's broken: repair it first");
     const cant = cantWear({ ...item, level: it.level }); // the server checks it too
     if (cant) return this.refuse(target, cant);
@@ -306,7 +321,9 @@ export class EquipmentPanel {
   }
 
   private async takeOff(place: EquipPlace): Promise<void> {
-    if (this.busy || !adventure()?.equipped[place]) return;
+    const worn = adventure()?.equipped[place];
+    if (this.busy || !worn) return;
+    if (worn.locked) return this.refuse(place, LOCKED);
     if (this.o.freeSlots() < 1) return this.refuse(place, 'Your bag is full');
     this.busy = true;
     const r = await unequipPlace(place);
@@ -350,7 +367,12 @@ export class EquipmentPanel {
     b.addEventListener('dblclick', () => void this.takeOffCosmetic(place));
     b.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      void this.takeOffCosmetic(place);
+      const worn = adventure()?.cosmetics[place];
+      if (worn) this.slotMenu(worn, () => void this.takeOffCosmetic(place), e.clientX, e.clientY);
+    });
+    onLongPress(b, (x, y) => {
+      const worn = adventure()?.cosmetics[place];
+      if (worn && !this.menu.isOpen) this.slotMenu(worn, () => void this.takeOffCosmetic(place), x, y);
     });
     b.addEventListener('click', (e) => {
       const worn = adventure()?.cosmetics[place];
@@ -368,7 +390,7 @@ export class EquipmentPanel {
       const t = e.dataTransfer?.types ?? [];
       if (!t.includes('application/x-mk-cosmetic') && !t.includes('application/x-mk-equipment')) return;
       e.preventDefault();
-      b.classList.add('eq-over');
+      b.classList.add('eq-over'); // (red on a locked slot: .eq-locked.eq-over)
     });
     b.addEventListener('dragleave', () => b.classList.remove('eq-over'));
     b.addEventListener('drop', (e) => {
@@ -380,6 +402,7 @@ export class EquipmentPanel {
       }
       if (!id) return;
       e.preventDefault();
+      if (adventure()?.cosmetics[place]?.locked) return this.refuseAt(b, LOCKED_THERE_TOAST);
       void this.wearCosmetic(id, place);
     });
     this.cslots.set(place, b);
@@ -412,7 +435,12 @@ export class EquipmentPanel {
     });
     b.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      void this.takeOff(place);
+      const worn = adventure()?.equipped[place];
+      if (worn) this.slotMenu(worn, () => void this.takeOff(place), e.clientX, e.clientY);
+    });
+    onLongPress(b, (x, y) => {
+      const worn = adventure()?.equipped[place];
+      if (worn && !this.menu.isOpen) this.slotMenu(worn, () => void this.takeOff(place), x, y);
     });
     b.addEventListener('pointerenter', () => this.showTip(place, b));
     b.addEventListener('pointerleave', () => (this.tip.hidden = true));
@@ -435,10 +463,51 @@ export class EquipmentPanel {
       const id = e.dataTransfer?.getData('application/x-mk-equipment');
       if (!id) return;
       e.preventDefault();
+      if (adventure()?.equipped[place]?.locked) return this.refuse(place, LOCKED_THERE_TOAST);
       void this.wear(id, place);
     });
     this.slots.set(place, b);
     return b;
+  }
+
+  /** A worn slot's right-click (or long-press) menu: Take off (greyed "(locked)" on a locked item), Lock / Unlock, Show
+   *  in chat. */
+  private slotMenu(worn: Item, takeOff: () => void, x: number, y: number): void {
+    const items: MenuRow[] = [];
+    const off = new Set<number>();
+    const titles = new Map<number, string>();
+    if (worn.locked) {
+      off.add(0);
+      titles.set(0, `${LOCKED}.`);
+      items.push(['Take off (locked)', () => {}]);
+    } else items.push(['Take off', takeOff]);
+    items.push([worn.locked ? 'Unlock' : 'Lock', () => void this.lock(worn)]);
+    items.push(['Show in chat', () => chatItem(worn)]);
+    this.tip.hidden = true;
+    this.menu.show(items, off, x, y, titles);
+  }
+
+  /** Locks or unlocks a worn item (CONTEXT.md Locked): free, at once; the panel redraws with your items. */
+  private async lock(worn: Item): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    const r = await lockItem(worn.uid, !worn.locked);
+    this.busy = false;
+    if (!r?.ok) {
+      playSound('error');
+      return toast(r?.message?.replace(/\.$/, '') ?? "Couldn't reach the bot", 2200, 'bad');
+    }
+    playSound('click');
+    toast(r.message.replace(/\.$/, ''), 1600);
+  }
+
+  /** The padlock badge on a locked worn item (manifest ui.itemLock; a 🔒 without the art). */
+  private lockBadge(): HTMLElement {
+    if (!this.o.lockIcon) return el('span', 'eq-lock eq-lock-text', '🔒');
+    const img = el('img', 'eq-lock');
+    img.src = this.o.lockIcon;
+    img.alt = 'Locked';
+    return img;
   }
 
   /** What a place is called for your gear type (Hard hat, Suit, Wraps…; Head before you have a class). */
@@ -469,11 +538,13 @@ export class EquipmentPanel {
       // (A weapon cosmetic for another class stays worn, greyed: no look or stats until they're of its class.)
       const def = item && anyDef(item.defId);
       b.classList.toggle('eq-off', !!def && !isGearDef(def) && !cosmeticFits(def, s.cls));
+      b.classList.toggle('eq-locked', !!item?.locked);
       b.draggable = !!item;
-      b.setAttribute('aria-label', item ? `${COSTUME_NAME[place]}: ${nameOf(item)}` : `${COSTUME_NAME[place]} (empty)`);
+      b.setAttribute('aria-label', item ? `${COSTUME_NAME[place]}: ${nameOf(item)}${item.locked ? ' (locked)' : ''}` : `${COSTUME_NAME[place]} (empty)`);
       if (item) {
         b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);
         b.append(itemPicture(item, 'icon', 2));
+        if (item.locked) b.append(this.lockBadge());
       } else if (sil) {
         const icon = slotSilhouette(place)!;
         icon.classList.add('eq-silhouette');
@@ -486,11 +557,13 @@ export class EquipmentPanel {
       b.replaceChildren();
       b.classList.toggle('eq-worn', !!item);
       b.classList.toggle('eq-broken', !!item?.broken);
+      b.classList.toggle('eq-locked', !!item?.locked);
       b.draggable = !!item;
-      b.setAttribute('aria-label', item ? `${this.placeName(place)}: ${nameOf(item)}` : `${this.placeName(place)} (empty)`);
+      b.setAttribute('aria-label', item ? `${this.placeName(place)}: ${nameOf(item)}${item.locked ? ' (locked)' : ''}` : `${this.placeName(place)} (empty)`);
       if (item) {
         b.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(item)]);
         b.append(itemPicture(item, 'icon', 2));
+        if (item.locked) b.append(this.lockBadge());
       } else if (sil) {
         const icon = slotSilhouette(kind)!;
         icon.classList.add('eq-silhouette');
