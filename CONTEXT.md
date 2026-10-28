@@ -768,7 +768,7 @@ next quest shows a grey "!" with "Come back at Lv X", and it opens the moment yo
 _Avoid_: level lock, grind wall
 
 **Dish**:
-A meal Aling Conching sells in the Old Market for Kusing, once a quest has unlocked it for you: a 10-minute effect,
+A meal Aling Conching sells in the Old Market for Kusing, once a quest has unlocked it for you: a 30-minute effect,
 one main dish and one side dish at a time (a new one replaces the old). It counts on battle maps only, keeps running
 through town and map changes, and a knock-out ends it. Her menu opens from her stall (**Aling Conching's Eatery**: a
 click on it, from anywhere in the Old Market) or from her dialog's Menu button.

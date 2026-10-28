@@ -200,7 +200,7 @@ const TOPICS: Topic[] = [
       '• **Aling Conching** still cooks there. Her story, **The Last Regular**, starts as you walk in: 15 quests with Mang Pido, Tisay and Kuya Jun, some of them waiting for your level',
       '• Eight kinds of mobs, each with its own trick (front blocks, tear clouds, spilled rice that slows you, thrown chairs, ambushes from the floodwater), and three mini bosses',
       '• **The Great Scale** wakes in the Market Hall every **2 hours**: step out of the red shapes, and break the pan to free a friend it\'s weighing',
-      '• **Aling Conching\'s cooking**: dishes for Kusing, unlocked by her story, **10 minutes** each and working on every map (one main and one side at a time). After her story, a **daily order** every day',
+      '• **Aling Conching\'s cooking**: dishes for Kusing, unlocked by her story, **30 minutes** each and working on every map (one main and one side at a time). After her story, a **daily order** every day',
       '• Four **Lantern Posts** inside, so you can teleport between its parts',
       '• **The Cellar** (Lv 37 to 40) is under the Market Hall: a **Cellar Key** opens a run of three floors for you or your party',
     ].join('\n'),

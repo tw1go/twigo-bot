@@ -56,7 +56,7 @@ test('seven dishes, each unlocked by the quest that says so, six main and Atchar
   assert.equal(Object.keys(DISHES).length, 7);
   for (const [id, d] of Object.entries(DISHES)) {
     assert.equal(chain.find((q) => q.id === d.unlockedBy)?.unlocksDish, id, id);
-    assert.ok(Object.keys(d.stats).length === 1 && d.minutes === 10, id);
+    assert.ok(Object.keys(d.stats).length === 1 && d.minutes === 30, id);
   }
   assert.deepEqual(Object.entries(DISHES).filter(([, d]) => d.slot === 'side').map(([id]) => id), ['atchara']);
   assert.deepEqual(DISHES.lugaw.stats, { mpRegenPct: 0.5 });
