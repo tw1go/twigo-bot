@@ -3,7 +3,7 @@ import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { unpackInSlices } from '../assets/packs';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
+import type { Area, Dir, FxDef, Gate, Manifest, MapObject, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -834,6 +834,7 @@ export class TownScene extends Phaser.Scene {
     this.gateSigns();
     this.warrenGateLabel();
     this.hatchLabel();
+    this.eateryLabel();
     this.lanternPostLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
@@ -4033,8 +4034,9 @@ export class TownScene extends Phaser.Scene {
   private warrensTracker: WarrensTracker | null = null;
   private gateCheckAt = 0;
   private gateAsked = false;
-  /** The dungeon entrances' click boxes (the Warren Gate, the Cellar Hatch): a click or tap on one is theirs alone, never
-   *  also a walk to the tile under it (the map's POINTER_UP leaves it). */
+  /** The dungeon entrances' click boxes (the Warren Gate, the Cellar Hatch; the Great Scale's bell while it stands, Aling
+   *  Conching's stall too): a click or tap on one is theirs alone, never also a walk to the tile under it (the map's
+   *  POINTER_UP leaves it). */
   private readonly entranceBoxes = new Set<Phaser.GameObjects.GameObject>();
 
   /** The Silong Hatch (the Palengke's Market Hall, its middle tile and use range: dungeons.json silong.entry): walking up
@@ -5246,6 +5248,36 @@ export class TownScene extends Phaser.Scene {
       this.gateAsked = false; // (asked again when you get there, or now if you're there)
       this.goToTile({ col: at[0], row: at[1] });
       this.nearWarrenGate();
+    });
+  }
+
+  /** Aling Conching's stall (the Old Market's `palengke-nena-stall` nearest her: it kept the story draft's cook's name,
+   *  the map's): "Aling Conching's Eatery" on hover, a click or tap opens her menu at once, from anywhere on the map (no
+   *  walk: the server only asks that you're in the Old Market); a guest is told to log in. Her dialog's Menu button stays. */
+  private eateryLabel(): void {
+    if (this.area !== 'palengke') return;
+    const cook = this.map.npcs?.find((n) => n.id === 'aling-conching');
+    if (!cook) return;
+    const near = (o: MapObject) => Math.max(Math.abs(o.col - cook.tile[0]), Math.abs(o.row - cook.tile[1]));
+    const o = this.map.objects.filter((x) => x.id === 'palengke-nena-stall' && near(x) <= 6).sort((a, b) => near(a) - near(b))[0];
+    const def = o && (this.M.props[o.id] as PropDef | undefined);
+    if (!o || !def) return;
+    // (Its box over its art, raised with its ground, as the hatch's.)
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
+    const top = tileToScreen(o.col, o.row);
+    top.y -= lift;
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, "Aling Conching's Eatery", top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
+    box.on('pointerout', () => label.show(null));
+    this.entranceBoxes.add(box);
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.entranceClick(p)) return;
+      if (adventure() && adventureData()?.palengke?.dishes) void this.openDishes();
+      else toast('Log in to order from Aling Conching.', 2500); // (a guest: her dialog has no Menu button either)
     });
   }
 
