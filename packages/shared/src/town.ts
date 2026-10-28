@@ -712,6 +712,10 @@ export type TownServerMessage =
   | { t: 'boss-move'; id: string; move: string; key: string; ms: number; shape?: TelegraphShape; data?: Record<string, unknown> }
   /** A boss move landing: who it hit (damage or a miss). */
   | { t: 'boss-hit'; id: string; move: string; key: string; hits: { id: string; damage: number; miss?: boolean; /** Dodged (a Step Back's): shown as Dodge. */ dodge?: true }[]; data?: Record<string, unknown> }
+  /** A boss moved players (the Ice Machine: whoever stood where an ice block landed is shoved out beside it; Intake draws
+   *  everyone a tile toward its fan): each named player (town id) to its tile, sliding over `ms`. The server has them
+   *  there already (their next step counts from it); the page slides their sprite, a walk under way dropped. */
+  | { t: 'boss-pull'; id: string; players: { id: string; to: [number, number] }[]; ms: number }
   /** A boss reset (or fell): its telegraphs and anything in flight go. */
   | { t: 'boss-cancel'; id: string }
   /** The Scrap Warrens: your run's state (the tracker), what the gate offers (`warrens-gate`), go into a run (`go`: the

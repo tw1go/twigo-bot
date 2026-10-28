@@ -498,13 +498,13 @@ export class SilongRun {
     return this.chills.get(member)?.stacks ?? 0;
   }
 
-  /** Each second: a stack for every `everyMs` standing still on a cold floor, one a second in the Brine Flood, the Freezer
-   *  Breath's; cleared by walking `moveMs`, a work lamp within `lampTiles`, a Sinigang or Lugaw on, a knock-out, a warm
+  /** Each second: a stack for every `everyMs` standing still on a cold floor, one a second in the Brine Flood, the Cold
+   *  Vents' (the Ice Machine's bosses' `chilled`); cleared by walking `moveMs`, a work lamp within `lampTiles`, a Sinigang or Lugaw on, a knock-out, a warm
    *  floor (B1), and for good once the Ice Machine falls (the frost melts). Each change to the floor's room. */
   private chill(now: number, out: SilongNews): void {
     const R = this.chillR;
-    const breath = new Map<string, number>();
-    for (const f of SILONG_FLOORS) for (const [id, n] of this.floors[f].bosses.chilled.splice(0)) breath.set(id, (breath.get(id) ?? 0) + n);
+    const vents = new Map<string, number>();
+    for (const f of SILONG_FLOORS) for (const [id, n] of this.floors[f].bosses.chilled.splice(0)) vents.set(id, (vents.get(id) ?? 0) + n);
     for (const p of this.inside.values()) {
       const f = this.floors[p.floor];
       const c = this.chills.get(p.member) ?? { stacks: 0, stillSince: now, lastStep: 0, movingSince: 0 };
@@ -524,7 +524,7 @@ export class SilongRun {
           c.stacks += 1;
           c.stillSince = now;
         }
-        const add = (breath.get(p.id) ?? 0) + (f.bosses.flood?.tiles.has(`${p.at[0]},${p.at[1]}`) ? 1 : 0);
+        const add = (vents.get(p.id) ?? 0) + (f.bosses.flood?.tiles.has(`${p.at[0]},${p.at[1]}`) ? 1 : 0);
         c.stacks += add;
         c.stacks = Math.min(R.max, c.stacks);
       }

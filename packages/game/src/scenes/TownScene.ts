@@ -3071,6 +3071,17 @@ export class TownScene extends Phaser.Scene {
         this.player.cancelPath();
         return this.player.leapTo({ col: m.col, row: m.row }, LEAP_MS, LEAP_ARC);
       }
+      // A boss moved players (the Ice Machine's ice block shove, its Intake): everyone named slides to their tile over
+      // ms, you too: your walk is dropped and your next step counts from there (the server has you there already).
+      if (m.t === 'boss-pull') {
+        const mine = m.players.find((p) => p.id === myId);
+        if (mine) {
+          this.pending = null;
+          this.player.halt();
+          this.player.leapTo({ col: mine.to[0], row: mine.to[1] }, m.ms, 0);
+        }
+        return this.others.handle(m);
+      }
       // A burning puddle's tick (Boiling Splash): each mob in it, an orange number.
       if (m.t === 'mob-burn') {
         // (Your puddle's ticks keep your combo going, and their kills count.)

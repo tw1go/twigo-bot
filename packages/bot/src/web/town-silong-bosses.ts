@@ -19,11 +19,13 @@ import { inShape } from './town-warrens.js';
 //   line at the farthest player: he charges down it, stopping at walls), Hook Swing (his Chompers, then hook shadows).
 // • Frosty Tubbs: Ambush (under the ice, then up under a circle on a random player), Ice Slick (a cone of floor turned
 //   to ice for a while: the page slides you on it), Tub Call (Lurkers out of the tanks).
-// • Ang Makinang Yelo (the last boss, B3's Ice Plant; never moves, its fan faces down-left from the map's bossTile):
-//   Ice Block Drop (red tiles under up to three players, then blocks that stand as walls for 12 s), Freezer Breath (a
-//   120° cone from its fan: nothing for whoever an ice block stands between), Belt Rush (both belts fast for a while, a
+// • Ang Makinang Yelo (the last boss, B3's Ice Plant; never moves, its fan the map's bossTile; reworked 28 Oct 2026,
+//   the owner: dungeons.json lastBoss.reworkNote): Ice Block Drop (red tiles under up to three players, then blocks that
+//   stand as walls for 12 s; whoever stood under one is shoved out beside it: `shove`, a `boss-pull`), Cold Vents (in
+//   place of the Freezer Breath: every floor tile of the Ice Plant vents, the only safe ground the 8 tiles round each
+//   standing ice block, its pockets; none standing: two blocks drop first), Belt Rush (both belts fast for a while, a
 //   line down one of them), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
-//   is part 4's), Call the Frost (Frost Scales out of the tanks' side of the hall at 75%, 50% and 25%), its enrage at
+//   is the run's), Call the Frost (Frost Scales out of the tanks' side of the hall at 75%, 50% and 25%), its enrage at
 //   25% (every move sooner, five blocks a drop, red eye lamps).
 // Pure (the room is its hands), tested in town-silong.test.ts.
 
@@ -64,6 +66,18 @@ interface Move {
   beltSpeedTilesPerSec?: number;
   attackSpeed?: number;
   iceBlockDropCount?: number;
+  /** Cold Vents: the blocks it drops first when none stand, and how long after they land it vents. */
+  dropsFirst?: number;
+  ventsAfterDropMs?: number;
+  /** Frost Sweep: rows a band, ms between bands. */
+  bandRows?: number;
+  bandMs?: number;
+  /** Icicle Chase: icicles a player. */
+  drops?: number;
+  /** Intake: how long it pulls, how many pulls, ms between them. */
+  pullMs?: number;
+  pulls?: number;
+  stepMs?: number;
 }
 
 interface Boss {
@@ -85,7 +99,9 @@ interface Boss {
 interface Pending {
   boss: string;
   at: number;
-  land: (now: number, players: ReadonlyMap<string, Tile>) => MobEvent[];
+  /** `players`: where everyone stands as it lands (the tick's copy: a move that shoves or pulls players writes their
+   *  new tiles into it, so what lands after it this tick sees them there). */
+  land: (now: number, players: Map<string, Tile>) => MobEvent[];
 }
 
 /** What a floor's bosses need of it: its mob room, its map's rooms and tiles, a run's numbers (a practice run's 60%). */
@@ -101,6 +117,8 @@ const CHAIR_MS = 900;
 const LID_BACK_MS = 600;
 /** Sangkalancelot's shell opens this long after each Cleaver Charge (its `shell` rule: 1.2 s). */
 const SHELL_OPEN_MS = 1200;
+/** An ice block's shove: the slide out beside it (the `boss-pull`'s ms). */
+const SHOVE_MS = 250;
 
 export class FloorBosses {
   private readonly bosses = new Map<string, Boss>();
@@ -115,7 +133,7 @@ export class FloorBosses {
   flood: { tiles: Set<string>; until: number } | null = null;
   /** Belt Rush: both belts at its speed until then. */
   rush: { until: number; speed: number } | null = null;
-  /** Freezer Breath's Chill on who it caught (town ids, stacks), until the run takes them. */
+  /** Cold Vents' Chill on who it caught (town ids, stacks), until the run takes them. */
   chilled: [string, number][] = [];
 
   constructor(
@@ -184,7 +202,10 @@ export class FloorBosses {
     const due = this.pending.filter((p) => p.at <= now);
     if (due.length) {
       this.pending = this.pending.filter((p) => p.at > now);
-      for (const p of due) events.push(...p.land(now, players));
+      // (The tick's own copy of where everyone stands: a shove or a pull moves players in it, and what lands after
+      // it this tick sees them there; the room's own map follows from the sent `boss-pull`.)
+      const live = new Map(players);
+      for (const p of due) events.push(...p.land(now, live));
     }
     // Ice blocks whose time is up: gone, their tiles open again.
     for (const [k, until] of this.iceBlocks) {
@@ -285,13 +306,85 @@ export class FloorBosses {
     return [...this.mobs.hold(b.mob, at, now), ev];
   }
 
+  /** The belts' tiles. */
+  private beltSet(): Set<string> {
+    return new Set([...this.host.map.silong.belts.e, ...this.host.map.silong.belts.w].map(key));
+  }
+
   /** Open floor of a boss's room: not blocked, no belt. */
   private floorOf(b: Boss): Tile[] {
     const [c0, r0, c1, r1] = b.room.rect;
-    const belts = new Set([...this.host.map.silong.belts.e, ...this.host.map.silong.belts.w].map(key));
+    const belts = this.beltSet();
     const out: Tile[] = [];
     for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (!this.host.map.blocked[r]?.[c] && !belts.has(key([c, r]))) out.push([c, r]);
     return out;
+  }
+
+  /** Every tile of a boss's room that can be stood on now (not blocked: the machine's body and standing ice blocks
+   *  are), belts and pallets included. */
+  private standable(b: Boss): Tile[] {
+    const [c0, r0, c1, r1] = b.room.rect;
+    const out: Tile[] = [];
+    for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (!this.host.map.blocked[r]?.[c]) out.push([c, r]);
+    return out;
+  }
+
+  /** The last boss's fan tile (the map's bossTile): where its cold comes from, what Intake pulls toward. */
+  private fanOf(b: Boss, at: Tile): Tile {
+    return this.host.map.silong.bossTile ?? b.room.boss?.tile ?? at;
+  }
+
+  /** An open tile `ring` steps (Chebyshev) from `p` for a player to be put on: in the room, not blocked (ice blocks
+   *  are), no belt, no mob, no player (`live`). Beside `p` (ring 1) the four straight neighbours before the diagonals,
+   *  farther from the fan first (shoved away from the machine); farther out the nearest first, then farther from the
+   *  fan. */
+  private freeTile(b: Boss, p: Tile, fan: Tile, live: ReadonlyMap<string, Tile>, ring: number): Tile | null {
+    const taken = new Set([...live.values()].map(key));
+    const belts = this.beltSet();
+    const cands: Tile[] = [];
+    for (let dr = -ring; dr <= ring; dr++) for (let dc = -ring; dc <= ring; dc++) if (Math.max(Math.abs(dc), Math.abs(dr)) === ring) cands.push([p[0] + dc, p[1] + dr]);
+    const rank = (t: Tile) => (ring === 1 ? (t[0] === p[0] || t[1] === p[1] ? 0 : 1) : hyp(t, p));
+    cands.sort((x, y) => rank(x) - rank(y) || hyp(y, fan) - hyp(x, fan));
+    return cands.find((t) => inRect(b.room.rect, ...t) && this.mobs.open(...t) && !belts.has(key(t)) && !this.mobs.occupied(...t) && !taken.has(key(t))) ?? null;
+  }
+
+  /** Ice blocks just landed: whoever stood where one did is shoved out beside it (never left standing inside the block;
+   *  they took its hit: they were under it): the nearest free tile next to it, else within 2. One `boss-pull` for all of
+   *  them, after the drop's hit; `live` moved with them. */
+  private shove(b: Boss, blocks: Tile[], live: Map<string, Tile>): MobEvent[] {
+    const under = new Set(blocks.map(key));
+    const fan = this.fanOf(b, blocks[0] ?? [0, 0]);
+    const moved: { id: string; to: Tile }[] = [];
+    for (const [id, p] of live) {
+      if (!under.has(key(p))) continue;
+      const to = this.freeTile(b, p, fan, live, 1) ?? this.freeTile(b, p, fan, live, 2);
+      if (!to) continue;
+      live.set(id, to);
+      moved.push({ id, to });
+    }
+    return moved.length ? [{ t: 'boss-pull', id: b.mob, players: moved, ms: SHOVE_MS }] : [];
+  }
+
+  /** Ice Block Drop: red tiles under up to `n` players (random floor for the rest), the blocks landing as walls for their
+   *  time; whoever stands under one takes its hit and is shoved out beside it. (Cold Vents drops two this way first when
+   *  none stand.) */
+  private drop(b: Boss, m: Move, near: [string, Tile][], now: number, n: number): MobEvent[] {
+    const ms = m.telegraphMs ?? 1200;
+    const mult = m.atkMult ?? 1;
+    const under = this.draw(near, n).map(([, p]) => p);
+    const rest = this.draw(this.floorOf(b), n - under.length, (t, drawn) => [...under, ...drawn].every((x) => hyp(x, t) >= 2));
+    const tiles = [...under, ...rest];
+    const shape: TelegraphShape = { kind: 'tiles', tiles };
+    const blockMs = m.leaves?.ms ?? 12_000;
+    const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'drop', blockMs });
+    return this.queue(b, ev, (t, players) => {
+      // Each block a wall till its time is up.
+      for (const [c, r] of tiles) {
+        this.iceBlocks.set(key([c, r]), t + blockMs);
+        this.host.map.blocked[r][c] = 1;
+      }
+      return [...this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p), mult, t, {}, { blocks: tiles, ms: blockMs }), ...this.shove(b, tiles, players)];
+    }, now + ms, now);
   }
 
   /** Up to `n` of `list` at random, each passing `ok` (given those drawn so far). */
@@ -399,34 +492,33 @@ export class FloorBosses {
           ], now + ms, now),
         ];
       }
-      case 'iceBlockDrop': {
-        const n = b.enraged ? (b.moves.find((x) => x.id === 'enrage')?.iceBlockDropCount ?? m.count ?? 3) : (m.count ?? 3);
-        const under = this.draw(near, n).map(([, p]) => p);
-        const rest = this.draw(this.floorOf(b), n - under.length, (t, drawn) => [...under, ...drawn].every((x) => hyp(x, t) >= 2));
-        const tiles = [...under, ...rest];
+      case 'iceBlockDrop':
+        return this.drop(b, m, near, now, b.enraged ? (b.moves.find((x) => x.id === 'enrage')?.iceBlockDropCount ?? m.count ?? 3) : (m.count ?? 3));
+      case 'coldVents': {
+        // Nothing to stand beside: two blocks drop first (the drop's own warning and hit; its own timer untouched), and
+        // the vents come a moment after they land.
+        if (!this.iceBlocks.size) {
+          const dropMove = b.moves.find((x) => x.id === 'iceBlockDrop') ?? m;
+          b.next.set(m.id, now + (dropMove.telegraphMs ?? 1200) + (m.ventsAfterDropMs ?? 2000));
+          return this.drop(b, dropMove, near, now, m.dropsFirst ?? 2);
+        }
+        // The pockets: the 8 tiles round each ice block standing now (what the warning shows is what's safe, a block
+        // that breaks meanwhile too); everything else in the room that can be stood on vents, belts and pallets too.
+        const pocket = new Set<string>();
+        for (const k of this.iceBlocks.keys()) {
+          const [c, r] = k.split(',').map(Number);
+          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if ((dc || dr) && inRect(b.room.rect, c + dc, r + dr) && !this.host.map.blocked[r + dr]?.[c + dc]) pocket.add(key([c + dc, r + dr]));
+        }
+        const pockets = [...pocket].map((k) => k.split(',').map(Number) as Tile);
+        const tiles = this.standable(b).filter((t) => !pocket.has(key(t)) && !this.iceBlocks.has(key(t)));
+        const vented = new Set(tiles.map(key));
+        const chill = m.chillStacks ?? 2;
         const shape: TelegraphShape = { kind: 'tiles', tiles };
-        const blockMs = m.leaves?.ms ?? 12_000;
-        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'drop', blockMs });
-        return this.queue(b, ev, (t, players) => {
-          // Each block a wall till its time is up.
-          for (const [c, r] of tiles) {
-            this.iceBlocks.set(key([c, r]), t + blockMs);
-            this.host.map.blocked[r][c] = 1;
-          }
-          return this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p), mult, t, {}, { blocks: tiles, ms: blockMs });
-        }, now + ms, now);
-      }
-      case 'freezerBreath': {
-        const fan = this.host.map.silong.bossTile ?? at;
-        // Down-left on the screen: along +row on the grid.
-        const shape: TelegraphShape = { kind: 'cone', origin: fan, facing: Math.PI / 2, angle: m.angleDeg ?? 120, length: m.length ?? 7 };
-        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'breath-charge', chill: m.chillStacks ?? 2 });
-        // Nothing for whoever an ice block stands between them and the fan.
-        const hit = (p: Tile) => inShape(shape, p) && !this.shielded(fan, p);
+        const ev = this.moveEvent(b.mob, m.id, ms, shape, { anim: 'breath-charge', chill, pockets });
         return this.queue(b, ev, (t, players) => {
           // (Its Chill on whoever it caught: the run's, as it ticks.)
-          for (const [id, p] of players) if (hit(p)) this.chilled.push([id, m.chillStacks ?? 2]);
-          return this.landHits(b.mob, m.id, ev.key, players, hit, mult, t, {}, { chill: m.chillStacks ?? 2 });
+          for (const [id, p] of players) if (vented.has(key(p))) this.chilled.push([id, chill]);
+          return this.landHits(b.mob, m.id, ev.key, players, (p) => vented.has(key(p)), mult, t, {}, { chill, vented: tiles });
         }, now + ms, now);
       }
       case 'beltRush': {
