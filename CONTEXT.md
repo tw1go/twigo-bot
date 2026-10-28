@@ -185,7 +185,8 @@ A creature in the Slums that players fight; every player sees the same ones.
 _Avoid_: monster, enemy, NPC (NPCs are the town's Tanod and Alings)
 
 **Zone**:
-A stretch of the Slums where one kind of mob lives.
+A stretch of the Slums where one kind of mob lives. A picked mob's info bar names its place: its zone; in the Cellar
+its room (or its floor, in a corridor); in the Scrap Warrens its area; the golem's Adds the Golem Pit.
 
 **Mob level**:
 Each kind of mob's one fixed level (a Tin Can is always Lv 1).

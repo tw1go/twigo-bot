@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
+import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, inRect, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
 import { onMap } from './clicks';
 import type { FxDef, Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
@@ -96,6 +96,23 @@ export const TONE = { grey: '#9CA3AF', white: '#FFFFFF', red: '#F87171' } as con
 
 /** Where the field boss lives (and its Adds' zone, in the info bar). */
 export const GOLEM_PIT = 'Golem Pit';
+
+/** Where a server-made mob stands (its zone's name in the target's info bar: a guard, a called mob, a boss, the golem's
+ *  Adds), by what the map says about its tile, in this order: a mob zone whose rect holds it; on a Cellar floor the room
+ *  whose rect holds it, else the floor itself (a corridor, the elevator); a Scrap Warrens area; the Golem Pit, only on a
+ *  map with one; else the map's own name (`mapName`: the scene's area). */
+export function placeOf(map: Pick<TownMap, 'mobZones' | 'silong' | 'dungeon' | 'boss'>, col: number, row: number, mapName: string): { id: string; name: string } {
+  const zone = map.mobZones?.find((z) => inRect(z.rect, col, row));
+  if (zone) return { id: zone.id, name: zone.name };
+  if (map.silong) {
+    const room = map.silong.rooms.find((r) => inRect(r.rect, col, row));
+    return room ? { id: room.id, name: room.name } : { id: map.silong.floor, name: map.silong.name };
+  }
+  const area = map.dungeon ? areaAt(map.dungeon, col, row) : null;
+  if (area) return { id: area.id, name: area.name };
+  if (map.boss?.pit) return { id: 'golem-add', name: GOLEM_PIT };
+  return { id: 'map', name: mapName };
+}
 
 /** The four ways the art faces, for a step in screen directions (SE for S and E, SW for W, NE for N). */
 const FACING: Record<string, TownMobFacing> = { n: 'ne', ne: 'ne', e: 'se', se: 'se', s: 'se', sw: 'sw', w: 'sw', nw: 'nw' };
@@ -769,8 +786,9 @@ export class Mobs {
     this.anims(art, def);
     const own = this.map.mobZones?.find((z) => z.mob === s.kind);
     const area = this.map.dungeon ? areaAt(this.map.dungeon, s.col, s.row) : null;
+    const place = placeOf(this.map, s.col, s.row, this.mapName);
     const zone: MobZone = {
-      id: area?.id ?? 'golem-add', name: area?.name ?? GOLEM_PIT, mob: art, level: own?.level ?? s.level, rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
+      id: place.id, name: place.name, mob: art, level: own?.level ?? s.level, rect: [s.col, s.row, s.col, s.row], height: own?.height ?? 0,
       pack: 0, aggro: 'aggressive', aggroRange: 0, leash: 0, respawnSec: 0, active: true, spawns: [],
     };
     const raw = (this.scene.cache.json.get('mob-data') ?? {})[art];
@@ -817,6 +835,9 @@ export class Mobs {
 
   /** The event mobs' kinds (events/<id>.json) and the event's name, which the target bar shows as where they are. */
   events: { kinds: Set<string>; name: string } | null = null;
+  /** The map's own name (the scene's area: "Town", "Old Market"…): a server-made mob's place where nothing on the map
+   *  names its tile (`placeOf`). */
+  mapName = 'Town';
 
   /** Its glow on the same sheet and frame as its body, where it is, its alpha a candle's flicker (manifest glow.alpha,
    *  a new one every glow.everyMs) times the body's own (its death fade). */

@@ -106,7 +106,7 @@ import { type ChillRules, RAMON, SILONG_FLAGS, chillAttack, chillMove, chillRule
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
-import { PartyPanel, showPartyInvite } from '../ui/party';
+import { PartyPanel, areaName, showPartyInvite } from '../ui/party';
 import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
@@ -704,6 +704,7 @@ export class TownScene extends Phaser.Scene {
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       if (this.area === 'palengke') mobs.levelingKey = 'palengke-leveling'; // (its mini bosses)
+      mobs.mapName = areaName(this.area); // (a server-made mob's place when nothing on the map names its tile)
       mobs.myLevel = () => adventure()?.progress.level ?? 1; // name colours by the level gap
       const hw = this.cache.json.get('halloween') as HalloweenData | undefined;
       if (hw) mobs.events = { kinds: new Set(Object.values(HALLOWEEN_MOBS)), name: hw.name };
