@@ -90,7 +90,7 @@ test('buffs stack (rules.stack): Rally and Vital Rub on ATK add up, held to the 
   // Crit rate added up is still held to its cap.
   const d = { power: 100, hp: 100, def: 10, amp: 0, critRate: 0.3, defRate: 0 } as never;
   const capped = withBuffs(stats, d, { critRate: 5 }).critRate;
-  assert.ok(capped < 1, `${capped}`);
+  assert.equal(capped, stats.caps.critRate, 'the cap');
   assert.equal(withBuffs(stats, d, b.effective('h')).critRate <= capped, true);
   assert.equal(withBuffs(stats, d, { critRate: 0.4 + 0.4 }).critRate, capped, 'two big crit buffs added up stop at the cap');
 });

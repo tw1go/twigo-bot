@@ -187,7 +187,7 @@ test('a pet out adds to its owner like gear lines (never STR, DEX or INT), withi
   assert.equal(withPet.dropRate, 0);
   const cha: Item = { ...newItem(S, D.defs.get('pet-fairy-cha')!, 'cha'), bound: true, xp: 0, points: {} };
   assert.equal(derivedStats(S, 'slingshot', 20, base, itemTotals(D, [cha], 'DEX')).dropRate, 0.023);
-  // The caps still hold: crit rate stays at 50% however much DEX.
+  // The caps still hold: crit rate stays at its cap (100%) however much DEX.
   const huge = baseStats(S, 'slingshot', 20, { DEX: 100_000 });
   assert.equal(derivedStats(S, 'slingshot', 20, huge, itemTotals(D, [maxed('croakyangs')], 'DEX')).critRate, S.caps.critRate);
 });

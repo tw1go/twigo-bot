@@ -155,7 +155,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - `classes/stats.json`: `rarity.cascade` (20 Oct 2026: every tier pick a cascade, CONTEXT.md; Drop rate's `perChance`).
 - `classes/stats.json`: `lootRoll` (rare loot a party rolls for: which items, 10 s, 1..1000; 12 Oct 2026) and
   `agimats.perItem` "any stats, the same one in both slots too" (was "different stats"; 12 Oct 2026).
-- `classes/stats.json`: `derived.critRate.perDEX` 0.003 (was 0.001, 11 Oct 2026: DEX worth a point like STR and INT).
+- `classes/stats.json`: `derived.critRate.perDEX` 0.002 (0.001 → 0.003 on 11 Oct 2026: DEX worth a point like STR and INT; 0.002 since 28 Oct 2026, the owner, with the cap at 100%).
+- `classes/stats.json`: `caps.critRate` 1 (was 0.5; 28 Oct 2026, the owner: crit rate can reach 100%; + `capsNote`).
 - `classes/stats.json` enhancement (11 Oct 2026, `buffNote`): `perLevel` 3% / 8% / 15% at +16 / 20% from +17 (was 2/3/5%),
   `armorMinDEF` (13 Oct 2026: +1 a plus to +10, +3 to +15, +5 to +18, +7 at +19 / +20), `accessories.perLevel` as tiers
   (13 Oct 2026: 2% to +10, 4% to +15, 10% at +16, 12% from +17; was 2% / 5%, before that 1%), the `totalAt20`s.
