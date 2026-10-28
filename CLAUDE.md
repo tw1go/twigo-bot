@@ -199,7 +199,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `rewardTitle` (Q14 `huling-suki`), the top-level `gapLine` and `questItems` tisay-note / honest-weight / suki-card;
   `items/items.json` the ten quest items (kind `quest`, bound; their icons the art folder's items/quest, 21 Oct 2026); `classes/stats.json` `inventory.questSlots` 20 (+ `questSlotsNote`); the title Huling Suki in the bot's
   built-in titles (web/titles.ts).
-- The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`
+- The Palengke's dishes and daily orders (20 Oct 2026): `classes/palengke-leveling.json` each dish's `slot` and `stats`,
+  every dish's `minutes` 30 and `dishRules` "30 min each" (28 Oct 2026, the owner: were 10),
   (`dishesNote`), its `icon` / `showcase` / `large` (23 Oct 2026: the art folder's items/consumables item-dish-* files), Q1's `freeDish` (her free bowl of Lugaw), the dailies' `reset` (4 am Manila), `freeDish` and
   `dialogue` (written here).
 - The Palengke's NPCs (21 Oct 2026): `npcs/palengke-npc-dialogue.json` = the art folder's npcs/palengke one with its idle lines

@@ -40,7 +40,7 @@ export function openDishMenu(o: DishMenuOptions): Promise<void> {
   const wrap = el('div', 'dm-menu');
   const wallet = el('div', 'dm-wallet');
   const list = el('div', 'dm-list');
-  const minutes = Object.values(o.dishes)[0]?.minutes ?? 10;
+  const minutes = Object.values(o.dishes)[0]?.minutes ?? 30;
   wrap.append(
     el('p', 'dm-rule', `One main dish and one side dish at a time, ${minutes} minutes each. They work in fights and keep running wherever you go; being knocked out ends them.`),
     wallet,
