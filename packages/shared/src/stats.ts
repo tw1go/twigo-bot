@@ -476,7 +476,7 @@ export interface BuffsData {
 export interface BuffDef {
   class: string;
   unlock: number;
-  /** `enemy`: a debuff on one mob (the caster's target within `rangeTiles`, else the nearest); `enemy+self`: one on the
+  /** `enemy`: a debuff on one mob (the caster's target, within `rangeTiles`; with no target the nearest); `enemy+self`: one on the
    *  mobs round the caster (`tauntAround`) and its player stats on the caster. */
   target: 'self' | 'ally+self' | 'party' | 'enemy' | 'enemy+self';
   stats: Record<string, number>;

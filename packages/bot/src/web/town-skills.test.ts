@@ -288,7 +288,7 @@ test('a heal skill gives the party its share of Power, +2% a skill level', () =>
   assert.ok(eleven.ok && Math.abs(eleven.heal! - 0.18) < 1e-9);
 });
 
-test('debuffs: on the target in range (else the nearest), one of each name a mob, its DEF cut and its taunt; nobody in range: nothing', () => {
+test('debuffs: on the target in range, nothing when it stands too far (never a nearer mob instead); no target: the nearest; one of each name a mob, its DEF cut and its taunt', () => {
   const r = room({ shapes: {} });
   const w = wireOf(r);
   const at = near(r, w, 2);
@@ -303,6 +303,16 @@ test('debuffs: on the target in range (else the nearest), one of each name a mob
   // No target: the nearest within range; none in range: nothing (the town refuses it, no cost).
   assert.deepEqual(r.debuff('p1', at, 'marked', { damageTakenPct: 0.2 }, 8000, null, 6, 0, true), [w.id]);
   assert.deepEqual(r.debuff('p1', [0, 0], 'marked', { damageTakenPct: 0.2 }, 8000, w.id, 6, 0), []);
+  // The target too far while another mob stands in range: nothing, never that one (28 Oct 2026: a Slingshot's Armor
+  // Crack landed on a nearer mob than the one targeted); the refusal says 'range' for a live target (`targetFar`).
+  const other = r.snapshot(0).find((m) => m.id !== w.id && !m.mini && cheb([m.col, m.row], [w.col, w.row]) > 8)!;
+  const byOther = near(r, other, 1);
+  assert.ok(cheb(byOther, [w.col, w.row]) > 6, 'w out of range from there');
+  assert.deepEqual(r.debuff('p1', byOther, 'marked', { damageTakenPct: 0.2 }, 8000, w.id, 6, 0, true), [], 'not the nearer one');
+  assert.deepEqual(r.debuff('p1', byOther, 'marked', { damageTakenPct: 0.2 }, 8000, null, 6, 0, true), [other.id], 'no target: the nearest');
+  assert.equal(r.targetFar(w.id, 0), true);
+  assert.equal(r.targetFar(null, 0), false);
+  assert.equal(r.targetFar('nobody', 0), false);
   // A taunt in seconds: it fights the caster.
   const t = room({ shapes: {} });
   const p1 = near(t, w, 2);
@@ -364,10 +374,18 @@ test('over the town\'s socket: a debuff with no mob in range is refused at no co
   a.ws.close();
   await new Promise((ok) => far.close(ok));
 
-  // Beside the Wire Tangle: it lands on it, the room hears mob-debuff and the cast.
+  // Beside the Wire Tangle: it lands on it, the room hears mob-debuff and the cast. First, targeting a mob far away from
+  // there: refused 'range' (never the Wire Tangle beside you instead), nothing spent.
   const there = await start(beside);
   const b = await open(portOf(there), 'Ash');
   await wait();
+  const snap = mobs.snapshot(Date.now());
+  const farMob = snap.find((m) => m.id !== w.id && !m.mini && Math.max(Math.abs(m.col - beside[0]), Math.abs(m.row - beside[1])) > 12);
+  assert.ok(farMob, `a mob far from ${beside}: ${snap.length} mobs, ${JSON.stringify(snap.slice(0, 2))}`);
+  b.ws.send(JSON.stringify({ t: 'buff', buff: 'Armor Crack', target: farMob.id }));
+  await wait();
+  assert.deepEqual(b.got.filter((m) => m.t === 'buff-refused'), [{ t: 'buff-refused', buff: 'Armor Crack', reason: 'range' }]);
+  assert.ok(!b.got.some((m) => m.t === 'mob-debuff'), 'nothing on the one beside you');
   b.ws.send(JSON.stringify({ t: 'buff', buff: 'Armor Crack', target: w.id }));
   await wait();
   const deb = b.got.find((m) => m.t === 'mob-debuff');

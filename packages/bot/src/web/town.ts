@@ -1458,14 +1458,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         const t = picked ? conns.get(picked) : undefined;
         const target: Nearby | undefined = t && t.room === c.room ? { member: t.userId, at: [t.player.col, t.player.row], out: !!t.player.out } : undefined;
         const v = vitals.get(c.userId);
-        // A debuff (CONTEXT.md Debuff) goes on a mob: the one they've targeted (`target`: its id) within its range, else
-        // the nearest that is; nobody in range, nothing spent.
+        // A debuff (CONTEXT.md Debuff) goes on a mob: the one they've targeted (`target`: its id) within its range (too
+        // far: refused 'range', never a nearer mob in its place), else with no target the nearest within range; nothing
+        // to put it on, nothing spent.
         const def = STATS.skills.buffs?.list[m.buff];
         const mobs = mobsOf(c.room);
         const mobTarget = typeof m.target === 'string' && !picked ? m.target : null;
         if (def?.debuff && battle(c.room)) {
           const ids = mobs?.debuff(p.id, [p.col, p.row], m.buff, def.stats, 0, mobTarget, def.rangeTiles ?? 1, now, true) ?? [];
-          if (!ids.length) return send(c, { t: 'buff-refused', buff: m.buff, reason: 'target' });
+          if (!ids.length) return send(c, { t: 'buff-refused', buff: m.buff, reason: mobs?.targetFar(mobTarget, now) ? 'range' : 'target' });
         }
         const r = buffs.cast({ member: c.userId, cls: who.cls, level: who.level ?? p.level ?? 1, skillLevel: who.buffLevels?.[m.buff] ?? 1, out: !!p.out, battle: battle(c.room), mp: v ? (vitals.isFreeMp(c.userId) ? Infinity : v.mp) : 0, at: [p.col, p.row] }, m.buff, party, target, now);
         if (!r.ok) return send(c, { t: 'buff-refused', buff: m.buff, reason: r.reason, ...(r.ms ? { ms: r.ms } : {}) });

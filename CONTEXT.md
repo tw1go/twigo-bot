@@ -625,8 +625,9 @@ A self buff with no timer (Keen Stance, Fierce Stance, Flow Stance), on until ca
 
 **Debuff**:
 A utility that puts an effect on a mob instead of a player (Armor Crack: less DEF; Marked: takes more damage), cast
-at your target like a buff. A mob holds one of each debuff at a time, whoever cast it; casting it again restarts its
-timer. Works on mini bosses and field bosses too.
+at your target like a buff: out of its range you walk up to it first, and it never goes on a nearer mob in its place;
+with no target it goes on the nearest mob in range. A mob holds one of each debuff at a time, whoever cast it; casting
+it again restarts its timer. Works on mini bosses and field bosses too.
 _Avoid_: curse, hex, status effect
 
 **Taunt**:

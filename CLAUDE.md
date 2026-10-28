@@ -1954,7 +1954,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   over its own pick; the golem's `taunt`), dot (ticks on the mob, `mob-burn` numbers), heal (`healParty`), seek, crit, the
   charge-up (`attack.held`, clamped; none = full), windup (lands later, its MP then; cancelled at no cost, cooldown back;
   the room hears `mob-hit` with `windup` / `target`), leap (`leap`: the free tile next to the target, on its level, no
-  wall jumped; none: 'range'). Debuffs (`MobRoom.debuff`: the target in `rangeTiles`, else the nearest; none: refused
+  wall jumped; none: 'range'). Debuffs (`MobRoom.debuff`: the target within `rangeTiles`, else nothing (refused 'range'; the page walks you into range first: TownScene `debuffWalk`, 28 Oct 2026), with no target the nearest; none: refused
   'target', no cost; one of each name a mob; `tauntAround`; `mob-debuff`), mob stats defPct, damageTakenPct, missChance,
   mobDamagePct, slow, taunt; player stats critDamage, evasion (`Target.evasion`), hpDrainPctPerSec (Blood Price, never under
   10% HP). Game: `combat/skill-previews.ts` the 36 scripts (each on attack-quick / -heavy / -cast, Timber! from

@@ -1598,11 +1598,14 @@ export class MobRoom {
     return near ?? null;
   }
 
-  /** A debuff on a mob (CONTEXT.md Debuff; stats.json skills.buffs with `debuff`): on `target` if it's within `range` of
-   *  the caster, else the nearest mob that is; `tauntAround` (Iron Kitchen): every mob within that many tiles of the
-   *  caster, no target needed. One of each name a mob, whoever cast it (again: its timer restarts). Its taunt (seconds)
-   *  makes it fight the caster; its slow works on every mob (unlike a skill's). The ids it went on; none: nobody in range.
-   *  `dry`: who it would go on, nothing put on. */
+  /** A debuff on a mob (CONTEXT.md Debuff; stats.json skills.buffs with `debuff`): on `target` (the caster's mob target,
+   *  alive) if it's within `range` of the caster, and on nothing when it isn't (never the nearest in its place: 28 Oct
+   *  2026, a Slingshot's Armor Crack landed on a nearer mob than the one targeted; the page walks you into range first);
+   *  with no target (or one gone), the nearest mob within range; `tauntAround` (Iron Kitchen): every mob within that
+   *  many tiles of the caster, no target needed. One of each name a mob, whoever cast it (again: its timer restarts). Its
+   *  taunt (seconds) makes it fight the caster; its slow works on every mob (unlike a skill's). The ids it went on; none:
+   *  nobody in range (`targetFar` says whether that was the target standing too far). `dry`: who it would go on, nothing
+   *  put on. */
   debuff(caster: string, from: [number, number], name: string, stats: Record<string, number>, ms: number, target: string | null, range: number, now: number, dry = false): string[] {
     const { tauntAround, ...rest } = stats;
     const live = (x: Mob) => !x.respawnAt && !x.untargetable && x.hp > 0;
@@ -1613,12 +1616,11 @@ export class MobRoom {
       if (this.golem?.hittable && this.golem.edge(from, now) <= tauntAround) on.push('golem');
     } else {
       const golemOk = !!this.golem?.hittable && this.golem.edge(from, now) <= range;
-      const t = target === this.golem?.id ? (golemOk ? 'golem' : null) : (() => {
-        const x = target ? this.byId.get(target) : undefined;
-        return x && live(x) && dist(x) <= range ? x : null;
-      })();
-      const near = this.mobs.filter((x) => live(x) && dist(x) <= range).sort((a, b) => dist(a) - dist(b))[0];
-      const one = t ?? near ?? (golemOk ? 'golem' : null);
+      const mob = target && target !== this.golem?.id ? this.byId.get(target) : undefined;
+      const targeted: Mob | 'golem' | null = target === this.golem?.id ? (this.golem?.hittable ? 'golem' : null) : mob && live(mob) ? mob : null;
+      let one: Mob | 'golem' | null;
+      if (targeted) one = (targeted === 'golem' ? golemOk : dist(targeted) <= range) ? targeted : null; // (their target, or nothing)
+      else one = this.mobs.filter((x) => live(x) && dist(x) <= range).sort((a, b) => dist(a) - dist(b))[0] ?? (golemOk ? 'golem' : null);
       on = one ? [one] : [];
     }
     if (dry) return on.map((x) => (x === 'golem' ? this.golem!.id : x.id)); // (who it would go on)
@@ -1902,6 +1904,15 @@ export class MobRoom {
     const m = this.byId.get(id);
     if (!m) return null;
     return { id, at: this.at(m, now), hp: m.hp, maxHp: m.maxHp, dead: !!m.respawnAt, foe: m.foe?.id ?? null, facing: m.facing, zone: m.zone.id, kind: m.kindId ?? m.zone.mob };
+  }
+
+  /** Whether a debuff's target (a mob id, the golem's too) is alive and targetable now: a refusal's reason is 'range'
+   *  for one standing too far, 'target' when there's nothing to put it on. */
+  targetFar(target: string | null, now: number): boolean {
+    if (!target) return false;
+    if (target === this.golem?.id) return !!this.golem?.hittable;
+    const m = this.byId.get(target);
+    return !!m && !m.respawnAt && !m.untargetable && m.hp > 0 && this.at(m, now).length === 2;
   }
 
   /** Every mob a boss called (by its tag), alive or not. */
