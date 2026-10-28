@@ -1090,8 +1090,10 @@ export class Character {
   private battleTrace(): { trace: AuraTrace; x: number; y: number } | null {
     const b = this.battle!;
     const art = this.M.classes ? artFor(this.M.characters, this.M.classes, b.cls, this.outfit) : undefined; // (the poses' weapon skin)
-    const key = this.sprite.anims.currentAnim?.key;
-    if (!art || !key) return null;
+    // (The sheet on screen, not the playing anim: a skill's own frame order (strikeFrames) sets attack frames without
+    // playing their anim, so the anim's key would still say idle-ready.)
+    const key = this.sprite.texture.key;
+    if (!art || !key.startsWith('battle:')) return null;
     const parts = key.split(':');
     const dir = parts[parts.length - 1] as Dir;
     let anim = parts[parts.length - 2];
