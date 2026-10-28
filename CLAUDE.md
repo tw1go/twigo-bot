@@ -1555,6 +1555,15 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   everything night-tinted. Tested in `halloween.test.ts`. Debug `__town.deco()`.
 - Settings → Game → Exit game (`ui/settings.ts` `leave`): the desktop app quits (`net/desktop.ts` `exitApp`, the
   process plugin's exit, `process:allow-exit`); the website and the home screen app go to the front page.
+- Item locks (CONTEXT.md Locked; 28 Oct 2026): `Item.locked` (schema v27 items.locked, read and written in web/adventure.ts),
+  shared items.ts `lockedRefusal` / `LOCKED_THERE` used by disassembleRefusal, sell / destroy (bot forge.ts), tradeRefusal /
+  dropRefusal, unequipToBag / unwearCosmetic and the place picking of equipFromBag / wearCosmetic (the free place takes it,
+  every place locked refuses); the `lock` forge action { item, on } (bot forge.ts `lock`, the page's `lockItem`); the forge's
+  other actions ignore it. Page: the padlock badge (manifest ui.itemLock / itemLockOpen, `.iv-lock` / `.eq-lock`), the
+  tooltip's gold Locked line, the bag's Lock / Unlock (menu row and detail button) with Disassemble / Sell / Destroy greyed
+  "(locked)", the multi-select never picking a locked item ("It's locked."), and the equipment slot's right-click (or
+  long-press) menu Take off / Lock / Show in chat (ui/context-menu.ts, shared with the bag); a drop onto a locked slot
+  is refused red on the page first.
 - Forge (combat-guide.md How to enhance, Enhancement cost and odds, Agimats, Disassembly; stats.json enhancement.cost,
   agimats, disassembly, gearTiers): rules and refusals in `packages/shared/src/forge.ts` (pure, both sides: `gearTier`,
   `toolFor` (items.json `forge`: whetstone / fragment / repairKit by `tier`), `enhanceRefusal` ("Needs a Rough Whetstone",
