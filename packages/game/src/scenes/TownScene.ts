@@ -3,7 +3,7 @@ import { api } from '../net/endpoints';
 import { queueSave } from '../net/sync';
 import { unpackInSlices } from '../assets/packs';
 import { queueImage, queueNpcs, queueTown } from '../assets/queue';
-import type { Area, Dir, FxDef, Gate, Manifest, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
+import type { Area, Dir, FxDef, Gate, Manifest, MapObject, MapTiles, MobData, PropDef, TownMap } from '../assets/types';
 import { Character, SPEED, dirForStep, dirToward } from '../characters/character';
 import { type Outfit, assetProblems, buildOutfit, drawStill, headPortrait, headTop, outfitFiles, randomOutfit, sheetKey, stillFiles } from '../characters/doll';
 import { loadOutfit } from '../characters/loading';
@@ -106,7 +106,7 @@ import { type ChillRules, RAMON, SILONG_FLAGS, chillAttack, chillMove, chillRule
 import { MapMenu } from '../ui/map-menu';
 import { firstOpen } from '../net/pwa';
 import { confirmDrop } from '../ui/drop';
-import { PartyPanel, showPartyInvite } from '../ui/party';
+import { PartyPanel, areaName, showPartyInvite } from '../ui/party';
 import { answer as partyAnswer, inParty, onParty, party, refusal as partyRefusal, setMemberHp, setParty, setPartyLink } from '../net/party';
 import { GROUND_SHADOW_DEPTH, LABEL_DEPTH, frontDepth } from '../world/depth';
 import { minutesNow, setTimeSource, skyAt } from '../world/daynight';
@@ -118,7 +118,7 @@ import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts
 import { Terrain } from '../world/terrain';
 import { type Mob, Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
-import { GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
+import { BELL_TILES, GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
 import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
@@ -346,7 +346,7 @@ export class TownScene extends Phaser.Scene {
   private grid!: WalkGrid;
   private player!: Character;
   private doorAt = new Map<string, Building>();
-  private pending: { sit?: Bench; npc?: string; loot?: string; halloween?: 'mikko' | 'lower' } | null = null;
+  private pending: { sit?: Bench; npc?: string; loot?: string; halloween?: 'mikko' | 'lower'; bell?: true } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
@@ -704,6 +704,7 @@ export class TownScene extends Phaser.Scene {
     if (this.map.mobZones?.length) {
       const mobs = new Mobs(this, this.M, this.map, this.grid, this.objects, (obj) => this.tint >= 0 && obj.setTint(this.tint), this.fxLayers);
       if (this.area === 'palengke') mobs.levelingKey = 'palengke-leveling'; // (its mini bosses)
+      mobs.mapName = areaName(this.area); // (a server-made mob's place when nothing on the map names its tile)
       mobs.myLevel = () => adventure()?.progress.level ?? 1; // name colours by the level gap
       const hw = this.cache.json.get('halloween') as HalloweenData | undefined;
       if (hw) mobs.events = { kinds: new Set(Object.values(HALLOWEEN_MOBS)), name: hw.name };
@@ -722,6 +723,7 @@ export class TownScene extends Phaser.Scene {
           me: () => this.player.tile,
           char: (id) => (id === this.myId ? this.player : this.others.charOf(id)),
           ring: (at) => this.ringBell(at),
+          own: (obj, on) => void (on ? this.entranceBoxes.add(obj) : this.entranceBoxes.delete(obj)),
           timer: (name, warn, riseIn, awake) => setGolemTimer(name, warn, riseIn, awake, 'the hall'),
         });
         this.greatScale = view;
@@ -833,6 +835,7 @@ export class TownScene extends Phaser.Scene {
     this.gateSigns();
     this.warrenGateLabel();
     this.hatchLabel();
+    this.eateryLabel();
     this.lanternPostLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
@@ -1007,6 +1010,7 @@ export class TownScene extends Phaser.Scene {
       this.gateCheckAt = time + 250;
       this.nearHatch();
       this.onArrivalElevator();
+      this.bellTick();
     }
     this.lanternTick(time);
     this.ramonTick(time);
@@ -4031,8 +4035,9 @@ export class TownScene extends Phaser.Scene {
   private warrensTracker: WarrensTracker | null = null;
   private gateCheckAt = 0;
   private gateAsked = false;
-  /** The dungeon entrances' click boxes (the Warren Gate, the Cellar Hatch): a click or tap on one is theirs alone, never
-   *  also a walk to the tile under it (the map's POINTER_UP leaves it). */
+  /** The dungeon entrances' click boxes (the Warren Gate, the Cellar Hatch; the Great Scale's bell while it stands, Aling
+   *  Conching's stall too): a click or tap on one is theirs alone, never also a walk to the tile under it (the map's
+   *  POINTER_UP leaves it). */
   private readonly entranceBoxes = new Set<Phaser.GameObjects.GameObject>();
 
   /** The Silong Hatch (the Palengke's Market Hall, its middle tile and use range: dungeons.json silong.entry): walking up
@@ -4811,6 +4816,10 @@ export class TownScene extends Phaser.Scene {
       this.sitOn(b); // someone may have sat down while we walked over
       return;
     }
+    if (this.pending?.bell) {
+      this.pending = null;
+      if (this.greatScale?.nearBell(tile)) return void this.link?.send({ t: 'bell-ring' }); // (else the walk fell short: nothing)
+    }
     const building = this.doorAt.get(`${tile.col},${tile.row}`);
     this.setBuildingAlert(building ?? null);
     if (!building) return;
@@ -5240,6 +5249,36 @@ export class TownScene extends Phaser.Scene {
       this.gateAsked = false; // (asked again when you get there, or now if you're there)
       this.goToTile({ col: at[0], row: at[1] });
       this.nearWarrenGate();
+    });
+  }
+
+  /** Aling Conching's stall (the Old Market's `palengke-nena-stall` nearest her: it kept the story draft's cook's name,
+   *  the map's): "Aling Conching's Eatery" on hover, a click or tap opens her menu at once, from anywhere on the map (no
+   *  walk: the server only asks that you're in the Old Market); a guest is told to log in. Her dialog's Menu button stays. */
+  private eateryLabel(): void {
+    if (this.area !== 'palengke') return;
+    const cook = this.map.npcs?.find((n) => n.id === 'aling-conching');
+    if (!cook) return;
+    const near = (o: MapObject) => Math.max(Math.abs(o.col - cook.tile[0]), Math.abs(o.row - cook.tile[1]));
+    const o = this.map.objects.filter((x) => x.id === 'palengke-nena-stall' && near(x) <= 6).sort((a, b) => near(a) - near(b))[0];
+    const def = o && (this.M.props[o.id] as PropDef | undefined);
+    if (!o || !def) return;
+    // (Its box over its art, raised with its ground, as the hatch's.)
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
+    const top = tileToScreen(o.col, o.row);
+    top.y -= lift;
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, "Aling Conching's Eatery", top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
+    box.on('pointerout', () => label.show(null));
+    this.entranceBoxes.add(box);
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.entranceClick(p)) return;
+      if (adventure() && adventureData()?.palengke?.dishes) void this.openDishes();
+      else toast('Log in to order from Aling Conching.', 2500); // (a guest: her dialog has no Menu button either)
     });
   }
 
@@ -6010,11 +6049,30 @@ export class TownScene extends Phaser.Scene {
     };
   }
 
-  /** The Great Scale's bell clicked: rung if you're within its reach (the server checks again), else you walk to it. */
+  /** The Great Scale's bell clicked: rung if you're within its reach (the server checks again), else one click is enough:
+   *  you walk to the nearest free tile within its reach and it rings as you get there (`pending.bell`, checked as you
+   *  walk; another walk calls it off, as every pending walk's end). */
   private ringBell(at: [number, number]): void {
     if (this.greatScale?.nearBell(this.player.tile)) return void this.link?.send({ t: 'bell-ring' });
-    toast('Walk up to the bell, then ring it.', 1800);
-    this.goToTile({ col: at[0] + 2, row: at[1] + 2 });
+    const from = this.player.heading;
+    let to: Tile | null = null;
+    let best = Infinity;
+    for (let r = at[1] - BELL_TILES; r <= at[1] + BELL_TILES; r++)
+      for (let c = at[0] - BELL_TILES; c <= at[0] + BELL_TILES; c++) {
+        if (!this.grid.walkable(c, r) || !this.grid.reachable(from, { col: c, row: r })) continue;
+        const d = Math.max(Math.abs(c - from.col), Math.abs(r - from.row)) * 1000 + Math.hypot(c - from.col, r - from.row);
+        if (d < best) [best, to] = [d, { col: c, row: r }];
+      }
+    this.moveTo(to ?? { col: at[0], row: at[1] }); // (none: as near as the walk grid gets you)
+    this.pending = { bell: true };
+  }
+
+  /** Walking to the bell (`ringBell`): rung as soon as you're within its reach, not only at the walk's end. */
+  private bellTick(): void {
+    if (!this.pending?.bell) return;
+    if (!this.greatScale?.nearBell(this.player.tile)) return;
+    this.pending = null;
+    this.link?.send({ t: 'bell-ring' });
   }
 
   /** The HUD's golem timer (ui/golem-timer.ts), from a `mobs` or `golem` message: awake while it's up (rising, in its

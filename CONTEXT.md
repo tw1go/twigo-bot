@@ -185,7 +185,8 @@ A creature in the Slums that players fight; every player sees the same ones.
 _Avoid_: monster, enemy, NPC (NPCs are the town's Tanod and Alings)
 
 **Zone**:
-A stretch of the Slums where one kind of mob lives.
+A stretch of the Slums where one kind of mob lives. A picked mob's info bar names its place: its zone; in the Cellar
+its room (or its floor, in a corridor); in the Scrap Warrens its area; the golem's Adds the Golem Pit.
 
 **Mob level**:
 Each kind of mob's one fixed level (a Tin Can is always Lv 1).
@@ -246,7 +247,7 @@ The Great Scale grabbing one player onto its pan. While **held** they can't move
 _Avoid_: grab, stun (for this)
 
 **Bell**:
-The palengke's bell, left where the Great Scale fell for a minute after each fall. Ringing it (standing near) is the last quest's step after helping bring it down; whoever missed it can ring the next one.
+The palengke's bell, left where the Great Scale fell for a minute after each fall. Ringing it (standing near) is the last quest's step after helping bring it down; whoever missed it can ring the next one. One click rings it: from farther off the click walks you up to it and it rings as you get there.
 _Avoid_: gong, chest
 
 **Rise**:
@@ -763,7 +764,8 @@ _Avoid_: level lock, grind wall
 **Dish**:
 A meal Aling Conching sells in the Old Market for Kusing, once a quest has unlocked it for you: a 10-minute effect,
 one main dish and one side dish at a time (a new one replaces the old). It counts on battle maps only, keeps running
-through town and map changes, and a knock-out ends it.
+through town and map changes, and a knock-out ends it. Her menu opens from her stall (**Aling Conching's Eatery**: a
+click on it, from anywhere in the Old Market) or from her dialog's Menu button.
 _Avoid_: food buff, buff (a buff is a class skill), consumable
 
 **Daily order**:
