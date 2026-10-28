@@ -24,7 +24,9 @@ import { inShape } from './town-warrens.js';
 //   stand as walls for 12 s; whoever stood under one is shoved out beside it: `shove`, a `boss-pull`), Cold Vents (in
 //   place of the Freezer Breath: every floor tile of the Ice Plant vents, the only safe ground the 8 tiles round each
 //   standing ice block, its pockets; none standing: two blocks drop first), Belt Rush (both belts fast for a while, a
-//   line down one of them), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
+//   line down one of them), Frost Sweep (bands of frost rolling from its wall across the room, each landing a moment
+//   after the one before: cross a band once it has landed, or outrun it), Icicle Chase (an icicle on where each player
+//   stands, then the next on where they stand as it lands, three each: keep walking), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
 //   is the run's), Call the Frost (Frost Scales out of the tanks' side of the hall at 75%, 50% and 25%), its enrage at
 //   25% (every move sooner, five blocks a drop, red eye lamps).
 // Pure (the room is its hands), tested in town-silong.test.ts.
@@ -520,6 +522,53 @@ export class FloorBosses {
           for (const [id, p] of players) if (vented.has(key(p))) this.chilled.push([id, chill]);
           return this.landHits(b.mob, m.id, ev.key, players, (p) => vented.has(key(p)), mult, t, {}, { chill, vented: tiles });
         }, now + ms, now);
+      }
+      case 'frostSweep': {
+        // The cold rolls from the machine's wall (the room's first rows) across the room in bands of `bandRows` rows
+        // (the last takes what's left), each its own warning landing `bandMs` after the one before; every standable
+        // tile of its rows (belts too; ice blocks and the body are out). Ice blocks don't shield it: cross a band once
+        // it has landed, or outrun it. It holds until the last band lands.
+        const [, r0, , r1] = b.room.rect;
+        const rows = Math.max(1, m.bandRows ?? 3);
+        const bandMs = m.bandMs ?? 700;
+        const n = Math.max(1, Math.floor((r1 - r0 + 1) / rows));
+        const floor = this.standable(b).filter((t) => !this.iceBlocks.has(key(t)));
+        const bands = Array.from({ length: n }, (_, k) => floor.filter(([, r]) => r >= r0 + k * rows && (k === n - 1 || r < r0 + (k + 1) * rows)));
+        const base = `${b.mob}:${++this.seq}`;
+        const until = now + ms + (n - 1) * bandMs;
+        const events: MobEvent[] = [...this.mobs.hold(b.mob, until, now)];
+        this.casting.set(b.mob, until);
+        bands.forEach((band, k) => {
+          if (!band.length) return;
+          const set = new Set(band.map(key));
+          const k2 = `${base}:${k}`;
+          events.push({ t: 'boss-move', id: b.mob, move: m.id, key: k2, ms: ms + k * bandMs, shape: { kind: 'tiles', tiles: band }, data: { ...(k === 0 ? { anim: 'rush' } : {}), band: k, of: n } });
+          this.pending.push({ boss: b.mob, at: now + ms + k * bandMs, land: (t, players) => this.landHits(b.mob, m.id, k2, players, (p) => set.has(key(p)), mult, t, {}, { band: k, of: n }) });
+        });
+        return events;
+      }
+      case 'icicleChase': {
+        // Icicles that keep falling on where each player stands: a circle on their tile landing `ms` later, then the
+        // next on where they stand then, `drops` in all; one who leaves the room isn't followed. It holds for the lot.
+        const drops = Math.max(1, m.drops ?? 3);
+        const radius = m.radius ?? 1;
+        const base = `${b.mob}:${++this.seq}`;
+        const until = now + ms * drops;
+        const events: MobEvent[] = [...this.mobs.hold(b.mob, until, now)];
+        this.casting.set(b.mob, until);
+        const icicle = (id: string, on: Tile, k: number, from: number, first: boolean): MobEvent[] => {
+          const shape: TelegraphShape = { kind: 'circle', at: on, radius };
+          const k2 = `${base}:${id}:${k}`;
+          this.pending.push({ boss: b.mob, at: from + ms, land: (t, players) => {
+            const out = this.landHits(b.mob, m.id, k2, players, (p) => inShape(shape, p), mult, t, {}, { drop: k, of: drops });
+            const p = players.get(id);
+            if (k + 1 < drops && p && inRect(b.room.rect, ...p)) out.push(...icicle(id, p, k + 1, t, false));
+            return out;
+          } });
+          return [{ t: 'boss-move', id: b.mob, move: m.id, key: k2, ms, shape, data: { ...(first ? { anim: 'drop' } : {}), drop: k, of: drops, player: id } }];
+        };
+        near.forEach(([id, p], i) => events.push(...icicle(id, p, 0, now, i === 0)));
+        return events;
       }
       case 'beltRush': {
         const belts = this.host.map.silong.belts;
