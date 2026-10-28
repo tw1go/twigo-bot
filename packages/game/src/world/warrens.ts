@@ -6,7 +6,7 @@ import { type Heard, type WarrensSfx, playSet, playWarrens } from '../audio/soun
 import { BossBar } from '../ui/boss-bar';
 import { showAreaBanner } from '../ui/warrens';
 import { slice } from '../assets/packs';
-import { onMap } from './clicks';
+import { onMap, releasedLeft } from './clicks';
 import { frontDepth } from './depth';
 import { FX_DEPTH, type FxHandle, type FxLayers, type Pt } from './fx-layers';
 import type { Tile, WalkGrid } from './grid';
@@ -209,7 +209,7 @@ export class WarrensView {
     this.clearWarp = { gate, portal };
     gate.setInteractive({ pixelPerfect: true, cursor: 'pointer' });
     gate.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
+      if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.hooks.toWarp(tiles);
     });
     if (!animate || reducedMotion()) return;

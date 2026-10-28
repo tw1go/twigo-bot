@@ -441,7 +441,7 @@ test('arrival safety: until their page says it has loaded, nothing lands on them
   await t.close();
 });
 
-test('the Bag\'s slow holds their steps to half: 3 at once instead of 6, then back', async () => {
+test('the Bag\'s slow holds their steps to half: 4 at once instead of 8 (STEP_BURST), then back', async () => {
   const { room, open, close } = await townWithSlums();
   const a = await open('Mara', 'slums');
   const [c, r] = a.spawn;
@@ -451,13 +451,13 @@ test('the Bag\'s slow holds their steps to half: 3 at once instead of 6, then ba
     await wait(150);
     return a.got.slice(before).filter((m) => m.t === 'snap').length;
   };
-  assert.equal(await steps(6), 0, 'a full budget: 6');
+  assert.equal(await steps(8), 0, 'a full budget: 8');
   room.queue.push({ player: a.id, by: 'bag-flats:0', damage: 1, slow: 2500 });
-  await wait(1200); // a second slowed: refilled to its half (3)
+  await wait(1200); // a second slowed: refilled to its half (4)
   // (Back on the spawn tile after an even number of steps.)
-  assert.equal(await steps(6), 3, 'slowed: 3 go, 3 snap back');
+  assert.equal(await steps(8), 4, 'slowed: 4 go, 4 snap back');
   await wait(2600); // the slow is over, a second's refill at the full rate
-  const ok = await steps(6);
+  const ok = await steps(8);
   assert.ok(ok <= 1, `back to the full budget (${ok} refused)`);
   a.ws.close();
   await close();

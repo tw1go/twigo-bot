@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { type DungeonsData, type LevelingData, type PlayerHit, type StatsData, type TownMob, type TownMobFacing, areaAt, inRect, miniBossDef, miniBossRules, miniMobId, miniOfMobId, mobBarMs, mobRules, mobStartSpots, mobStats, mobTone, packSize, seeded } from '@mikazuki/shared';
 import { playSet } from '../audio/sound';
-import { onMap } from './clicks';
+import { onMap, releasedLeft } from './clicks';
 import type { FxDef, Manifest, MobData, MobDef, MobZone, TownMap, Vec2 } from '../assets/types';
 import { mobCell, mobSheet, mobSheets, mobVariants } from '../assets/mob-art';
 import { queueSheet } from '../assets/queue';
@@ -447,7 +447,7 @@ export class Mobs {
     // A click: its name and level over its head for a moment, and it's your target, unless it can't be hit now (a field
     // boss asleep, a boss vanished): nothing to cast at.
     sprite.setInteractive({ cursor: 'pointer', pixelPerfect: true }).on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
+      if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.showLabel(mob);
       if (!mob.untouchable) this.setTarget(mob);
     });

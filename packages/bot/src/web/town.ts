@@ -71,7 +71,13 @@ const EMOTES_PER_SECOND = 1;
 const EMOTE_BURST = 3;
 /** Walking is 4 tiles a second; allow a little more, in bursts (messages bunch up on a bad connection). Slowed: half. */
 const STEPS_PER_SECOND = 6;
-const STEP_BURST = 6;
+/** Steps saved up (the bucket's size): two more than a second's walking, headroom for the page's copy of this bucket
+ *  (TownScene stepBudget) running on its own clock: its slow, Chill and spin factors start and end a few frames apart
+ *  from ours, and a page that pays for a step we'd refuse snaps its walk away. The refill stays 6 a second, so
+ *  sustained speed is unchanged (28 Oct 2026: right clicks that went dead). */
+const STEP_BURST = 8;
+/** Turns on the spot are free (they move nobody), at most this many a second. */
+const FACES_PER_SECOND = 20;
 /** Mobs' hits land, HP and MP come back and the knocked out respawn on this clock (ms). */
 const VITALS_MS = 100;
 const HEARTBEAT_MS = 30_000;
@@ -479,6 +485,9 @@ interface Conn {
   silongAt?: number;
   /** Their last step carried along an Ang Silong belt. */
   beltAt?: number;
+  /** Turns on the spot this second (`face` is free: a cheap rate limit only). */
+  faces?: number;
+  facedAt?: number;
   /** When they last asked to teleport (ms). */
   lanternAt?: number;
   /** Stunned until (ms): no steps (Wire Wolf's Live Floor). */
@@ -1245,7 +1254,9 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (!other || !nearEnough(c, other)) endTrade(c.userId, 'far');
   };
 
-  /** Token bucket: true if this message may go through (slowed: half as many, half as fast). */
+  /** Token bucket: true if this message may go through (slowed: half as many, half as fast). Steps and sitting spend
+   *  one; a turn (`face`) spends nothing: the page can't count every turn it sends (each skill cast turns you), and a
+   *  bucket run dry by turns refused the next real step. */
   const spend = (c: Conn) => {
     const now = Date.now();
     // (Slowed: half; a dish's move speed (Pancit) on a battle map: faster.)
@@ -1261,6 +1272,15 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     c.refilled = now;
     if (c.tokens < 1) return false;
     c.tokens -= 1;
+    return true;
+  };
+  /** A turn on the spot: free, up to FACES_PER_SECOND a second. */
+  const faceOk = (c: Conn) => {
+    const now = Date.now();
+    c.faces = Math.min(FACES_PER_SECOND, (c.faces ?? FACES_PER_SECOND) + ((now - (c.facedAt ?? now)) / 1000) * FACES_PER_SECOND);
+    c.facedAt = now;
+    if (c.faces < 1) return false;
+    c.faces -= 1;
     return true;
   };
 
@@ -1285,7 +1305,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (m.t === 'here' || m.t === 'step' || m.t === 'sit' || m.t === 'stand' || m.t === 'move') c.fresh = false;
     // Knocked out: they can't walk, sit, move or fight until they respawn (chat and the rest go on).
     if (p.out) {
-      if (m.t === 'here' || m.t === 'step' || m.t === 'sit') return send(c, { t: 'snap', col: p.col, row: p.row });
+      if (m.t === 'here' || m.t === 'step' || m.t === 'sit') return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'out' });
       if (m.t === 'attack') return send(c, { t: 'attack-refused', reason: 'out' });
       if (m.t === 'face' || m.t === 'move' || m.t === 'stand') return;
     }
@@ -1294,21 +1314,22 @@ export function attachTown(server: Server, opts: TownOptions): Town {
     if (m.t === 'attack' && watching(c)) return send(c, { t: 'attack-refused', reason: 'cutscene' });
     switch (m.t) {
       case 'here':
-        if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row });
+        if (!fresh || !inside_(m.col, m.row) || !walkable_(m.col, m.row) || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'place' });
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir });
         others(c, { t: 'join', player: p }); // seen at the spawn point so far: show them where they are
         landed(c);
         return tradeRange(c);
       case 'step': {
-        if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row });
+        if (c.stunnedUntil && Date.now() < c.stunnedUntil) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'stunned' });
         const dc = (m.col as number) - p.col;
         const dr = (m.row as number) - p.row;
         // (Carried along one of Ang Silong's belts: free, at most the belts' speed.)
         const belt = silongFloor(c.room);
         const carried = !!belt?.alongBelt([p.col, p.row], [m.col as number, m.row as number]) && Date.now() - (c.beltAt ?? 0) >= 900 / belt.beltSpeed(Date.now());
         if (carried) c.beltAt = Date.now();
-        const ok = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && (dc || dr) && (carried || spend(c));
-        if (!ok) return send(c, { t: 'snap', col: p.col, row: p.row });
+        const placed = inside_(m.col, m.row) && walkable_(m.col, m.row) && Math.abs(dc) <= 1 && Math.abs(dr) <= 1 && !!(dc || dr);
+        if (!placed) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'place' });
+        if (!carried && !spend(c)) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'budget' });
         Object.assign(p, { col: m.col, row: m.row, dir: dirForStep(dc, dr), sit: false });
         silongOf(c.room)?.stepped(c.userId, Date.now()); // (walking clears Ang Silong's Chill)
         mobsOf(c.room)?.stopCasts(p.id); // (walking stops a channel or windup: CONTEXT.md Channel)
@@ -1316,18 +1337,19 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         return tradeRange(c); // walking away from someone you're trading with cancels it
       }
       case 'face':
-        if (!DIRS.has(m.dir) || !spend(c)) return;
+        if (!DIRS.has(m.dir) || !faceOk(c)) return;
         p.dir = m.dir;
         return others(c, { t: 'face', id: p.id, dir: p.dir });
       case 'sit': {
         // Benches are blocked tiles next to where you stand.
         const near = inside_(m.col, m.row) && Math.abs((m.col as number) - p.col) <= 1 && Math.abs((m.row as number) - p.row) <= 1;
-        if (!near || !DIRS.has(m.dir) || !spend(c)) return send(c, { t: 'snap', col: p.col, row: p.row });
+        if (!near || !DIRS.has(m.dir)) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'place' });
+        if (!spend(c)) return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'budget' });
         // One person per bench.
         for (const o of conns.values()) {
           if (o !== c && o.room === c.room && o.player.sit && o.player.col === m.col && o.player.row === m.row) {
             send(c, { t: 'seat-taken' });
-            return send(c, { t: 'snap', col: p.col, row: p.row });
+            return send(c, { t: 'snap', col: p.col, row: p.row, reason: 'place' });
           }
         }
         Object.assign(p, { col: m.col, row: m.row, dir: m.dir, sit: true });
@@ -2371,7 +2393,7 @@ export function attachTown(server: Server, opts: TownOptions): Town {
         if (!inside(mapOf(c.room), col, row) || !walkable(mapOf(c.room), col, row)) said.push(`can't stand on ${col},${row}`);
         else {
           Object.assign(p, { col, row, sit: false });
-          send(c, { t: 'snap', col, row });
+          send(c, { t: 'snap', col, row, reason: 'place' });
           others(c, { t: 'join', player: p });
           said.push(`at ${col},${row}`);
         }

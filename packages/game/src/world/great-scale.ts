@@ -3,7 +3,7 @@ import type { GreatScaleChange, TelegraphShape, TownGreatScale, TownServerMessag
 import type { FxDef, Manifest, MobData, MobDef, TownMap } from '../assets/types';
 import { mobSheet } from '../assets/mob-art';
 import { BossBar } from '../ui/boss-bar';
-import { onMap } from './clicks';
+import { onMap, releasedLeft } from './clicks';
 import { LABEL_DEPTH } from './depth';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Mobs } from './mobs';
@@ -321,7 +321,7 @@ export class GreatScaleView {
     // (Over everything drawn on its tile: see the note at the top.)
     const zone = this.scene.add.zone(c.x, c.y - 14, 24, 30).setDepth(LABEL_DEPTH - 2).setInteractive({ cursor: 'pointer' });
     zone.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
+      if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.hooks.ring(at);
     });
     this.hooks.own(zone, true);

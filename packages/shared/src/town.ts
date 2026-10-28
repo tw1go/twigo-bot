@@ -109,6 +109,9 @@ export interface TownWarrensGate {
   notReady?: string[];
 }
 
+/** Why a `snap` put you back (web/town.ts). */
+export type SnapReason = 'budget' | 'place' | 'stunned' | 'out';
+
 /** A boss move's telegraph on the ground (the server decides it; the game draws it from now until its hit, `ms` later):
  *  tiles in grid space. A cone's `facing` is its middle's angle on the grid (radians, atan2(drow, dcol)), `angle` its
  *  width in degrees. A ring: the ground between `inner` and `outer` tiles round `at` (the golem's Shockwave). Yellow:
@@ -632,7 +635,9 @@ export type TownServerMessage =
   | { t: 'sit'; id: string; col: number; row: number; dir: TownDir }
   | { t: 'stand'; id: string }
   /** Your last step was refused: you're really at (col, row). */
-  | { t: 'snap'; col: number; row: number }
+  /** Put back where the server has you: a step it refused. `reason`: 'budget' (the step budget was empty: the page
+   *  waits a moment and walks on), 'place' (not next to you, or not walkable), 'stunned', 'out' (knocked out). */
+  | { t: 'snap'; col: number; row: number; reason: SnapReason }
   /** That bench is taken (followed by a snap back to where you stood). */
   | { t: 'seat-taken' }
   /** Someone said something (you too: your own words come back this way). */
