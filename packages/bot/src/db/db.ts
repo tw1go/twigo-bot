@@ -32,6 +32,7 @@ import { today } from '../time.js';
 //  • v24, warrens_clears, golem_fights: the leaderboard's records (web/records.ts).
 //  • v25, last_area: the area each member was last in (web/last-area.ts; CONTEXT.md Resume spot).
 //  • v26, lantern_posts: the Lantern Posts and dungeon entrances each member has restored (web/lantern-posts.ts).
+//  • v27, items.locked: an item its owner locked (web/adventure.ts; CONTEXT.md Locked).
 //  • kv: small singleton documents keyed by their old file name (e.g. 'race.json', 'rotation.json').
 // Stores cache their state in memory (the bot is the only writer) and save through db/sync.ts, which writes only
 // the rows that changed.
@@ -444,6 +445,10 @@ export const MIGRATIONS: string[] = [
     at       INTEGER NOT NULL,           -- when they restored it (ms)
     PRIMARY KEY (user_id, post)
   );
+  `,
+  /* v27: items locked by their owner (CONTEXT.md Locked: never taken apart, sold, destroyed, dropped, traded or taken
+     off until unlocked; the forge still works on them): 1 while locked, 0 for everything else (every old row). */ `
+  ALTER TABLE items ADD COLUMN locked INTEGER NOT NULL DEFAULT 0;
   `,
 ];
 

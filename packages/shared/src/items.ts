@@ -41,6 +41,10 @@ export interface Item {
   plus: number;
   broken: boolean;
   bound: boolean;
+  /** Locked by its owner (CONTEXT.md Locked): never taken apart, sold, destroyed, dropped, traded or taken off (and
+   *  nothing worn in its place) until they unlock it; the forge still works on it. Only ever present when set (never
+   *  written as false, like `expiresAt`). */
+  locked?: boolean;
   luck: number;
   agimats: (AgimatSet | null)[];
   lines: AffixLine[];
@@ -665,14 +669,22 @@ export function kusingRange(data: StatsData, mobLevel: number): [number, number]
   return [Math.round(mid * lo), Math.round(mid * hi)];
 }
 
+// ── Locking (CONTEXT.md Locked) ──
+
+/** Why a locked item can't be taken apart, sold, destroyed, dropped, traded or taken off, or null when it isn't locked. */
+export const lockedRefusal = (item: Pick<Item, 'locked'>): string | null => (item.locked ? "It's locked: unlock it first." : null);
+/** Wearing something where a locked item is worn: refused. */
+export const LOCKED_THERE = "What's there is locked: unlock it first.";
+
 // ── Wearing ──
 
 /** The parts of a character wearing needs. */
 export type Wearer = Pick<AdventureState, 'cls' | 'progress' | 'equipped' | 'bag'>;
 
-/** Wears an item from the combat bag (by uid): in `place`, else the first free place for its kind, else the first; what
- *  was there goes into the bag (where the item was). Refused: not gear, broken, a cosmetic, its requirements (base stats
- *  only), the wrong place. An orange item binds the first time it's worn. */
+/** Wears an item from the combat bag (by uid): in `place`, else the first free place for its kind, else the first whose
+ *  item isn't locked; what was there goes into the bag (where the item was). Refused: not gear, broken, a cosmetic, its
+ *  requirements (base stats only), the wrong place, a locked item in the place (every place of its kind locked). An
+ *  orange item binds the first time it's worn. */
 export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: EquipPlace): { ok: boolean; message: string } {
   const at = s.bag.findIndex((b) => b.uid === uid);
   const item = s.bag[at];
@@ -686,7 +698,8 @@ export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: Equ
   if (mismatch) return { ok: false, message: mismatch };
   const can = wearCheck(data.stats, s, { ...def, level: item.level });
   if (!can.ok) return { ok: false, message: needsLine(can.missing) };
-  const to = place ?? places.find((p) => !s.equipped[p]) ?? places[0];
+  const to = place ?? places.find((p) => !s.equipped[p]) ?? places.find((p) => !s.equipped[p]?.locked);
+  if (!to || s.equipped[to]?.locked) return { ok: false, message: LOCKED_THERE };
   const old = s.equipped[to];
   s.bag.splice(at, 1, ...(old ? [old] : []));
   if (bindsOnWear(data.stats, item.rarity)) item.bound = true;
@@ -694,10 +707,12 @@ export function equipFromBag(data: ItemData, s: Wearer, uid: string, place?: Equ
   return { ok: true, message: `Equipped ${itemName(data, item)}.` };
 }
 
-/** Takes off what's worn in a place, into the bag: refused when the bag is full. */
+/** Takes off what's worn in a place, into the bag: refused when it's locked, or the bag is full. */
 export function unequipToBag(data: ItemData, s: Wearer, place: EquipPlace): { ok: boolean; message: string } {
   const item = s.equipped[place];
   if (!item) return { ok: false, message: 'Nothing to take off there.' };
+  const locked = lockedRefusal(item);
+  if (locked) return { ok: false, message: locked };
   if (pocketUsed(data, s.bag, 'bag') >= bagSlots(data.stats)) return { ok: false, message: 'Your bag is full.' };
   delete s.equipped[place];
   s.bag.push(item);
@@ -764,6 +779,7 @@ export function wearCosmetic(data: ItemData, s: CostumeWearer, uid: string, plac
   if (!def.cosmeticPlace) return { ok: false, message: "Can't be worn yet." };
   if (place && place !== def.cosmeticPlace) return { ok: false, message: 'Wrong slot.' };
   const to = def.cosmeticPlace;
+  if (s.cosmetics[to]?.locked) return { ok: false, message: LOCKED_THERE };
   const old = s.cosmetics[to];
   s.bag.splice(at, 1, ...(old ? [old] : []));
   item.bound = true;
@@ -771,11 +787,13 @@ export function wearCosmetic(data: ItemData, s: CostumeWearer, uid: string, plac
   return { ok: true, message: `Wearing ${itemName(data, item)}.` };
 }
 
-/** Takes a cosmetic off, into the Costume tab: refused when that's full. */
+/** Takes a cosmetic off, into the Costume tab: refused when it's locked, or that's full. */
 export function unwearCosmetic(data: ItemData, s: CostumeWearer, place: CosmeticPlace): { ok: boolean; message: string } {
   if (!COSMETIC_PLACES.includes(place)) return { ok: false, message: 'No such slot.' };
   const item = s.cosmetics[place];
   if (!item) return { ok: false, message: 'Nothing to take off there.' };
+  const locked = lockedRefusal(item);
+  if (locked) return { ok: false, message: locked };
   if (pocketUsed(data, s.bag, 'costume') >= pocketSlots(data, 'costume')) return { ok: false, message: 'Make room in your Costume tab first.' };
   delete s.cosmetics[place];
   s.bag.push(item);

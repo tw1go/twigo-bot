@@ -33,7 +33,7 @@ const { LOOT_MS, LootRoom, splitKusing } = await import('./town-loot.js');
 const { MIGRATIONS } = await import('../db/db.js');
 const { MobRoom, loadMobKinds, loadMobMap } = await import('./town-mobs.js');
 const { attachTown } = await import('./town.js');
-const { freshAdventure } = await import('./adventure.js');
+const { adventureOf, freshAdventure, withItems } = await import('./adventure.js');
 const { freshProgress } = await import('./progress.js');
 
 const D = loadItemData();
@@ -927,3 +927,56 @@ test('Large HP and MP Potions: sold from Lv 25 at 400 Kusing (not at Lv 24), aft
   assert.equal(shared.combatWareAbout(D, thing('high-hp-potion')), 'Heals 500 HP at once. Put it on your hotbar; HP and MP Potions each have their own 10 s cooldown.');
 });
 
+
+// ── Locking (CONTEXT.md Locked) ──
+
+test('locked: never dropped or traded; nothing worn in its place (the free accessory place takes it; refused once both are locked), never taken off; cosmetics the same', () => {
+  const D = loadItemData();
+  const ring = (uid: string, locked = false): Item => ({ ...shared.newItem(D.stats, D.defs.get('acc-shell-ring') as EquipmentDef, uid), ...(locked ? { locked: true } : {}) });
+  assert.equal(shared.dropRefusal(D, ring('x', true)), "Locked items can't be dropped.");
+  assert.equal(shared.tradeRefusal(D, ring('x', true)), "Locked items can't be traded.");
+  assert.equal(shared.dropRefusal(D, ring('x')), null);
+  const s: AdventureState = { ...freshAdventure(), cls: 'stick', progress: { ...freshAdventure().progress, level: 20 }, equipped: { ring1: ring('L1', true) }, bag: [ring('n1'), ring('n2'), ring('n3')] };
+  // No place given: the free ring place takes it.
+  assert.ok(shared.equipFromBag(D, s, 'n1').ok);
+  assert.equal(s.equipped.ring2?.uid, 'n1');
+  // The locked place named: refused; the other, worn over as ever.
+  assert.equal(shared.equipFromBag(D, s, 'n2', 'ring1').message, shared.LOCKED_THERE);
+  assert.ok(shared.equipFromBag(D, s, 'n2', 'ring2').ok);
+  assert.equal(s.equipped.ring2?.uid, 'n2');
+  assert.ok(s.bag.some((b) => b.uid === 'n1'), 'n1 back in the bag');
+  // Both locked: nowhere to go.
+  s.equipped.ring2!.locked = true;
+  assert.equal(shared.equipFromBag(D, s, 'n3').message, shared.LOCKED_THERE);
+  assert.equal(shared.unequipToBag(D, s, 'ring1').message, "It's locked: unlock it first.");
+  assert.equal(s.equipped.ring1?.uid, 'L1');
+  delete s.equipped.ring1!.locked;
+  assert.ok(shared.unequipToBag(D, s, 'ring1').ok);
+  // Cosmetics.
+  const hat = (uid: string, locked = false): Item => ({ ...shared.newItem(D.stats, D.defs.get('lamp-hat') as CombatItemDef, uid), ...(locked ? { locked: true } : {}) });
+  const c = { cosmetics: { head: hat('wornHat', true) }, bag: [hat('other')] };
+  assert.equal(shared.wearCosmetic(D, c, 'other').message, shared.LOCKED_THERE);
+  assert.equal(shared.unwearCosmetic(D, c, 'head').message, "It's locked: unlock it first.");
+  delete c.cosmetics.head.locked;
+  assert.ok(shared.wearCosmetic(D, c, 'other').ok);
+  assert.equal(c.cosmetics.head?.uid, 'other');
+});
+
+test('schema v27: items.locked, 0 for every old row; a locked item saves and loads back locked through adventure.ts, an unlocked one without the key', () => {
+  const mem = new Database(':memory:');
+  for (const sql of MIGRATIONS.slice(0, 26)) mem.exec(sql);
+  mem.prepare('INSERT INTO items (uid, owner, def_id, level, rarity, created) VALUES (?, ?, ?, ?, ?, ?)').run('old', 'm', 'acc-shell-ring', 10, 'brown', 5);
+  mem.exec(MIGRATIONS[26]);
+  const col = (mem.prepare('PRAGMA table_info(items)').all() as { name: string; notnull: number; dflt_value: string }[]).find((c) => c.name === 'locked');
+  assert.ok(col && col.notnull === 1 && col.dflt_value === '0', JSON.stringify(col));
+  assert.deepEqual(mem.prepare('SELECT locked FROM items').all(), [{ locked: 0 }]);
+  mem.close();
+  const D = loadItemData();
+  withItems('lockme', (s) => {
+    s.bag.push({ ...shared.newItem(D.stats, D.defs.get('acc-shell-ring') as EquipmentDef, 'L'), locked: true }, shared.newItem(D.stats, D.defs.get('acc-shell-ring') as EquipmentDef, 'U'));
+    return true;
+  });
+  const back = adventureOf('lockme').bag;
+  assert.equal(back.find((b) => b.uid === 'L')?.locked, true);
+  assert.equal('locked' in back.find((b) => b.uid === 'U')!, false);
+});

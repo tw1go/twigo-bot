@@ -1,5 +1,5 @@
 import type { AdventureState, EquipPlace, EquipmentDef, EquipSlot } from './adventure.js';
-import { type AgimatSet, type CombatItemDef, type Item, type ItemData, affixTier, agimatSlots, enhancedBase, isGearDef, itemStats, lineValue } from './items.js';
+import { type AgimatSet, type CombatItemDef, type Item, type ItemData, affixTier, agimatSlots, enhancedBase, isGearDef, itemStats, lineValue, lockedRefusal } from './items.js';
 import { type StatsData, gearKind, numbersIn } from './stats.js';
 import type { TownItems } from './town.js';
 
@@ -35,10 +35,13 @@ export type TownForgeAction =
   | { action: 'destroy'; item: string }
   /** Several at once (the bag's multi-select): every one or none. */
   | { action: 'disassemble-many'; items: string[] }
-  | { action: 'sell-many'; items: string[] };
+  | { action: 'sell-many'; items: string[] }
+  /** The item locked (`on`) or unlocked (CONTEXT.md Locked), worn or in the bag: never taken apart, sold, destroyed,
+   *  dropped, traded or taken off while locked; free, at once. Any item but a quest item. */
+  | { action: 'lock'; item: string; on: boolean };
 
 /** What happened: an enhance's success, fail or break, a repair, an embed, a disassembly or a combine. */
-export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'removed' | 'drawn' | 'applied' | 'disassembled' | 'combined' | 'sold' | 'destroyed';
+export type ForgeOutcome = 'success' | 'fail' | 'break' | 'repaired' | 'embedded' | 'removed' | 'drawn' | 'applied' | 'disassembled' | 'combined' | 'sold' | 'destroyed' | 'locked' | 'unlocked';
 
 export interface TownForgeResponse {
   ok: boolean;
@@ -390,11 +393,13 @@ export const fragmentsPerWhetstone = (data: StatsData) => numbersIn(itemStats(da
 /** How much likelier the rare three are from a two-slot item (disassembly.agimat.rareWeight.twoSlots: "3x"). */
 export const twoSlotRareTimes = (data: StatsData) => numbersIn(itemStats(data).disassembly.agimat.rareWeight.twoSlots ?? '1')[0] ?? 1;
 
-/** Why this item can't be taken apart, or null (from the combat bag; bound and broken gear may). */
+/** Why this item can't be taken apart, or null (from the combat bag; bound and broken gear may; never a locked one). */
 export function disassembleRefusal(data: ItemData, s: ForgeHolder, uid: string): string | null {
   const found = findItem(s, uid);
   const def = found && data.defs.get(found.item.defId);
   if (!found || !def) return "You don't have that item.";
+  const locked = lockedRefusal(found.item);
+  if (locked) return locked;
   if (!isGearDef(def)) return 'Only weapons, armor and accessories can be taken apart.';
   if (def.training) return "Training gear can't be taken apart.";
   if (found.place) return 'Take it off first.';
