@@ -122,8 +122,8 @@
     },
     "critRate": {
       "base": 0.05,
-      "perDEX": 0.003,
-      "note": "Repo addition (Mac, 11 Oct 2026): perDEX 0.001 -> 0.003, so DEX is worth a point like STR (HP, DEF) and INT (MP): a Lv 20 DEX main reaches about 25% crit rate (was about 12%); still held to caps.critRate."
+      "perDEX": 0.002,
+      "note": "Repo addition (Mac, 11 Oct 2026): perDEX 0.001 -> 0.003, so DEX is worth a point like STR (HP, DEF) and INT (MP); 28 Oct 2026, the owner: 0.002 with caps.critRate raised to 1 (a Lv 40 DEX main about 38% bare, Lv 20 about 22%); still held to caps.critRate."
     },
     "critDamage": 1.5
   },
@@ -1091,8 +1091,9 @@
     },
     "nameFrom": "line 3"
   },
+  "capsNote": "Repo change (the owner, 28 Oct 2026): critRate 1 (was 0.5): crit rate can reach 100%.",
   "caps": {
-    "critRate": 0.5,
+    "critRate": 1,
     "atkRate": 0.3,
     "damageReduction": 0.75,
     "lifesteal": 0.1,
