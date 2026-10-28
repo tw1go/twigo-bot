@@ -43,7 +43,8 @@ import { LABEL_DEPTH } from './depth';
 //   while the floor's red warning shows, fx-silong-safe-pocket on each safe tile round an ice block, then breath and
 //   fx-silong-vent blowing up out of the floor: one per 2 x 2 block of the floor's even grid, as Ice Slick lays its
 //   diamonds), Frost Sweep (its bands' red warnings creeping down the room, fx-silong-frost-roll over each band's tiles
-//   as it lands), Icicle Chase (fx-silong-icicle-fall into each circle, its frame 4 on the hit), Belt Rush (rush),
+//   as it lands), Icicle Chase (fx-silong-icicle-fall into each circle, its frame 4 on the hit), Intake (fx-silong-
+//   intake-whirl spiralling into the fan while it pulls, then fx-silong-fist-slam's ring on the slam), Belt Rush (rush),
 //   Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage (its
 //   -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
 //   floor). The boss bar, with its title, while you're in the Ice Plant. (Its breath art stays in the folder, unplayed.)
@@ -81,6 +82,7 @@ const MOVE_SOUNDS: Record<string, { warn?: SilongSfx; hit?: SilongSfx }> = {
   coldVents: { hit: 'silong-freezer-breath' },
   frostSweep: { hit: 'silong-belt-rush-hit' },
   icicleChase: { hit: 'silong-ice-block-drop' },
+  intake: { warn: 'silong-call', hit: 'silong-belly-flop-slam' },
   beltRush: { warn: 'silong-belt-rush', hit: 'silong-belt-rush-hit' },
   brineFlood: { hit: 'silong-brine-flood' },
   enrage: { warn: 'silong-enrage' },
@@ -413,6 +415,13 @@ export class SilongView {
         else this.later(m.id, m.ms, () => this.burst(at(on), 0xd7f1ff, 1));
         return;
       }
+      case 'intake': {
+        // Cold air spiralling into the fan while it pulls (the pulls themselves are the town's boss-pull slides).
+        const fan = this.block.bossTile;
+        const whirl = this.art('fx-silong-intake-whirl');
+        if (fan && whirl) this.keep(m.id, this.fx.play(whirl, at(fan), { layer: 'ground', life: m.ms, fadeIn: 200, fadeOut: 200 }));
+        return;
+      }
       case 'brineFlood':
       case 'beltRush':
         return; // (their poses: `anim`; the flood's water and the belts with their hit)
@@ -445,7 +454,7 @@ export class SilongView {
     for (const h of m.hits) this.hooks.onHit(boss, h.id, h, slow?.ms, slow?.factor);
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     if (m.move === 'beltRush') this.hooks.rush(Number(m.data?.ms ?? 4000), Number(m.data?.speed ?? 5));
-    // Ang Makinang Yelo's: its blocks stand as walls; its vents, its sweep's frost; the brine over the floor.
+    // Ang Makinang Yelo's: its blocks stand as walls; its vents, its sweep's frost, its slam; the brine over the floor.
     const blocks = m.data?.blocks as [number, number][] | undefined;
     if (blocks?.length) for (const t of blocks) this.iceBlock(m.id, t, Number(m.data?.ms ?? 12_000));
     if (m.move === 'coldVents') {
@@ -466,6 +475,15 @@ export class SilongView {
       const band = move?.shape?.kind === 'tiles' ? move.shape.tiles : [];
       const roll = this.art('fx-silong-frost-roll');
       if (roll) for (const t of band) this.fx.play(roll, at(t), { layer: 'ground' });
+    }
+    if (m.move === 'intake') {
+      if (boss) this.mobs.pose(boss, 'flood');
+      const fan = this.block.bossTile;
+      const slam = this.art('fx-silong-fist-slam');
+      if (fan) {
+        if (slam) this.fx.play(slam, at(fan), { layer: 'ground' });
+        else this.burst(at(fan), 0xd7f1ff, 3);
+      }
     }
     const flood = m.data?.flood as [number, number][] | undefined;
     if (flood?.length) {

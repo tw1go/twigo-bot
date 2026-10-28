@@ -474,6 +474,64 @@ test('Icicle Chase: three icicles on where each player stands, one after another
   assert.equal(hits.filter((h) => h.hits.some((x) => x.id === 'M')).length, 0, 'walking: never');
 });
 
+test('Intake (from 90%): five pulls a tile toward the fan, a boss-pull each, then the Fist Slam on radius 3; an ice block on the line holds you; walking out as fast as it pulls keeps you clear', () => {
+  const run = open(silong());
+  run.skipTo('b3');
+  const f = run.floors.b3;
+  const fan = f.map.silong.bossTile!;
+  const info = f.mobs.mobInfo('boss:makinang-yelo', 0)!;
+  f.mobs.devWound(info.id, Math.round(info.maxHp * 0.85));
+  // Parked in the room's far corner while its other moves take their turns; as Intake starts, placed for it: A six
+  // tiles straight out from the fan in the open, S with an ice block on the line between it and the fan, W eight
+  // tiles off, stepping a tile farther out after every pull. Every boss-pull moves them as the server would.
+  const pos: Record<string, [number, number]> = { A: [57, 43], S: [59, 43], W: [57, 41] };
+  const dist = (t: [number, number]) => Math.max(Math.abs(t[0] - fan[0]), Math.abs(t[1] - fan[1]));
+  let seen = 0;
+  let placed = false;
+  let pulledW = false;
+  let nearest = Infinity;
+  const ev = playMoving(run, 'b3', 0, 40_000, (_t, sofar) => {
+    for (; seen < sofar.length; seen++) {
+      const e = sofar[seen];
+      if (e.t === 'boss-pull') for (const mv of e.players) {
+        pos[mv.id] = mv.to;
+        if (mv.id === 'W' && placed) pulledW = true;
+      }
+      if (e.t === 'boss-move' && e.move === 'intake' && !placed) {
+        placed = true;
+        pos.A = [fan[0], fan[1] + 6];
+        pos.S = [fan[0] + 6, fan[1] + 6];
+        f.bosses.iceBlocks.set(`${fan[0] + 3},${fan[1] + 3}`, 60_000);
+        f.map.blocked[fan[1] + 3][fan[0] + 3] = 1;
+        pos.W = [fan[0] - 8, fan[1] + 8];
+      }
+    }
+    if (pulledW) {
+      pulledW = false;
+      pos.W = [pos.W[0], pos.W[1] + 1]; // (a tile out again)
+    }
+    if (placed) nearest = Math.min(nearest, dist(pos.W));
+    return { ...pos };
+  });
+  const move = of(ev, 'boss-move').find((m) => m.move === 'intake')!;
+  assert.ok(move, 'Intake came');
+  assert.deepEqual(move.shape, { kind: 'circle', at: fan, radius: 3 });
+  assert.equal(move.ms, 2500);
+  assert.deepEqual(move.data, { anim: 'call', pulls: 5, stepMs: 500 });
+  const i0 = ev.indexOf(move);
+  const slam = of(ev, 'boss-hit').find((h) => h.move === 'intake')!;
+  assert.ok(slam && slam.data?.slam === true, 'then the slam');
+  const pulls = ev.slice(i0, ev.indexOf(slam)).filter((e): e is Extract<Ev, { t: 'boss-pull' }> => e.t === 'boss-pull' && e.ms === 400);
+  assert.equal(pulls.length, 5, 'five pulls between');
+  assert.ok(pulls.every((p) => p.players.some((x) => x.id === 'A')), 'A drawn in by every pull');
+  assert.ok(dist(pos.A) >= 1 && dist(pos.A) <= 2, `A ends ${dist(pos.A)} from the fan`);
+  assert.ok(slam.hits.some((h) => h.id === 'A'), 'A under the slam');
+  assert.ok(!pulls.some((p) => p.players.some((x) => x.id === 'S')), 'S behind the ice never moves');
+  assert.ok(!slam.hits.some((h) => h.id === 'S'));
+  assert.ok(nearest > 3, `W never within 3 (${nearest})`);
+  assert.ok(!slam.hits.some((h) => h.id === 'W'));
+});
+
 test('Belt Rush: a line down one belt; Brine Flood only from 70%, every Ice Plant floor tile but the pallets', () => {
   const run = open(silong());
   run.skipTo('b3');
@@ -486,7 +544,7 @@ test('Belt Rush: a line down one belt; Brine Flood only from 70%, every Ice Plan
   assert.ok(!of(ev, 'boss-move').some((m) => m.move === 'brineFlood'), 'not above 70%');
   const info = f.mobs.mobInfo('boss:makinang-yelo', 16_000)!;
   f.mobs.devWound(info.id, Math.round(info.maxHp * 0.65));
-  const flood = of(play(run, 'b3', 16_250, 30_000, PLANT), 'boss-hit').find((h) => h.move === 'brineFlood')!; // (its other moves take their turns first)
+  const flood = of(play(run, 'b3', 16_250, 50_000, PLANT), 'boss-hit').find((h) => h.move === 'brineFlood')!; // (its other moves take their turns first)
   const tiles = new Set((flood.data!.flood as [number, number][]).map((t) => t.join()));
   assert.ok(tiles.size > 100 && tiles.has('40,40') && f.map.silong.belts.e.every((t) => tiles.has(t.join())), 'under the blocks and the belts too');
   for (const [c, r] of f.map.silong.pallets) for (const t of [[c, r], [c + 1, r], [c, r + 1], [c + 1, r + 1]]) assert.ok(!tiles.has(t.join()), `pallet ${t}`);

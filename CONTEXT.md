@@ -900,7 +900,7 @@ _Avoid_: conveyor, treadmill
 
 **Ice block**:
 A block the Ice Machine drops: a wall for 12 seconds. The 8 tiles round it are its **pocket**, the only safe ground from
-its Cold Vents. A player a block lands
+its Cold Vents, and a block on the line between you and the fan holds you against its Intake. A player a block lands
 on takes its hit and is **shoved** out beside it, never left standing inside the block.
 _Avoid_: cover, shield (it hides you from nothing else: Frost Sweep and the icicles don't care)
 
@@ -917,6 +917,11 @@ _Avoid_: wave, tide
 
 **Icicle Chase**:
 Icicles that keep falling on where each player stands, three in a row for each; walking keeps you clear.
+
+**Intake**:
+The Ice Machine's fan reversed: everyone in the room is dragged a tile at a time toward the fan for a few seconds, then
+the ice fist slams the floor round it. An ice block between you and the fan holds you where you are.
+_Avoid_: suck, vacuum, pull (the thing a boss does to you is a pull; the move is Intake)
 
 **Mang Ramon's note**:
 The quest item in Mang Ramon's box on B2: one per character, handed to Kuya Jun for a Mid Repair Kit.

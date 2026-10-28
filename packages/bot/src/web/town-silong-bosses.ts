@@ -26,7 +26,9 @@ import { inShape } from './town-warrens.js';
 //   standing ice block, its pockets; none standing: two blocks drop first), Belt Rush (both belts fast for a while, a
 //   line down one of them), Frost Sweep (bands of frost rolling from its wall across the room, each landing a moment
 //   after the one before: cross a band once it has landed, or outrun it), Icicle Chase (an icicle on where each player
-//   stands, then the next on where they stand as it lands, three each: keep walking), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
+//   stands, then the next on where they stand as it lands, three each: keep walking), Intake (from 90%: its fan
+//   reversed draws everyone a tile toward it every half second, a `boss-pull` each, unless an ice block is on the line
+//   between them and the fan, then the ice fist slams the floor round the fan), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
 //   is the run's), Call the Frost (Frost Scales out of the tanks' side of the hall at 75%, 50% and 25%), its enrage at
 //   25% (every move sooner, five blocks a drop, red eye lamps).
 // Pure (the room is its hands), tested in town-silong.test.ts.
@@ -119,8 +121,9 @@ const CHAIR_MS = 900;
 const LID_BACK_MS = 600;
 /** Sangkalancelot's shell opens this long after each Cleaver Charge (its `shell` rule: 1.2 s). */
 const SHELL_OPEN_MS = 1200;
-/** An ice block's shove: the slide out beside it (the `boss-pull`'s ms). */
+/** An ice block's shove: the slide out beside it (the `boss-pull`'s ms); Intake's pull a tile (its `boss-pull`'s). */
 const SHOVE_MS = 250;
+const PULL_MS = 400;
 
 export class FloorBosses {
   private readonly bosses = new Map<string, Boss>();
@@ -367,6 +370,28 @@ export class FloorBosses {
     return moved.length ? [{ t: 'boss-pull', id: b.mob, players: moved, ms: SHOVE_MS }] : [];
   }
 
+  /** Intake's pull: everyone in the room not within a tile of the fan, with no ice block on the line between them and
+   *  it (`shielded`), is drawn one tile toward it: along the greater axis difference first, else the other, into an open
+   *  tile no mob or player stands on (else they stay this pull); `live` moved with them. One `boss-pull` for those who
+   *  moved. */
+  private pull(b: Boss, fan: Tile, live: Map<string, Tile>): MobEvent[] {
+    const moved: { id: string; to: Tile }[] = [];
+    for (const [id, p] of live) {
+      if (!inRect(b.room.rect, ...p) || cheb(p, fan) <= 1 || this.shielded(fan, p)) continue;
+      const dc = Math.sign(fan[0] - p[0]);
+      const dr = Math.sign(fan[1] - p[1]);
+      const byCol: Tile = [p[0] + dc, p[1]];
+      const byRow: Tile = [p[0], p[1] + dr];
+      const steps = Math.abs(fan[0] - p[0]) >= Math.abs(fan[1] - p[1]) ? [byCol, byRow] : [byRow, byCol];
+      const taken = new Set([...live.values()].map(key));
+      const to = steps.find((t) => key(t) !== key(p) && this.mobs.open(...t) && !this.mobs.occupied(...t) && !taken.has(key(t)));
+      if (!to) continue;
+      live.set(id, to);
+      moved.push({ id, to });
+    }
+    return moved.length ? [{ t: 'boss-pull', id: b.mob, players: moved, ms: PULL_MS }] : [];
+  }
+
   /** Ice Block Drop: red tiles under up to `n` players (random floor for the rest), the blocks landing as walls for their
    *  time; whoever stands under one takes its hit and is shoved out beside it. (Cold Vents drops two this way first when
    *  none stand.) */
@@ -569,6 +594,19 @@ export class FloorBosses {
         };
         near.forEach(([id, p], i) => events.push(...icicle(id, p, 0, now, i === 0)));
         return events;
+      }
+      case 'intake': {
+        // The fan reversed: `pulls` pulls a tile toward it every `stepMs` (each a boss-pull, through `pull`), its red
+        // circle round the fan the whole `pullMs`; then the ice fist slams the floor there (the circle's radius).
+        const fan = this.fanOf(b, at);
+        const pullMs = m.pullMs ?? 2500;
+        const pulls = Math.max(1, m.pulls ?? 5);
+        const stepMs = m.stepMs ?? Math.round(pullMs / pulls);
+        const shape: TelegraphShape = { kind: 'circle', at: fan, radius: m.radius ?? 3 };
+        const ev = this.moveEvent(b.mob, m.id, pullMs, shape, { anim: 'call', pulls, stepMs });
+        // (The pulls queued before the slam: the last pull and the slam on one tick land in that order.)
+        for (let k = 1; k <= pulls; k++) this.pending.push({ boss: b.mob, at: now + k * stepMs, land: (_t, players) => this.pull(b, fan, players) });
+        return this.queue(b, ev, (t, players) => this.landHits(b.mob, m.id, ev.key, players, (p) => inShape(shape, p), mult, t, {}, { slam: true }), now + pullMs, now);
       }
       case 'beltRush': {
         const belts = this.host.map.silong.belts;

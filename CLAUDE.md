@@ -1199,9 +1199,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   every standable tile of the Ice Plant vents but the pocket round each standing ice block, `data.pockets`; its hit and
   `data.chill` 2 on whoever stands on a vented tile, `data.vented`; none standing: a 2-block drop first), Frost Sweep
   (bands of 3 rows from the north wall, a boss-move each keyed `:k`, landing 0.7 s apart), Icicle Chase (a radius-1
-  circle on each player's tile, then the next on where they stand as it lands, 3 each, keyed `:id:k`; the ice blocks'
-  shove is a `boss-pull`, applied to the players' tiles in web/town.ts where the room's events are sent, slid on the
-  page), ice blocks 3x and the rest 2.5x what they were, Belt Rush (a line down
+  circle on each player's tile, then the next on where they stand as it lands, 3 each, keyed `:id:k`), Intake (from
+  90%: 5 pulls a tile toward the fan every 0.5 s unless an ice block is on the line, `shielded`, then the Fist Slam on
+  radius 3; the pulls and the ice blocks' shove are `boss-pull`, applied to the players' tiles in web/town.ts where
+  the room's events are sent, slid on the page), ice blocks 3x and the rest 2.5x what they were, Belt Rush (a line down
   one belt, `data.belt`, `speed`), Brine Flood (only once at 70%: every Ice Plant tile but the pallets, ice blocks' tiles too: `flood`), Call
   the Frost at 75 / 50 / 25% (the plant's west side), its enrage at 25% (moves 1.3× sooner); it down: the run cleared,
   `boss-move` 'melt' on every floor; B3's way out then (26 Oct 2026, the owner: like the Warrens' clear warp; dungeons.json
@@ -1209,7 +1210,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   portal frost-tinted, its sheets queued on B3; a click (left, right or a tap) walks you onto it; stepping on it while
   the run is cleared sends `silong-leave`, TownScene `gateOn`, so `silong-out` takes you up beside the hatch). Game: `world/silong.ts` (the warn on each tile, the block's shadow and fall, the
   block on the walk grid and its break; the vents' safe pockets outlined then the plumes (one per 2 x 2 of the even
-  grid) with `breath`; the sweep's frost rolling over each band; the icicles timed to their frame 4; the brine on every flooded tile;
+  grid) with `breath`; the sweep's frost rolling over each band; the icicles timed to their frame 4; Intake's whirl
+  at the fan then its slam ring; the brine on every flooded tile;
   `call`; the enrage anim then the -enraged sheets; steam off the frost within 18 tiles of you as it falls), its boss
   bar with its title in the Ice Plant. Part 4 (21 Oct 2026): its loot (`SilongRun.lootFor`, loot.ts `silongMiniLoot` /
   `silongBossLoot` / `silongMobDrops`: the Warrens' a tier up, Lv 40 gear, Polished Whetstones, the Ice Machine's key 1
