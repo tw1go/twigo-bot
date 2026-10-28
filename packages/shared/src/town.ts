@@ -220,7 +220,9 @@ export interface PlayerHit {
 
 /** Browser → server. A step is to a neighbouring tile; the server checks it (walkable, adjacent, walking speed). */
 /** Why a buff cast was refused (the game says it like a refused attack). */
-export type BuffRefusal = 'here' | 'skill' | 'locked' | 'out' | 'slow' | 'mp' | 'target';
+/** Why a buff wasn't cast: … 'target' (a debuff with no mob in range), 'range' (a debuff whose targeted mob is out of its
+ *  range: the page walks you up to it first, so this only shows when it couldn't). */
+export type BuffRefusal = 'here' | 'skill' | 'locked' | 'out' | 'slow' | 'mp' | 'target' | 'range';
 
 /** A buff on you (the buff tray). */
 export interface TownBuff {

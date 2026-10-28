@@ -188,6 +188,8 @@ const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 const WARP_MS = 1000;
 /** The quest trail: how often it looks again (TownScene trailTick), and how near a mini boss spot counts as there. */
 const TRAIL_MS = 250;
+/** A walk into a debuff's range (its target too far) is called off after this. */
+const DEBUFF_WALK_MS = 10_000;
 const MINI_NEAR = 6;
 /** A quest giver's "!" while their next quest waits for your level (CONTEXT.md Level gap). */
 const WAITING_GREY = '#9CA3AF';
@@ -1039,6 +1041,7 @@ export class TownScene extends Phaser.Scene {
     this.ramonTick(time);
     this.fightTick();
     this.chargeWalkTick();
+    this.debuffWalkTick();
     this.fxLayers.update();
     this.raceNews();
     if (this.npcs) {
@@ -1894,6 +1897,29 @@ export class TownScene extends Phaser.Scene {
     return true;
   }
 
+  /** A debuff whose target stands out of its range: walking into range, then cast (`castBuff` again, in range now); the
+   *  target gone, no way to it, or DEBUFF_WALK_MS on: called off. Walking yourself (a click, the keys) calls it off too. */
+  private debuffWalk: { name: string; mob: string; reach: number; goal: Tile | null; since?: number } | null = null;
+  private debuffWalkTick(): void {
+    const w = this.debuffWalk;
+    if (!w) return;
+    w.since ??= this.time.now;
+    const m = this.mobs?.list.find((x) => x.id === w.mob);
+    if (!m || m.dead || m.untouchable || this.knockedOut || this.time.now - w.since > DEBUFF_WALK_MS) return void (this.debuffWalk = null);
+    if (this.reachDist(m, this.player.tile) <= w.reach) {
+      if (!this.player.isIdle) return this.player.cancelPath(); // (stop on this tile)
+      this.debuffWalk = null;
+      this.mobs?.setTarget(m); // (still your target: the cast goes on it)
+      void this.castBuff(w.name);
+      return;
+    }
+    if (w.goal && this.reachDist(m, w.goal) <= w.reach && !this.player.isIdle) return;
+    w.goal = this.walkIntoReach(m, w.reach);
+    if (w.goal) return;
+    toast("Can't reach it from here.", 1800);
+    this.debuffWalk = null;
+  }
+
   /** Each frame while walking into a charge-up's reach: there (the step under way done), it starts charging; the target
    *  gone or no way to it, it's called off. */
   private chargeWalkTick(): void {
@@ -2056,10 +2082,13 @@ export class TownScene extends Phaser.Scene {
     const now = this.time.now;
     if (now < (this.buffReady.get(name) ?? 0)) return 'no';
     const picked = this.target?.selectedId;
-    // A debuff (CONTEXT.md Debuff) goes on your mob target (else the server takes the nearest in range); a buff on whoever
-    // you've clicked, in your party or not.
-    const debuff = !!adventureData()?.stats.skills.buffs?.list[name]?.debuff;
-    const target = debuff ? (this.mobs?.current && !this.mobs.current.dead && !this.mobs.current.untouchable ? this.mobs.current.id : undefined) : (picked ?? undefined);
+    // A debuff (CONTEXT.md Debuff) goes on your mob target: out of its range you walk into range first and it's cast as
+    // you get there (`debuffWalk`), never on a nearer mob in its place (28 Oct 2026); with no target the server takes
+    // the nearest in range. A buff goes on whoever you've clicked, in your party or not.
+    const B = adventureData()?.stats.skills.buffs?.list[name];
+    const debuff = !!B?.debuff;
+    const mob = debuff && this.mobs?.current && !this.mobs.current.dead && !this.mobs.current.untouchable ? this.mobs.current : null;
+    const target = debuff ? mob?.id : (picked ?? undefined);
     if (!this.battleMap) {
       this.link?.send({ t: 'buff', buff: name });
       return 'no';
@@ -2068,6 +2097,12 @@ export class TownScene extends Phaser.Scene {
       this.lowMp(this.mpOf(name), true);
       return 'no';
     }
+    if (mob && this.reachDist(mob, this.player.tile) > (B?.rangeTiles ?? 1)) {
+      this.debuffWalk = { name, mob: mob.id, reach: B?.rangeTiles ?? 1, goal: null };
+      this.debuffWalkTick();
+      return 'no'; // (its cooldown comes with the server's buff-cast once it's cast)
+    }
+    this.debuffWalk = null;
     const S = adventureData()?.stats;
     const cd = S ? cooldownOf(S, sk, sk.level) : 1;
     this.buffReady.set(name, now + cd * 1000);
@@ -3310,7 +3345,7 @@ export class TownScene extends Phaser.Scene {
         this.hotbar?.cooldown(m.buff, (m.ms ?? 0) / 1000);
         if (m.reason === 'mp') return this.lowMp(Infinity, true);
         playSound('error');
-        const why = { here: 'Only on battle maps.', skill: "That isn't one of your buffs.", locked: "You can't use that skill yet.", out: "You're knocked out.", slow: 'Not ready.', target: 'No target in range.' }[m.reason];
+        const why = { here: 'Only on battle maps.', skill: "That isn't one of your buffs.", locked: "You can't use that skill yet.", out: "You're knocked out.", slow: 'Not ready.', target: 'No target in range.', range: 'Too far: walk closer to your target.' }[m.reason];
         toast(why, 1600, 'bad');
         return;
       }
@@ -4792,6 +4827,7 @@ export class TownScene extends Phaser.Scene {
   private moveTo(target: Tile): void {
     if (this.charging) return wlog('dropped: charging'); // (standing still while a charge-up is held)
     this.chargeWalk = null; // (walking yourself calls off a walk into a charge-up's reach)
+    this.debuffWalk = null; // (and into a debuff's range)
     this.stopFight(); // walking yourself stops an auto-cast
     this.stopChannel(); // (and a channel or windup)
     this.pending = null;
