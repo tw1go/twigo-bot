@@ -359,6 +359,7 @@
       #settings .st-volume { flex: 1; accent-color: #7C2AE8; }
       #settings .st-check input { margin: 0; accent-color: #7C2AE8; }
       #equipment .eq-tip-timed, .eq-tip-timed { margin-top: 4px; color: #FDBA74; font-size: calc(12px * var(--text)); }
+      #equipment .eq-tip-locked, .eq-tip-locked { margin-top: 2px; color: #FCDA4A; font-size: calc(12px * var(--text)); } /* a locked item (CONTEXT.md Locked) */
       #settings .st-note { margin: 2px 0 0; color: #6B7280; font-size: calc(12px * var(--text)); }
       #settings .st-seen { margin-bottom: 6px; }
       #settings .st-seen .st-size { font-size: calc(13px * var(--text)); }
@@ -584,6 +585,8 @@
       #inventory .iv-item { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; } /* the item's rarity */
       #inventory .iv-item { position: relative; }
       #inventory .iv-count { position: absolute; right: -6px; bottom: -6px; color: #fff; font-size: calc(17px * var(--text)); line-height: 1; font-weight: 700; text-shadow: 1px 0 #1E1B3A, -1px 0 #1E1B3A, 0 1px #1E1B3A, 0 -1px #1E1B3A; pointer-events: none; } /* a stacked item's count (megaphones) */
+      #inventory .iv-lock { position: absolute; left: -6px; top: -6px; width: 24px; height: 24px; image-rendering: pixelated; pointer-events: none; } /* the padlock badge on a locked item (ui.itemLock at 2x) */
+      #inventory .iv-lock-text { width: auto; height: auto; font-size: 16px; line-height: 1; }
       #inventory .iv-picked { border-image-source: var(--slot-picked); outline-color: #A3E635; }
       #inventory .iv-tabs { flex: none; display: flex; gap: 4px; border-bottom: 3px solid #1E1B3A; }
       /* Select mode (ui/inventory.ts): every click adds or removes a slot. */
@@ -2357,6 +2360,9 @@
       :is(#equipment, #inspect) .eq-slot:hover, :is(#equipment, #inspect) .eq-slot:focus-visible, :is(#equipment, #inspect) .eq-over { border-image-source: var(--slot-picked); outline: 3px solid #A3E635; outline-offset: -3px; } /* the lime selected-slot look */
       :is(#equipment, #inspect) .eq-worn { outline: 3px solid var(--rarity, #7A8099); outline-offset: -3px; }
       :is(#equipment, #inspect) .eq-slot .it-frame { margin: -12px; }
+      :is(#equipment, #inspect) .eq-lock { position: absolute; left: -8px; top: -8px; width: 24px; height: 24px; image-rendering: pixelated; pointer-events: none; } /* the padlock badge on a locked worn item */
+      :is(#equipment, #inspect) .eq-lock-text { width: auto; height: auto; font-size: 16px; line-height: 1; }
+      #equipment .eq-slot.eq-locked.eq-over { outline-color: #F7768E; } /* a drag over a locked slot: red, it won't take it */
       .gear-silhouette { display: block; flex: none; image-rendering: pixelated; background-repeat: no-repeat; opacity: 0.8; } /* an empty slot's, or an item's without art yet (16x16, scaled) */
       :is(#equipment, #inspect) .eq-silhouette { width: 32px; height: 32px; } /* 16x16 at 2x */
       :is(#equipment, #inspect) .eq-refused { animation: eq-refuse 0.6s ease-out; }

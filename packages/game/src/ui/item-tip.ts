@@ -90,6 +90,8 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
     head.append(itemPicture(item, 'icon', 2), name);
     parts[0] = head;
   }
+  // Locked (CONTEXT.md Locked): in gold, right under the name, wherever the item shows.
+  if (item.locked) parts.push(el('div', 'eq-tip-locked', 'Locked'));
   if (!isGearDef(def)) {
     const kind = def.kind === 'potion' ? (def.heals === 'mp' ? 'MP Potion' : 'HP Potion') : def.kind === 'agimat' ? 'Agimat' : def.kind === 'cosmetic' ? 'Cosmetic' : def.kind === 'pet' ? 'Pet' : def.kind === 'quest' ? 'Quest item' : def.opens ? 'Pet box' : def.kind === 'consumable' ? (/ticket/i.test(def.name) ? 'Ticket' : 'Consumable') : 'Material';
     parts.push(el('div', 'eq-tip-meta', `${kind}${item.count > 1 ? ` · ×${item.count}` : ''}`));

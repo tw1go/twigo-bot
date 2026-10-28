@@ -8,6 +8,7 @@ import { type Rarity, RARITY_COLOUR, RARITY_LABEL as LABEL, RARITY_TEXT, isRarit
 import { installPixelTiles } from './pixel-tiles';
 import { coinIcon, kusingIcon } from './reward';
 import type { EquipmentPanel } from './equipment';
+import { ContextMenu, type MenuRow } from './context-menu';
 import { adventure, anyDef, cantWear, itemData, onAdventure } from '../net/adventure';
 import { chatItem, itemKeys, itemPicture, itemTipFor, nameOf, rarityOf, wearDiff, wornFor } from './item-tip';
 import { hotbarDragItem, pickForHotbar, potionCooldownKey } from './hotbar';
@@ -165,12 +166,15 @@ export class Inventory {
   private hovered: { it: Item; at: HTMLElement } | null = null;
   /** The forge popup (enhance, repair, embed). */
   private readonly forge: ForgePopup;
-  /** The right-click menu (Disassemble, Combine). */
-  private readonly menu = el('div', 'iv-menu');
+  /** The right-click menu (Disassemble, Combine, Lock…). */
+  private readonly menu = new ContextMenu();
+  /** The padlock badge on a locked item's cell (manifest ui.itemLock), if there's art for it. */
+  private readonly lockIcon: string | null;
 
   /** `icon`: the bag art (manifest ui.inventoryIcon); `frame`: the item frame the panel is drawn in; `slot`: the slot
-   *  art and its picked version (manifest ui.inventory, nine-slice). */
-  constructor(icon: string | null, frame: { url: string; slice: number } | null, slot: { url: string; picked: string; slice: number } | null) {
+   *  art and its picked version (manifest ui.inventory, nine-slice); `lock`: the padlock badge (ui.itemLock). */
+  constructor(icon: string | null, frame: { url: string; slice: number } | null, slot: { url: string; picked: string; slice: number } | null, lock: string | null = null) {
+    this.lockIcon = lock;
     installPixelTiles();
     if (icon) {
       const img = el('img', 'iv-icon');
@@ -252,15 +256,12 @@ export class Inventory {
     this.grid.setAttribute('role', 'grid');
     this.hideTip();
     this.root.append(head, this.tabs, this.grid, this.detail, this.wallet);
-    this.menu.hidden = true;
-    this.menu.setAttribute('role', 'menu');
     this.compareTip.hidden = true;
-    document.body.append(this.root, this.tip, this.compareTip, this.menu); // (the tooltip over the equipment panel too)
+    document.body.append(this.root, this.tip, this.compareTip); // (the tooltip over the equipment panel too)
     // Shift pressed or let go over a combat item: its comparison on or off.
     const shift = (e: KeyboardEvent) => e.key === 'Shift' && this.hovered && !this.tip.hidden && this.showTip(this.hovered.it, this.hovered.at, e.type === 'keydown');
     addEventListener('keydown', shift);
     addEventListener('keyup', shift);
-    document.addEventListener('pointerdown', (e) => !this.menu.contains(e.target as Node) && (this.menu.hidden = true));
     this.forge = mountForge(frame, slot);
     this.forge.besides = () => {
       const eq = document.getElementById('equipment');
@@ -301,7 +302,7 @@ export class Inventory {
   toggle(open = this.root.hidden): void {
     this.root.hidden = !open;
     this.hideTip();
-    this.menu.hidden = true;
+    this.menu.hide();
     if (!open) this.forge.close();
     this.button.setAttribute('aria-expanded', String(open));
     this.equipment?.show(!!open);
@@ -469,13 +470,14 @@ export class Inventory {
       const blocked = trading() ? tradeBlocked(it) : null;
       // Gear you can't wear (another class's, or above what your stats meet): a red slot.
       const unusable = isGearDef(def) && !!cantWear({ ...def, level: it.level });
-      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid || this.pickedMany.has(it.uid) ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${unusable ? ' iv-unusable' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}`);
+      const cell = el('button', `iv-cell iv-item${it.uid === this.pickedUid || this.pickedMany.has(it.uid) ? ' iv-picked' : ''}${it.broken ? ' iv-broken' : ''}${unusable ? ' iv-unusable' : ''}${blocked ? ' iv-no-trade' : ''}${trading() && inTrade(it.uid) ? ' iv-in-trade' : ''}${it.locked ? ' iv-locked' : ''}`);
       if (blocked) cell.title = blocked;
       cell.style.setProperty('--rarity', RARITY_COLOUR[rarityOf(it)]);
-      cell.setAttribute('aria-label', nameOf(it));
+      cell.setAttribute('aria-label', `${nameOf(it)}${it.locked ? ' (locked)' : ''}`);
       cell.dataset.uid = it.uid;
       cell.append(itemPicture(it, 'showcase', 2));
       if (it.count > 1) cell.append(el('span', 'iv-count', String(it.count)));
+      if (it.locked) cell.append(this.lockBadge('iv-lock'));
       if (isGearDef(def)) {
         // Worn by a double-click, or dragged onto its place in the equipment panel (or into the forge popup).
         cell.draggable = true;
@@ -527,6 +529,8 @@ export class Inventory {
         if (!trading() && (this.multi || e.ctrlKey || e.metaKey || e.shiftKey)) {
           // (A quest item is never sold or taken apart, so never picked with others to be.)
           if (!isGearDef(def) && def?.kind === 'quest') return toast("Quest items can't be sold or taken apart.", 2400);
+          // (A locked item neither: a plain click still picks it on its own, to see it or unlock it.)
+          if (it.locked) return toast("It's locked.", 1800);
           if (this.pickedUid && this.pickedUid !== it.uid) this.pickedMany.add(this.pickedUid);
           this.pickedUid = null;
           if (!this.pickedMany.delete(it.uid)) this.pickedMany.add(it.uid);
@@ -564,8 +568,8 @@ export class Inventory {
       if (why) Object.assign(wear, { disabled: true, title: why });
       row.append(wear);
       const price = this.priceOf(it);
-      if (!def.training) row.append(this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null)));
-      else if (price !== null) row.append(this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
+      if (!def.training) row.append(this.lockable(it, this.action('Disassemble', 'iv-sell', () => void this.disassemble(it, null))));
+      else if (price !== null) row.append(this.lockable(it, this.action(`Sell · ${price} Kusing`, 'iv-sell', () => void this.sell(it, null, price))));
     } else if (def?.kind === 'cosmetic') {
       // A cosmetic: Wear (greyed until it can be worn: no place yet).
       const wear = this.action('Wear', 'iv-flex', () => void this.equipment?.wearCosmetic(it.uid));
@@ -586,15 +590,17 @@ export class Inventory {
         if (document.getElementById('guide-tip')?.hidden !== false) toast('Now tap any slot on your hotbar.', 2600);
       }));
       const price = this.priceOf(it);
-      if (price !== null) row.append(this.action(`Sell · ${(price / it.count).toLocaleString()} Kusing each`, 'iv-sell', () => void this.sell(it, null, price)));
+      if (price !== null) row.append(this.lockable(it, this.action(`Sell · ${(price / it.count).toLocaleString()} Kusing each`, 'iv-sell', () => void this.sell(it, null, price))));
     }
     else if (def?.forge && def.forge !== 'fragment') row.append(this.action(FORGE_LABEL[def.forge], 'iv-flex', () => void this.openForge(it)));
     else if (def?.kind === 'agimat') {
       row.append(this.action('Embed…', 'iv-flex', () => void this.openForge(it)));
       const price = this.priceOf(it);
-      if (price !== null) row.append(this.action(`Sell · ${price.toLocaleString()} Kusing`, 'iv-sell', () => void this.sell(it, null, price)));
+      if (price !== null) row.append(this.lockable(it, this.action(`Sell · ${price.toLocaleString()} Kusing`, 'iv-sell', () => void this.sell(it, null, price))));
     }
     else if (def?.forge === 'fragment') row.append(this.action('Combine', 'iv-flex', () => void this.combine(it, null)));
+    // Lock / Unlock (CONTEXT.md Locked): any item but a quest item; free, at once.
+    if (!(def && !isGearDef(def) && def.kind === 'quest')) row.append(this.action(it.locked ? 'Unlock' : 'Lock', 'iv-flex iv-lock-act', () => void this.lock(it, null)));
     if (row.childElementCount) parts.push(row);
     const note = this.note();
     if (note) parts.push(note);
@@ -623,21 +629,30 @@ export class Inventory {
     const def = anyDef(it.defId);
     const items: [string, () => void][] = [];
     const off = new Set<number>(); // greyed rows
+    const titles = new Map<number, string>();
+    // A row that's greyed while the item is locked ("Sell (locked)"), with why on hover.
+    const unlessLocked = (label: string, run: () => void) => {
+      if (it.locked) {
+        off.add(items.length);
+        titles.set(items.length, "It's locked: unlock it first.");
+        items.push([`${label} (locked)`, () => {}]);
+      } else items.push([label, run]);
+    };
     if (isGearDef(def)) {
       if (this.cantWearWhy(it)) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wear(it.uid)]);
       // Training gear sells for Kusing (it can't be taken apart); the rest is taken apart.
       const price = this.priceOf(it);
-      if (def.training && price !== null) items.push([`Sell (${price} Kusing)`, () => void this.sell(it, cell, price)]);
+      if (def.training && price !== null) unlessLocked(`Sell (${price} Kusing)`, () => void this.sell(it, cell, price));
       else if (def.training) {
         off.add(items.length);
         items.push(["Training gear can't be sold", () => {}]);
-      } else items.push(['Disassemble', () => void this.disassemble(it, cell)]);
+      } else unlessLocked('Disassemble', () => void this.disassemble(it, cell));
     } else if (def?.kind === 'cosmetic') {
       if (!def.cosmeticPlace) off.add(items.length);
       items.push(['Wear', () => void this.equipment?.wearCosmetic(it.uid)]);
       // A timed cosmetic can't be sold, traded or dropped: only thrown away (asked first).
-      if (it.expiresAt !== undefined) items.push(['Destroy…', () => void this.destroy(it, cell)]);
+      if (it.expiresAt !== undefined) unlessLocked('Destroy…', () => void this.destroy(it, cell));
     } else if (isCube(it)) {
       items.push(['Open', () => void openCube(it)]);
     } else if (def && !isGearDef(def) && def.opens) {
@@ -651,10 +666,10 @@ export class Inventory {
     } else if (def && (def.kind === 'agimat' || def.forge)) {
       items.push([def.kind === 'agimat' ? 'Embed…' : FORGE_LABEL[def.forge!], () => void this.openForge(it)]);
       const price = def.kind === 'agimat' ? this.priceOf(it) : null;
-      if (price !== null) items.push([`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price)]);
+      if (price !== null) unlessLocked(`Sell (${price.toLocaleString()} Kusing)`, () => void this.sell(it, cell, price));
     } else if (def?.kind === 'potion') {
       const price = this.priceOf(it);
-      if (price !== null) items.push([`Sell… (${(price / it.count).toLocaleString()} Kusing each)`, () => void this.sell(it, cell, price)]);
+      if (price !== null) unlessLocked(`Sell… (${(price / it.count).toLocaleString()} Kusing each)`, () => void this.sell(it, cell, price));
     }
     // A consumable: used where it's for, never from the bag. A ticket says where (greyed); a Return Lantern's Use says so.
     if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge && !def.opens && !isCube(it)) {
@@ -665,30 +680,45 @@ export class Inventory {
         items.push([where, () => {}]);
       }
     }
+    // Lock / Unlock (CONTEXT.md Locked): any item but a quest item.
+    if (!(def && !isGearDef(def) && def.kind === 'quest')) items.push([it.locked ? 'Unlock' : 'Lock', () => void this.lock(it, cell)]);
     // Every item: into the chat (as Alt/Option+click does).
     items.push(['Show in chat', () => chatItem(it)]);
-    this.menuAt(items, off, x, y, isGearDef(def) && off.has(0) ? (this.cantWearWhy(it) ?? '') : undefined);
+    const why = isGearDef(def) && off.has(0) ? this.cantWearWhy(it) : null;
+    if (why) titles.set(0, why);
+    this.menuAt(items, off, x, y, titles);
   }
 
-  /** The right-click menu's rows at (x, y), kept on screen; `off` greyed, `firstTitle` the first row's tooltip. */
-  private menuAt(items: [string, () => void][], off: Set<number>, x: number, y: number, firstTitle?: string): void {
-    this.menu.replaceChildren(
-      ...items.map(([label, run], i) => {
-        const b = el('button', 'iv-menu-item', label);
-        b.setAttribute('role', 'menuitem');
-        b.disabled = off.has(i);
-        if (i === 0 && firstTitle) b.title = firstTitle;
-        b.addEventListener('click', () => {
-          this.menu.hidden = true;
-          run();
-        });
-        return b;
-      }),
-    );
-    this.menu.hidden = false;
+  /** The right-click menu's rows at (x, y), kept on screen; `off` greyed, `titles` a row's tooltip (ui/context-menu.ts). */
+  private menuAt(items: MenuRow[], off: Set<number>, x: number, y: number, titles?: Map<number, string>): void {
     this.hideTip();
-    this.menu.style.left = `${Math.round(Math.min(x, innerWidth - this.menu.offsetWidth - 8))}px`;
-    this.menu.style.top = `${Math.round(Math.min(y, innerHeight - this.menu.offsetHeight - 8))}px`;
+    this.menu.show(items, off, x, y, titles);
+  }
+
+  /** The padlock badge on a locked item (manifest ui.itemLock; a 🔒 without the art). */
+  private lockBadge(cls: string): HTMLElement {
+    if (!this.lockIcon) return el('span', `${cls} ${cls}-text`, '🔒');
+    const img = el('img', cls);
+    img.src = this.lockIcon;
+    img.alt = 'Locked';
+    return img;
+  }
+
+  /** A destructive button (Disassemble, Sell) greyed while the item is locked, with why. */
+  private lockable(it: Item, b: HTMLButtonElement): HTMLButtonElement {
+    if (it.locked) Object.assign(b, { disabled: true, title: "It's locked: unlock it first." });
+    return b;
+  }
+
+  /** Locks or unlocks an item (CONTEXT.md Locked): free, at once, no confirm. */
+  private async lock(it: Item, cell: HTMLElement | null): Promise<void> {
+    if (this.busy) return;
+    this.busy = true;
+    const r = await forgeFromBag({ action: 'lock', item: it.uid, on: !it.locked }, cell ?? this.grid);
+    this.busy = false;
+    if (r) this.message = { text: r.message, ok: r.ok };
+    if (r?.ok) playSound('click');
+    this.render();
   }
 
   /** Takes gear apart once they've said yes in the confirm box. */
@@ -717,13 +747,14 @@ export class Inventory {
    *  for how much), Disassemble N / Sell N, Clear; Select all gear while nothing is picked. */
   private renderCombatMany(bag: Item[]): void {
     const picked = bag.filter((b) => this.pickedMany.has(b.uid));
+    // (A locked item is never taken apart or sold: counted among what can't be.)
     const canApart = (b: Item) => {
       const d = anyDef(b.defId);
-      return isGearDef(d) && !d.training;
+      return isGearDef(d) && !d.training && !b.locked;
     };
     const apart = picked.filter(canApart);
     const sold = picked.flatMap((b) => {
-      const price = this.priceOf(b);
+      const price = b.locked ? null : this.priceOf(b);
       return price === null ? [] : [{ b, price }];
     });
     const total = sold.reduce((n, x) => n + x.price, 0);
@@ -732,7 +763,7 @@ export class Inventory {
     if (!picked.length) {
       parts.push(el('div', 'iv-hint', 'Click items to select them: gear to take apart, training gear and agimats to sell.'));
       // (Gear only: agimats are picked one by one.)
-      const all = bag.filter((b) => isGearDef(anyDef(b.defId)) && (canApart(b) || this.priceOf(b) !== null));
+      const all = bag.filter((b) => !b.locked && isGearDef(anyDef(b.defId)) && (canApart(b) || this.priceOf(b) !== null));
       if (all.length) {
         row.append(this.action(`Select all gear (${all.length})`, 'iv-clear', () => {
           for (const b of all) this.pickedMany.add(b.uid);

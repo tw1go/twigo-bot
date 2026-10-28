@@ -1031,7 +1031,7 @@ export function confirmDestroy(item: Item): Promise<boolean> {
 }
 
 /** Takes an item apart (asked first) or combines fragments: the server's answer, with the effect and sound. */
-export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' | 'destroy' | 'disassemble-many' | 'sell-many' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
+export async function forgeFromBag(a: Extract<TownForgeAction, { action: 'disassemble' | 'combine' | 'sell' | 'destroy' | 'disassemble-many' | 'sell-many' | 'lock' }>, at: HTMLElement | null): Promise<TownForgeResponse | null> {
   const where = at?.getBoundingClientRect(); // (the slot is gone once the bag redraws)
   const r = await forgeAction(a);
   if (!r) {
