@@ -118,7 +118,7 @@ import { PalengkeOutskirts, SlumsOutskirts, outskirts } from '../world/outskirts
 import { Terrain } from '../world/terrain';
 import { type Mob, Mobs, TONE, showSlowed } from '../world/mobs';
 import { GOLEM_SOUNDS, GolemView } from '../world/golem';
-import { GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
+import { BELL_TILES, GREAT_SCALE_SOUNDS, GreatScaleView } from '../world/great-scale';
 import { SilongView } from '../world/silong';
 import { SilongTracker, noteKeyBack, pidoSays, showRamonNote, showRideAsk, showRideUp, showSilongGate, tellKeyBack } from '../ui/silong';
 import { loadBoss } from '../assets/queue';
@@ -346,7 +346,7 @@ export class TownScene extends Phaser.Scene {
   private grid!: WalkGrid;
   private player!: Character;
   private doorAt = new Map<string, Building>();
-  private pending: { sit?: Bench; npc?: string; loot?: string; halloween?: 'mikko' | 'lower' } | null = null;
+  private pending: { sit?: Bench; npc?: string; loot?: string; halloween?: 'mikko' | 'lower'; bell?: true } | null = null;
   private buildingAlert: Phaser.GameObjects.Sprite | null = null;
   private zoomIndex = 1;
   /** The arrival zoom-out while it runs (follow and label sizing wait for it). */
@@ -722,6 +722,7 @@ export class TownScene extends Phaser.Scene {
           me: () => this.player.tile,
           char: (id) => (id === this.myId ? this.player : this.others.charOf(id)),
           ring: (at) => this.ringBell(at),
+          own: (obj, on) => void (on ? this.entranceBoxes.add(obj) : this.entranceBoxes.delete(obj)),
           timer: (name, warn, riseIn, awake) => setGolemTimer(name, warn, riseIn, awake, 'the hall'),
         });
         this.greatScale = view;
@@ -1007,6 +1008,7 @@ export class TownScene extends Phaser.Scene {
       this.gateCheckAt = time + 250;
       this.nearHatch();
       this.onArrivalElevator();
+      this.bellTick();
     }
     this.lanternTick(time);
     this.ramonTick(time);
@@ -4811,6 +4813,10 @@ export class TownScene extends Phaser.Scene {
       this.sitOn(b); // someone may have sat down while we walked over
       return;
     }
+    if (this.pending?.bell) {
+      this.pending = null;
+      if (this.greatScale?.nearBell(tile)) return void this.link?.send({ t: 'bell-ring' }); // (else the walk fell short: nothing)
+    }
     const building = this.doorAt.get(`${tile.col},${tile.row}`);
     this.setBuildingAlert(building ?? null);
     if (!building) return;
@@ -6010,11 +6016,30 @@ export class TownScene extends Phaser.Scene {
     };
   }
 
-  /** The Great Scale's bell clicked: rung if you're within its reach (the server checks again), else you walk to it. */
+  /** The Great Scale's bell clicked: rung if you're within its reach (the server checks again), else one click is enough:
+   *  you walk to the nearest free tile within its reach and it rings as you get there (`pending.bell`, checked as you
+   *  walk; another walk calls it off, as every pending walk's end). */
   private ringBell(at: [number, number]): void {
     if (this.greatScale?.nearBell(this.player.tile)) return void this.link?.send({ t: 'bell-ring' });
-    toast('Walk up to the bell, then ring it.', 1800);
-    this.goToTile({ col: at[0] + 2, row: at[1] + 2 });
+    const from = this.player.heading;
+    let to: Tile | null = null;
+    let best = Infinity;
+    for (let r = at[1] - BELL_TILES; r <= at[1] + BELL_TILES; r++)
+      for (let c = at[0] - BELL_TILES; c <= at[0] + BELL_TILES; c++) {
+        if (!this.grid.walkable(c, r) || !this.grid.reachable(from, { col: c, row: r })) continue;
+        const d = Math.max(Math.abs(c - from.col), Math.abs(r - from.row)) * 1000 + Math.hypot(c - from.col, r - from.row);
+        if (d < best) [best, to] = [d, { col: c, row: r }];
+      }
+    this.moveTo(to ?? { col: at[0], row: at[1] }); // (none: as near as the walk grid gets you)
+    this.pending = { bell: true };
+  }
+
+  /** Walking to the bell (`ringBell`): rung as soon as you're within its reach, not only at the walk's end. */
+  private bellTick(): void {
+    if (!this.pending?.bell) return;
+    if (!this.greatScale?.nearBell(this.player.tile)) return;
+    this.pending = null;
+    this.link?.send({ t: 'bell-ring' });
   }
 
   /** The HUD's golem timer (ui/golem-timer.ts), from a `mobs` or `golem` message: awake while it's up (rising, in its

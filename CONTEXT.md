@@ -246,7 +246,7 @@ The Great Scale grabbing one player onto its pan. While **held** they can't move
 _Avoid_: grab, stun (for this)
 
 **Bell**:
-The palengke's bell, left where the Great Scale fell for a minute after each fall. Ringing it (standing near) is the last quest's step after helping bring it down; whoever missed it can ring the next one.
+The palengke's bell, left where the Great Scale fell for a minute after each fall. Ringing it (standing near) is the last quest's step after helping bring it down; whoever missed it can ring the next one. One click rings it: from farther off the click walks you up to it and it rings as you get there.
 _Avoid_: gong, chest
 
 **Rise**:

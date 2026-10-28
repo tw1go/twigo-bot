@@ -4,6 +4,7 @@ import type { FxDef, Manifest, MobData, MobDef, TownMap } from '../assets/types'
 import { mobSheet } from '../assets/mob-art';
 import { BossBar } from '../ui/boss-bar';
 import { onMap } from './clicks';
+import { LABEL_DEPTH } from './depth';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Mobs } from './mobs';
 import { circleScale, coneScale } from './fx-fit';
@@ -21,8 +22,11 @@ export const GREAT_SCALE_SOUNDS = ['pan-slam-windup', 'pan-slam', 'weigh-in', 's
 // - Weigh-in: the held player lifted 12 px inside the Weigh-in's ring, over the pan (a mob of its own, drawn here in
 //   code: a brass dish), until they're let go.
 // - Its call (dust puffs where its Sentinels drop, as its call anim lands), its enrage (its anim once, then a red flash
-//   every 2 s until it has red sheets), its bell after its fall (the bell on its tile for its time left: a click
-//   within 3 tiles rings it; `bell-rung` swings the code-drawn stand-in for everyone).
+//   every 2 s until it has red sheets), its bell after its fall (the bell on its tile for its time left: a click on it
+//   rings it from within 3 tiles, else walks you up to it (TownScene `ringBell`); `bell-rung` swings the code-drawn
+//   stand-in for everyone). Its click box sits at LABEL_DEPTH − 2 like every other click box (the Warren Gate's, the
+//   Cellar Hatch's): Phaser gives a click to the topmost interactive object, and at depth 0 the bell lost every click to
+//   whatever stood over its tile (the Scale's fading body, other players, your pet, loot).
 // - The boss bar while it's awake and you're in its arena; the HUD's field boss timer ("Awake! Go to the hall").
 // - Asleep: hovering it says when it wakes.
 // Its effects are Mac's PixelLab fx-scale-* (the art folder's fx/mob-boss-pixellab, 23 Oct 2026; the bell the 21 Oct one):
@@ -37,7 +41,8 @@ export const PAN_KIND = 'great-scale-pan';
 const CONE_ALPHA = 0.7;
 const LIFT = 12; // px a held player is lifted on the pan
 const FLASH_EVERY = 2000; // ms between its enraged red flashes
-const BELL_TILES = 3;
+/** How close a ring must be made from (the server checks the same). */
+export const BELL_TILES = 3;
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 type Move = Extract<TownServerMessage, { t: 'boss-move' }>;
@@ -51,6 +56,9 @@ export interface GreatScaleHooks {
   char(id: string): { lift: number; sprite: Phaser.GameObjects.Sprite } | null;
   /** The bell clicked: ring it (within 3 tiles), or walk toward it. */
   ring(at: [number, number]): void;
+  /** The bell's click box while it stands (`on`), so a click or tap on it is its own, never also a walk to the tile under
+   *  it (the scene's `entranceBoxes`); off as the bell goes. */
+  own(obj: Phaser.GameObjects.GameObject, on: boolean): void;
   /** The HUD's field boss timer. */
   timer(name: string, warnMinutes: number, riseIn: number, awake: boolean): void;
 }
@@ -310,11 +318,13 @@ export class GreatScaleView {
   /** fx.bell: the palengke's bell on its tile while it rings (its time `left` ms), a click on it to ring. */
   private showBell(at: [number, number], left: number): void {
     const c = this.mobs.ground(at[0] + 0.5, at[1] + 0.5);
-    const zone = this.scene.add.zone(c.x, c.y - 14, 24, 30).setInteractive({ cursor: 'pointer' });
+    // (Over everything drawn on its tile: see the note at the top.)
+    const zone = this.scene.add.zone(c.x, c.y - 14, 24, 30).setDepth(LABEL_DEPTH - 2).setInteractive({ cursor: 'pointer' });
     zone.on('pointerup', (p: Phaser.Input.Pointer) => {
       if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.hooks.ring(at);
     });
+    this.hooks.own(zone, true);
     // fx-scale-bell ringing over its tile (else a gold bell drawn in code, swinging as it's rung).
     const art = this.art('fx-scale-bell');
     const own = art && this.fx.play(art, { x: c.x, y: c.y - 6 }, { layer: 'front', life: Infinity });
@@ -338,6 +348,7 @@ export class GreatScaleView {
     const b = this.bell;
     if (!b) return;
     this.bell = null;
+    this.hooks.own(b.zone, false);
     b.zone.destroy();
     b.fx.kill(400);
   }

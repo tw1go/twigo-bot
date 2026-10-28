@@ -1097,6 +1097,7 @@ export class Mobs {
     m.path = [];
     if (m === this.target) this.setTarget(null);
     this.dropLabel(m); // (its name goes with it; a mini boss's comes back when it does)
+    m.sprite.disableInteractive(); // (a dead mob takes no clicks: its fading body stood over the Great Scale's bell; back in `show`)
     if (m.asleep) return this.show(m, false);
     this.drawBar(m);
     this.pose(m, 'death', {
@@ -1300,6 +1301,7 @@ export class Mobs {
   /** Shown (alive) or gone (dead, until it respawns). */
   show(m: Mob, alive: boolean): void {
     m.dead = !alive;
+    if (alive) m.sprite.setInteractive(); // (clickable again, its hit area and pixelPerfect kept; off since `fall`)
     m.sprite.setVisible(alive && !m.asleep && !m.hidden).setAlpha(1);
     m.shadow?.setVisible(alive && !m.asleep && !m.hidden).setAlpha(1);
     if (m.mini) m.label?.text.setVisible(alive && !m.asleep);
