@@ -1619,7 +1619,7 @@
    "retryHours": 24,
    "gateNote": "Repo change (owner, 26 Oct 2026): a real run needs a practice run cleared first (the Ice Machine down in one); a practice run drops the normal loot with half its Kusing (kusingPct), as the Warrens' practice; Mang Pido gives another Practice Cellar Key retryHours after the last, while none is held, no practice run is open and the practice isn't cleared.",
    "mobPctNote": "Repo change (owner, 26 Oct 2026): a practice run nerfed to 40% of the mobs' and bosses' HP and 35% of their ATK, as the Warrens' practice (was mobHpAtkPct 60).",
-   "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Freezer Breath warning (hide behind an ice block)",
+   "radio": "Mang Pido talks over his radio at: the first Chill stack, the first work lamp, the B3 door, the first Cold Vents warning (stand beside an ice block)",
    "ramonBox": {
     "tile": "the R mark on B2 (Meat Lockers, far corner)",
     "click": "opens a short note: Mang Ramon hid his honest weights down here",

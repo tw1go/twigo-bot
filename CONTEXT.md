@@ -889,8 +889,8 @@ Key** from "Now's the Time" opens one practice run, alone. (Once the Susi ng Sil
 _Avoid_: ticket (that's the Warrens')
 
 **Chill**:
-The cold of the Silong's B2 and B3: a stack for each 5 seconds you stand still (and from the Ice Machine's breath and
-brine), up to 4, each 5% off your walking and casting; walking a second, a work lamp or a Sinigang or Lugaw clears it,
+The cold of the Silong's B2 and B3: a stack for each 5 seconds you stand still (and from the Ice Machine's Cold Vents
+and brine), up to 4, each 5% off your walking and casting; walking a second, a work lamp or a Sinigang or Lugaw clears it,
 and it's gone for the rest of a run once the Ice Machine falls.
 _Avoid_: frost, freeze, slow (that's the Bag's)
 
@@ -899,7 +899,24 @@ One of the Ice Plant's conveyor belts: whoever stands on it (mobs too) is carrie
 _Avoid_: conveyor, treadmill
 
 **Ice block**:
-A block the Ice Machine drops: a wall for 12 seconds, and cover from its Freezer Breath.
+A block the Ice Machine drops: a wall for 12 seconds. The 8 tiles round it are its **pocket**, the only safe ground from
+its Cold Vents. A player a block lands
+on takes its hit and is **shoved** out beside it, never left standing inside the block.
+_Avoid_: cover, shield (it hides you from nothing else: Frost Sweep and the icicles don't care)
+
+**Cold Vents**:
+The Ice Machine's fan driving cold up through every floor tile of the Ice Plant (belts and pallets too) after a long
+warning; standing anywhere but a pocket as it lands takes the hit and two Chill. With no ice block standing it drops two
+blocks first. (It replaced the Freezer Breath on 28 Oct 2026.)
+_Avoid_: Freezer Breath, breath (the old move: a cone from the fan)
+
+**Frost Sweep**:
+Bands of frost rolling from the Ice Machine's wall across the room, each landing a moment after the one before; a band
+hits whoever stands in it as it lands, and its tiles are safe again then: cross behind it, or outrun it.
+_Avoid_: wave, tide
+
+**Icicle Chase**:
+Icicles that keep falling on where each player stands, three in a row for each; walking keeps you clear.
 
 **Mang Ramon's note**:
 The quest item in Mang Ramon's box on B2: one per character, handed to Kuya Jun for a Mid Repair Kit.

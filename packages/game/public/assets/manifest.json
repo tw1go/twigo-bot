@@ -22967,6 +22967,96 @@
       "layer": "ground",
       "note": "Where a Silong boss's called mobs come in; anchor = the centre (23 Oct 2026, Mac's PixelLab)"
     },
+    "fx-silong-vent": {
+      "file": "fx/silong/fx-silong-vent.png",
+      "frame": [
+        32,
+        64
+      ],
+      "frames": 8,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        16,
+        56
+      ],
+      "layer": "front"
+    },
+    "fx-silong-safe-pocket": {
+      "file": "fx/silong/fx-silong-safe-pocket.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground"
+    },
+    "fx-silong-frost-roll": {
+      "file": "fx/silong/fx-silong-frost-roll.png",
+      "frame": [
+        32,
+        16
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        16,
+        8
+      ],
+      "layer": "ground"
+    },
+    "fx-silong-icicle-fall": {
+      "file": "fx/silong/fx-silong-icicle-fall.png",
+      "frame": [
+        32,
+        80
+      ],
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "anchor": [
+        16,
+        72
+      ],
+      "layer": "front"
+    },
+    "fx-silong-intake-whirl": {
+      "file": "fx/silong/fx-silong-intake-whirl.png",
+      "frame": [
+        160,
+        80
+      ],
+      "frames": 6,
+      "fps": 10,
+      "loop": true,
+      "anchor": [
+        80,
+        40
+      ],
+      "layer": "ground"
+    },
+    "fx-silong-fist-slam": {
+      "file": "fx/silong/fx-silong-fist-slam.png",
+      "frame": [
+        144,
+        72
+      ],
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "anchor": [
+        72,
+        36
+      ],
+      "layer": "ground"
+    },
     "fx-payong-block": {
       "file": "fx/palengke/fx-payong-block.png",
       "frame": [

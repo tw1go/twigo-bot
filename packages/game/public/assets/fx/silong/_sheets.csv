@@ -12,3 +12,9 @@ fx-silong-frost-crack.png,64,96,7,10,no,32,95,front: over a cold-room door: fros
 fx-silong-hatch-glow.png,140,72,4,4,yes,70,36,ground: cold blue glow round the Silong Hatch in the market (centre it on the hatch anchor)
 fx-silong-lamp-glow.png,100,52,2,3,yes,50,26,ground: warm ring under each work lamp: the 2-tile area that clears Chill
 fx-silong-melt-steam.png,32,48,8,10,no,16,46,front: steam puff; scatter them over frosted tiles when Ang Makinang Yelo dies
+fx-silong-vent.png,32,64,8,14,no,16,56,"front: Cold Vents: cold air blows up out of a floor tile on the hit (one per vented 2 x 2 block, like Ice Slick); anchor = the tile middle"
+fx-silong-safe-pocket.png,32,16,4,4,yes,16,8,ground: Cold Vents: a pale blue outline on each safe tile (the 8 round a standing ice block) while the red warning shows
+fx-silong-frost-roll.png,32,16,6,12,no,16,8,ground: Frost Sweep: a wisp of frost rolling over one tile as its band hits; lay one on every tile of the band
+fx-silong-icicle-fall.png,32,80,7,14,no,16,72,front: Icicle Chase: an icicle falls and shatters on the red circle; hits on frame 4 (time its start so frame 4 is the hit)
+fx-silong-intake-whirl.png,160,80,6,10,yes,80,40,ground: Intake: cold air spiralling in toward the fan tile while it pulls (radius 2.5 tiles); anchor = the fan tile middle
+fx-silong-fist-slam.png,144,72,6,12,no,72,36,ground: Intake ends with the Fist Slam: a frost shock ring bursting out to radius 3 round the fan tile

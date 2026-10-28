@@ -36,12 +36,17 @@ import { LABEL_DEPTH } from './depth';
 //   shadows; Frosty Tubbs bursting up through the ice and his Ice Slick (a 2 x 2 diamond on each block of the floor's even
 //   grid it touches; the scene slides you on its tiles: `slick`); a frost puff where a
 //   boss's mobs come in. The boss bar while you're in a mini boss's room.
-// - Ang Makinang Yelo (B3's last boss: one facing, never moving; its fan the map's bossTile): Ice Block Drop (the warn on
-//   each tile, the block's shadow and fall timed to its hit, then prop-silong-ice-block standing as a wall on the walk
-//   grid for its time and breaking), Freezer Breath (breath-charge with the warn at its fan, then breath), Belt Rush
-//   (rush), Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage
-//   (its -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
-//   floor). The boss bar, with its title, while you're in the Ice Plant.
+// - Ang Makinang Yelo (B3's last boss: one facing, never moving; its fan the map's bossTile; its moves reworked 28 Oct
+//   2026, the owner: the art folder's silong/fx/ice-machine stand-ins): Ice Block Drop (the warn on each tile, the
+//   block's shadow and fall timed to its hit, then prop-silong-ice-block standing as a wall on the walk grid for its time
+//   and breaking; whoever stood under one slides out beside it: the town's `boss-pull`), Cold Vents (breath-charge
+//   while the floor's red warning shows, fx-silong-safe-pocket on each safe tile round an ice block, then breath and
+//   fx-silong-vent blowing up out of the floor: one per 2 x 2 block of the floor's even grid, as Ice Slick lays its
+//   diamonds), Frost Sweep (its bands' red warnings creeping down the room, fx-silong-frost-roll over each band's tiles
+//   as it lands), Icicle Chase (fx-silong-icicle-fall into each circle, its frame 4 on the hit), Belt Rush (rush),
+//   Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage (its
+//   -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
+//   floor). The boss bar, with its title, while you're in the Ice Plant. (Its breath art stays in the folder, unplayed.)
 // Sounds: the Silong's own (audio/sound.ts SILONG_SFX, the art folder's audio/sfx/silong-*), a boss's only while it's on
 // your screen: the elevator's cage opening and riding, the door, the frost melting; each move's as it's cast (`warn`)
 // and as it lands (`hit`): MOVE_SOUNDS. Ang Makinang Yelo's hurt and death are its own sets
@@ -73,7 +78,9 @@ const MOVE_SOUNDS: Record<string, { warn?: SilongSfx; hit?: SilongSfx }> = {
   hookSwing: { warn: 'silong-call' },
   callTheFrost: { warn: 'silong-call' },
   iceBlockDrop: { hit: 'silong-ice-block-drop' },
-  freezerBreath: { hit: 'silong-freezer-breath' },
+  coldVents: { hit: 'silong-freezer-breath' },
+  frostSweep: { hit: 'silong-belt-rush-hit' },
+  icicleChase: { hit: 'silong-ice-block-drop' },
   beltRush: { warn: 'silong-belt-rush', hit: 'silong-belt-rush-hit' },
   brineFlood: { hit: 'silong-brine-flood' },
   enrage: { warn: 'silong-enrage' },
@@ -384,10 +391,26 @@ export class SilongView {
         }
         return;
       }
-      case 'freezerBreath': {
+      case 'coldVents': {
+        // The floor's red warning is the telegraph's; a pale outline on each safe tile (the pockets round the ice
+        // blocks) while it shows. (Mang Pido's moment keeps the breath's name.)
         this.hooks.radio('breath');
-        const fan = this.block.bossTile;
-        if (fan) this.keep(m.id, this.fx.play(this.M.fx['fx-silong-breath-warn-sw'], at(fan), { layer: 'ground', life: m.ms, scale: breathScale(m.shape) }));
+        const pocket = this.art('fx-silong-safe-pocket');
+        for (const t of (d.pockets as [number, number][]) ?? []) {
+          if (pocket) this.keep(m.id, this.fx.play(pocket, at(t), { layer: 'ground', life: m.ms, fadeIn: 200, fadeOut: 300 }), 60);
+          else this.keep(m.id, this.fx.drawFx('ground', (g, tt) => { const p = at(t); g.clear().lineStyle(1, 0xbfe4ff, 0.8 * (0.6 + 0.4 * Math.sin(tt / 150))).strokePoints([new Phaser.Math.Vector2(p.x, p.y - 8), new Phaser.Math.Vector2(p.x + 16, p.y), new Phaser.Math.Vector2(p.x, p.y + 8), new Phaser.Math.Vector2(p.x - 16, p.y)], true); return tt < m.ms; }, m.ms), 60);
+        }
+        return;
+      }
+      case 'frostSweep':
+        return; // (each band's own telegraph creeps down the room; the frost rolls over its tiles with its hit)
+      case 'icicleChase': {
+        // The icicle falls into the circle, its frame 4 on the hit.
+        const art = this.art('fx-silong-icicle-fall');
+        const on = m.shape?.kind === 'circle' ? m.shape.at : null;
+        if (!on) return;
+        if (art) this.later(m.id, m.ms - (4 / (art.fps ?? 14)) * 1000, () => this.fx.play(art, at(on), { layer: 'front' }));
+        else this.later(m.id, m.ms, () => this.burst(at(on), 0xd7f1ff, 1));
         return;
       }
       case 'brineFlood':
@@ -422,13 +445,27 @@ export class SilongView {
     for (const h of m.hits) this.hooks.onHit(boss, h.id, h, slow?.ms, slow?.factor);
     const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
     if (m.move === 'beltRush') this.hooks.rush(Number(m.data?.ms ?? 4000), Number(m.data?.speed ?? 5));
-    // Ang Makinang Yelo's: its blocks stand as walls; its breath; the brine over the floor.
+    // Ang Makinang Yelo's: its blocks stand as walls; its vents, its sweep's frost; the brine over the floor.
     const blocks = m.data?.blocks as [number, number][] | undefined;
     if (blocks?.length) for (const t of blocks) this.iceBlock(m.id, t, Number(m.data?.ms ?? 12_000));
-    if (m.move === 'freezerBreath') {
+    if (m.move === 'coldVents') {
       if (boss) this.mobs.pose(boss, 'breath');
-      const fan = this.block.bossTile;
-      if (fan) this.fx.play(this.M.fx['fx-silong-breath-sw'], at(fan), { layer: 'ground', scale: breathScale(move?.shape) });
+      // Cold air up out of the floor: one plume per 2 x 2 block of the floor's even grid the vented tiles touch (on
+      // the block's middle corner, as Ice Slick lays its diamonds: about 200 plumes, not 800).
+      const vented = (m.data?.vented as [number, number][] | undefined) ?? [];
+      const plume = this.art('fx-silong-vent');
+      const cells = new Set(vented.map(([c, r]) => `${c - (c & 1)},${r - (r & 1)}`));
+      for (const b of cells) {
+        const [c, r] = b.split(',').map(Number);
+        if (plume) this.fx.play(plume, this.mobs.ground(c + 1, r + 1), { layer: 'front' });
+      }
+      if (!plume && cells.size) this.burst(at(this.block.bossTile ?? vented[0]), 0xd7f1ff, 3);
+    }
+    if (m.move === 'frostSweep') {
+      // The frost rolling over each tile of the band as it lands.
+      const band = move?.shape?.kind === 'tiles' ? move.shape.tiles : [];
+      const roll = this.art('fx-silong-frost-roll');
+      if (roll) for (const t of band) this.fx.play(roll, at(t), { layer: 'ground' });
     }
     const flood = m.data?.flood as [number, number][] | undefined;
     if (flood?.length) {
@@ -745,9 +782,6 @@ export class SilongView {
     for (const g of this.glows) g?.kill(0);
   }
 }
-
-/** Freezer Breath's art (a 7-tile cone) scaled to the cone the server sends (its `length`; dungeons.json's freezerBreath). */
-const breathScale = (shape: TelegraphShape | undefined) => (shape?.kind === 'cone' ? shape.length / 7 : 1);
 
 /** An image's leftmost column with a visible pixel (a door's hinge edge), measured once per texture. */
 const edges = new Map<string, number>();
