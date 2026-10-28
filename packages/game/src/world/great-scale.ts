@@ -3,7 +3,7 @@ import type { GreatScaleChange, TelegraphShape, TownGreatScale, TownServerMessag
 import type { FxDef, Manifest, MobData, MobDef, TownMap } from '../assets/types';
 import { mobSheet } from '../assets/mob-art';
 import { BossBar } from '../ui/boss-bar';
-import { onMap } from './clicks';
+import { onMap, releasedLeft } from './clicks';
 import type { FxHandle, FxLayers, Pt } from './fx-layers';
 import type { Mobs } from './mobs';
 import { circleScale, coneScale } from './fx-fit';
@@ -312,7 +312,7 @@ export class GreatScaleView {
     const c = this.mobs.ground(at[0] + 0.5, at[1] + 0.5);
     const zone = this.scene.add.zone(c.x, c.y - 14, 24, 30).setInteractive({ cursor: 'pointer' });
     zone.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
+      if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, this.scene.game.canvas)) return;
       this.hooks.ring(at);
     });
     // fx-scale-bell ringing over its tile (else a gold bell drawn in code, swinging as it's rung).

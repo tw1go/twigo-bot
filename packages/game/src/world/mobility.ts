@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { BUSY_GUARD_MS } from '../characters/character';
 import type { Dir, Manifest } from '../assets/types';
 import type { Character } from '../characters/character';
 import type { Tile, WalkGrid } from './grid';
@@ -98,7 +99,11 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
     scene.tweens.add({ targets: ghost, alpha: 0, duration: 130, onComplete: () => ghost.destroy() });
   };
   char.busy = true;
+  let finished = false;
   const done = () => {
+    if (finished) return;
+    finished = true;
+    guard?.remove();
     char.lift = 0;
     char.sprite.anims.timeScale = 1;
     char.sprite.setScale(1).setAlpha(1).setTintMode(Phaser.TintModes.MULTIPLY).clearTint();
@@ -107,8 +112,19 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
     char.busy = false;
   };
 
+  // (Landed by its time + a margin whatever happens to its tweens: `busy` never outlives the move, and the click made
+  // meanwhile is walked.)
+  let guard: Phaser.Time.TimerEvent | null = null;
+  const guarded = (ms: number, resolve: () => void) => {
+    guard = scene.time.delayedCall(ms + BUSY_GUARD_MS, () => {
+      if (finished) return;
+      done();
+      resolve();
+    });
+  };
   if (kind === 'blink') {
     return new Promise((resolve) => {
+      guarded(180 + 160, resolve);
       const sp = char.sprite;
       blink();
       sound?.('skill-blink-out');
@@ -128,7 +144,11 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
                 onSpawn?.(sp);
               }
             },
-            onComplete: () => (done(), resolve()),
+            onComplete: () => {
+              if (finished) return;
+              done();
+              resolve();
+            },
           });
         },
       });
@@ -143,6 +163,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
   const wedge = kind === 'charge' && cls ? chargeWedge(scene, M, `fx-${cls}-charge`, char, sx, sy) : null;
   if (wedge) onSpawn?.(wedge.sprite);
   return new Promise((resolve) => {
+    guarded(ms + windup, resolve);
     let frame = 0;
     let lastDust = 0;
     char.sprite.anims.timeScale = kind === 'step-back' ? 1 : 2.2;
@@ -152,6 +173,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
     scene.tweens.addCounter({
       from: 0, to: 1, duration: ms, delay: windup, ease,
       onUpdate: (t) => {
+        if (finished) return;
         const v = t.getValue() ?? 0;
         if (kind === 'step-back') char.lift = Math.round(Math.sin(Math.PI * Math.min(1, t.progress)) * 8);
         char.pose(from.col + (to.col - from.col) * v, from.row + (to.row - from.row) * v, dir, kind !== 'step-back');
@@ -162,6 +184,7 @@ export function playMove(scene: Phaser.Scene, M: Manifest, char: Character, kind
         }
       },
       onComplete: () => {
+        if (finished) return;
         done();
         wedge?.end();
         fx(DUST); // the brake, the skid, the landing

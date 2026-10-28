@@ -33,7 +33,8 @@ import { PalengkeNpcs, npcFace } from '../world/palengke-npcs';
 import { mountHouseCreator } from '../ui/house-creator';
 import { playBusted } from '../ui/casino';
 import { drawBridge } from '../world/bridge';
-import { onMap, watchClicks } from '../world/clicks';
+import { onMap, releasedLeft, releasedRight } from '../world/clicks';
+import { walkNowOrAfter } from '../characters/step-gate';
 import { playKalawang, playMasterKey } from '../world/bakod-fx';
 import { puffHouse, riseHouse, sinkHouse } from '../world/house-rise';
 import { RogueSigns } from '../world/rogue-signs';
@@ -59,7 +60,7 @@ import { setTesting, setTestingLink, testing } from '../net/testing';
 import { EMOTE_KEYS, emotePicker } from '../ui/emotes';
 import { actionOf, held, keyLabel, matches, syncKeybinds } from '../ui/keybinds';
 import { syncHotbarLock } from '../ui/hotbar-lock';
-import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
+import type { ArenaServerMessage, ClassInfo, HoodHouse, OutfitData, SnapReason, TitleData, TownClientMessage, TownEmote, TownHoodResponse, TownGolem, TownServerMessage } from '@mikazuki/shared';
 import { type BubbleArt, lightBubble } from '../ui/labels';
 import { type Reward, setRewardArt, showReward } from '../ui/reward';
 import { showMovementTutorial } from '../ui/tutorial';
@@ -162,6 +163,19 @@ import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
 import { NPC_PLACES } from '../world/npcs';
 import { pick, tileRandom } from '../world/rng';
 import { lagContext, lagEvent, lagReport } from '../net/lag';
+
+/** The walking log (`?debug=walk`, or dev): each step and turn sent with the page's step bucket after it, each snap with
+ *  its reason, each right press and release on the canvas, and each click dropped on the way with why. */
+const WALK_DEBUG = import.meta.env.DEV || new URLSearchParams(location.search).get('debug') === 'walk';
+const wlog = (...a: unknown[]): void => void (WALK_DEBUG && console.log('[walk]', ...a));
+/** The server's step bucket (bot web/town.ts STEP_BURST / STEPS_PER_SECOND): the page keeps the same, so it never sends
+ *  a step the server has no token for. */
+const STEP_BURST = 8;
+const STEPS_PER_SECOND = 6;
+/** The longest a `stunned` is taken for (the Weigh-in's hold is 8 s): a stun never outlives its cause. */
+const MAX_STUN_MS = 10_000;
+/** A walk into a charge-up's reach is called off after this (no target reached: never a scene that won't walk). */
+const CHARGE_WALK_MS = 10_000;
 
 const MOVE_ACTIONS = ['up', 'left', 'down', 'right'];
 const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
@@ -369,7 +383,16 @@ export class TownScene extends Phaser.Scene {
   /** The camera glides after the player (off while debugging a fixed view). */
   follow = true;
   /** Where the last press started, any button (Phaser's own down/up positions only follow the left button). */
-  private pressAt = { x: 0, y: 0 };
+  /** The last press the scene saw (`t`: its Phaser downTime): a release whose press it never saw (the input was off, a
+   *  panel had it) is a click, there's nothing to measure a drag against. */
+  private pressAt = { x: 0, y: 0, t: -1 };
+  /** A click to walk somewhere made while a move (Dash, Blink, a leap) still moves you: walked as it lands. */
+  private afterMove: Tile | null = null;
+  /** Where the last click walk was going (for a retry after a budget snap), and the budget snaps in a row. */
+  private walkGoal: Tile | null = null;
+  private budgetSnaps = 0;
+  /** The camera peek's settle, to call from a lost release (blur, a hidden tab). */
+  private settlePeek: (() => void) | null = null;
   /** performance.now() when the current touch started (0 = no touch). */
   private touchDownAt = 0;
   /** The tile being walked to by a hold-touch (null = not in hold-walk mode). */
@@ -1028,6 +1051,7 @@ export class TownScene extends Phaser.Scene {
     const frame = !this.intro && !this.inside ? (this.warrens?.bossFrame() ?? null) : null;
     if (frame) this.bossCamera(frame);
     else if (this.bossCam) this.endBossCamera();
+    if (this.peek?.back && !this.peek.back.isPlaying()) this.peek = null; // (its glide back gone without ending: let go)
     if (!frame && this.follow && !this.intro && !this.inside && !this.peek) this.followPlayer();
     this.culler.update(this.cameras.main.worldView);
     this.objects.setLamps(this.lampsOn, time); // glows follow their lamp's visibility; faulty lamps act up
@@ -1837,7 +1861,7 @@ export class TownScene extends Phaser.Scene {
 
   /** A charge-up pressed out of reach of its target: walking into reach, where it starts charging if the key's still
    *  held (chargeWalkTick); let go first, it's called off (releaseCharge). */
-  private chargeWalk: { name: string; mob: string; goal: Tile | null } | null = null;
+  private chargeWalk: { name: string; mob: string; goal: Tile | null; since: number } | null = null;
 
   /** A charge-up's key pressed (CONTEXT.md Charge-up): it needs a target (yours, else the nearest mob in range: no
    *  target, it says so and does nothing); out of its reach, you walk into reach first (chargeWalk). In reach it charges
@@ -1858,7 +1882,7 @@ export class TownScene extends Phaser.Scene {
     this.stopFight();
     const reach = this.reachOf(c.id, ch.idx);
     if (this.reachDist(m, this.player.tile) > reach) {
-      this.chargeWalk = { name, mob: m.id, goal: null };
+      this.chargeWalk = { name, mob: m.id, goal: null, since: this.time.now };
       this.chargeWalkTick();
       return true;
     }
@@ -1875,6 +1899,7 @@ export class TownScene extends Phaser.Scene {
     const ch = this.chargeOf(w.name);
     const m = this.mobs?.list.find((x) => x.id === w.mob);
     if (!c || !ch || !m || m.dead || m.untouchable || this.knockedOut) return void (this.chargeWalk = null);
+    if (this.time.now - w.since > CHARGE_WALK_MS) return void (this.chargeWalk = null); // (never a walk that goes on for good)
     const reach = this.reachOf(c.id, ch.idx);
     if (this.reachDist(m, this.player.tile) <= reach) {
       if (!this.player.isIdle) return this.player.cancelPath(); // (stop on this tile)
@@ -2081,7 +2106,10 @@ export class TownScene extends Phaser.Scene {
     this.link?.send({ t: 'move', move: kind, col: end.col, row: end.row });
     startDodge(this, this.player, kind); // (Step Back: hits landing in its window show as Dodge)
     for (const t of tiles) this.player.onStep?.(t);
-    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set), adventure()?.cls).then(() => this.arrivedQuietly());
+    void playMove(this, this.M, this.player, kind, end, tiles.length, dir, (o) => this.tint >= 0 && o.setTint(this.tint), (set) => playSet(set), adventure()?.cls).then(() => {
+      this.arrivedQuietly();
+      this.walkAfterMove();
+    });
     // Its cooldown at its skill level (1% less a level).
     const S = adventureData()?.stats;
     const cd = S ? cooldownOf(S, sk, sk.level) : MOVES[kind].cooldown;
@@ -2730,15 +2758,19 @@ export class TownScene extends Phaser.Scene {
       if (!mine) playSound('chat');
     };
     this.player.onStep = (to) => {
-      this.stepBudget(1);
+      const left = this.stepBudget(1);
       link.send({ t: 'step', col: to.col, row: to.row });
       this.sent = { dir: this.player.facing, sit: false };
+      wlog('step', to.col, to.row, 'bucket', left.toFixed(2));
     };
+    // A step only with a token for it (the walk waits at the tile centre otherwise: Character.update).
+    this.player.canStep = () => this.stepBudget() >= 1;
+    this.player.onLanded = () => this.walkAfterMove();
     link.onMessage = (m) => {
       if (isArena(m)) return void this.arenaChannel?.push(m); // a jack en poy match (or the queue for one)
       if (this.petMessage(m, myId)) return;
       if (this.halloweenMessage(m, myId, chat, feed)) return;
-      if (m.t === 'snap') return this.player.place({ col: m.col, row: m.row });
+      if (m.t === 'snap') return this.snapped(m.col, m.row, m.reason);
       if (m.t === 'seat-taken') return this.seatTaken();
       if (m.t === 'say-refused') {
         if (m.reason === 'muted') {
@@ -2908,7 +2940,7 @@ export class TownScene extends Phaser.Scene {
         this.stunFx.get(m.id)?.kill(150);
         if (ch && m.ms > 0) this.stunFx.set(m.id, this.fxLayers.drawFx('front', (g, t) => stunStars(g, ch.sprite.x, ch.headY - 4, t), m.ms, 150));
         if (m.id === myId) {
-          this.stunUntil = performance.now() + m.ms;
+          this.stunUntil = performance.now() + Math.min(m.ms, MAX_STUN_MS);
           this.player.walk([this.player.heading]); // (stops after the step under way)
           this.stopFight();
         }
@@ -3501,14 +3533,21 @@ export class TownScene extends Phaser.Scene {
     const p = this.player;
     if (p.isSitting && !this.sent.sit) {
       const t = p.tile;
+      const left = this.stepBudget(1); // (sitting spends a step on the server)
       link.send({ t: 'sit', col: t.col, row: t.row, dir: p.facing });
       this.sent = { dir: p.facing, sit: true };
+      wlog('sit', t.col, t.row, 'bucket', left.toFixed(2));
     } else if (!p.isSitting && this.sent.sit) {
       link.send({ t: 'stand' });
       this.sent.sit = false;
     } else if (!p.isSitting && p.facing !== this.sent.dir && p.isIdle) {
+      // (A turn is free on the server since 28 Oct 2026, but counted here all the same: the page's bucket stays the
+      // floor of the server's. None to spare: the turn waits a frame.)
+      if (this.stepBudget() < 1) return;
+      const left = this.stepBudget(1);
       link.send({ t: 'face', dir: p.facing });
       this.sent.dir = p.facing;
+      wlog('face', p.facing, 'bucket', left.toFixed(2));
     }
   }
 
@@ -3694,6 +3733,7 @@ export class TownScene extends Phaser.Scene {
       const s = d ? pull / d / cam.zoom : 0;
       cam.setScroll(Math.round(k.scrollX - dx * s), Math.round(k.scrollY - dy * s));
     });
+    this.settlePeek = settle;
     this.input.on(Phaser.Input.Events.POINTER_UP, () => (this.peek?.dragging ? settle() : this.peek && !this.peek.back && (this.peek = null)));
     this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, settle);
     this.input.on(Phaser.Input.Events.GAME_OUT, () => this.peek?.dragging && settle());
@@ -3765,14 +3805,27 @@ export class TownScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.setupPeek();
     this.input.on(Phaser.Input.Events.POINTER_DOWN, (p: Phaser.Input.Pointer) => {
-      this.pressAt = { x: p.x, y: p.y };
+      this.pressAt = { x: p.x, y: p.y, t: p.downTime };
+      if (p.button === 2) wlog('right press', { onCanvas: p.downElement === this.game.canvas, x: p.x, y: p.y });
       if (p.wasTouch) { this.touchDownAt = performance.now(); this.touchHoldTile = null; }
       if (import.meta.env.DEV) console.log('[touch] down wasTouch=%s leftButton=%s', p.wasTouch, p.leftButtonDown());
       // The middle button: never the browser's autoscroll. What it does is its keybind's (Target by default: the press
       // hub in ui/keybinds.ts hands it on as a key).
       if (p.middleButtonDown()) p.event.preventDefault();
     });
-    watchClicks(this.game.canvas);
+    // A press whose release never comes (the window switched, a native menu, a touch cancelled): nothing of it kept.
+    const lostPress = () => {
+      this.pressAt = { x: 0, y: 0, t: -1 };
+      if (this.peek?.dragging) this.settlePeek?.();
+      else if (this.peek && !this.peek.back) this.peek = null;
+    };
+    window.addEventListener('blur', lostPress);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && lostPress());
+    this.game.canvas.addEventListener('pointercancel', lostPress);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('blur', lostPress);
+      this.game.canvas.removeEventListener('pointercancel', lostPress);
+    });
     // Touch hold-walk: after TAP_MS of holding, dragging the finger walks continuously toward the pointer tile.
     this.input.on(Phaser.Input.Events.POINTER_MOVE, (p: Phaser.Input.Pointer) => {
       if (!p.wasTouch || !p.isDown || this.intro || this.knockedOut || this.inside || this.watching) return;
@@ -3785,8 +3838,9 @@ export class TownScene extends Phaser.Scene {
     });
     this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.button === 1 || p.button === 3 || p.button === 4) return; // (the middle, back and forward buttons: keybinds)
-      if (!onMap(p, this.game.canvas)) return; // (pressed or let go on a panel over the map: not the map's)
-      if (this.watching) return; // (a cutscene: the map isn't yours to click)
+      if (p.button === 2) wlog('right release', { down: p.downElement === this.game.canvas, up: p.upElement === this.game.canvas, drag: this.pressAt.t === p.downTime ? Math.round(Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y)) : 'press not seen' });
+      if (!onMap(p, this.game.canvas)) return wlog('dropped: not on the map'); // (pressed or let go on a panel over the map: not the map's)
+      if (this.watching) return wlog('dropped: a cutscene'); // (a cutscene: the map isn't yours to click)
       if (p.wasTouch) {
         const wasHold = this.touchHoldTile !== null;
         this.touchHoldTile = null;
@@ -3808,23 +3862,23 @@ export class TownScene extends Phaser.Scene {
         if (building) return this.goToBuilding(building);
         return this.goToTile({ col, row });
       }
-      // Mouse: keep the existing 8px drag filter to distinguish a click from a pan.
-      if (Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) > 8) return;
+      // Mouse: the 8 px drag filter to distinguish a click from a pan (a press the scene never saw: a click).
+      if (!this.isClick(p)) return wlog('dropped: a drag');
       if (over.some((o) => this.entranceBoxes.has(o))) return; // (a dungeon entrance's own click, left or right)
       const lootHit = this.loot?.pick(over);
-      if (lootHit && p.leftButtonReleased()) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
+      if (lootHit && releasedLeft(p)) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
       const other = this.others.pick(over);
-      if (other && this.target && p.leftButtonReleased()) { this.mobs?.setTarget(null); return this.target.select(other); }
+      if (other && this.target && releasedLeft(p)) { this.mobs?.setTarget(null); return this.target.select(other); }
       const npc = this.npcs?.pick(over);
-      if (npc && p.leftButtonReleased()) return this.talkTo(npc);
-      if (p.leftButtonReleased() && this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
+      if (npc && releasedLeft(p)) return this.talkTo(npc);
+      if (releasedLeft(p) && this.pets?.pick(over)) return this.pets.special('me'); // your own pet: its special
       const hw = this.halloween?.pick(over);
-      if (hw && p.leftButtonReleased()) return this.goToHalloween(hw);
+      if (hw && releasedLeft(p)) return this.goToHalloween(hw);
       const building = this.objects.buildings.find((b) => b.parts.some((part) => over.includes(part)));
       const world = this.cameras.main.getWorldPoint(p.x, p.y);
       const { col, row } = this.pickTile(world.x, world.y);
       const bench = this.seatOn(over, { col, row }) ?? this.benchAt({ col, row });
-      if (p.rightButtonReleased()) return void (this.clickTo = { col, row }); // (walked to in the next update: one search a frame)
+      if (releasedRight(p)) return void (this.clickTo = { col, row }); // (walked to in the next update: one search a frame)
       if (building) return this.goToBuilding(building);
       if (bench) return this.goToBench(bench);
     });
@@ -3837,6 +3891,8 @@ export class TownScene extends Phaser.Scene {
       if (typing() || this.watching) return;
       if (actionOf(e, MOVE_ACTIONS)) {
         this.pending = null;
+        this.afterMove = null; // (and from a click waiting for a move to land)
+        this.walkGoal = null;
         this.player.cancelPath(); // the keys take over from a click path
       }
       // Pick up (F) and Space: the nearest loot in reach; Space otherwise enters, sits or talks as ever.
@@ -3916,6 +3972,8 @@ export class TownScene extends Phaser.Scene {
     this.byKeys = true;
     this.keyWalking = true;
     this.pending = null;
+    this.afterMove = null;
+    this.walkGoal = null;
     return to;
   }
 
@@ -3997,12 +4055,12 @@ export class TownScene extends Phaser.Scene {
 
   /** The server's step budget as it stands for us (bot web/town.ts: 6 a second, up to 6 saved; slowed, half of both), so
    *  turns and moves never go over it. */
-  private stepTokens = 6;
+  private stepTokens = STEP_BURST;
   private stepRefilled = 0;
   private stepBudget(spend = 0): number {
     const now = performance.now();
     const k = this.speedFactor(now, true);
-    this.stepTokens = Math.min(6 * k, this.stepTokens + ((now - this.stepRefilled) / 1000) * 6 * k) - spend;
+    this.stepTokens = Math.min(STEP_BURST * k, this.stepTokens + ((now - this.stepRefilled) / 1000) * STEPS_PER_SECOND * k) - spend;
     this.stepRefilled = now;
     return this.stepTokens;
   }
@@ -4713,7 +4771,7 @@ export class TownScene extends Phaser.Scene {
 
   /** Just walk there (a tile you can't get to: the nearest one you can), with the click marker on where you're going. */
   private moveTo(target: Tile): void {
-    if (this.charging) return; // (standing still while a charge-up is held)
+    if (this.charging) return wlog('dropped: charging'); // (standing still while a charge-up is held)
     this.chargeWalk = null; // (walking yourself calls off a walk into a charge-up's reach)
     this.stopFight(); // walking yourself stops an auto-cast
     this.stopChannel(); // (and a channel or windup)
@@ -4721,7 +4779,47 @@ export class TownScene extends Phaser.Scene {
     this.byKeys = false;
     const from = this.player.heading;
     const to = this.grid.reachable(from, target) ? target : this.grid.nearestReachable(from, target);
-    if (to && this.walkTo(to)) this.clickMarker(to);
+    if (!to) return wlog('dropped: nowhere to walk');
+    // A move (Dash, Blink, a leap) still moving you: its landing would wipe the path, so the click waits for it (the
+    // latest click wins); the marker shows now, the click took.
+    const { now, after } = walkNowOrAfter(this.player.busy, to);
+    this.afterMove = after;
+    if (after) {
+      wlog('busy: walked as the move lands', after);
+      return this.clickMarker(after);
+    }
+    this.budgetSnaps = 0;
+    if (now && this.walkTo(now)) {
+      this.walkGoal = now;
+      this.clickMarker(now);
+    }
+  }
+
+  /** The click made during a move, walked as it lands (`afterMove`), from where you landed. */
+  private walkAfterMove(): void {
+    const t = this.afterMove;
+    if (!t) return;
+    this.afterMove = null;
+    this.moveTo(t);
+  }
+
+  /** The server put you back (`snap`): where it has you, and why. A budget snap (its step bucket was empty, which the page's
+   *  copy didn't know: clock drift) is retried once: the click walk you were on goes on from here after a moment; a
+   *  second budget snap in a row gives up. Anything else: as it was (the walk is dropped). */
+  private snapped(col: number, row: number, reason: SnapReason): void {
+    wlog('snap', reason, col, row);
+    this.player.place({ col, row });
+    if (reason !== 'budget') {
+      this.walkGoal = null;
+      return;
+    }
+    const goal = this.walkGoal;
+    if (!goal || ++this.budgetSnaps > 1) return void (this.walkGoal = null);
+    this.time.delayedCall(250, () => {
+      if (this.walkGoal !== goal || this.player.busy) return;
+      wlog('retry after a budget snap', goal);
+      this.walkTo(goal);
+    });
   }
 
   /** fx click-marker, played once on the tile you're walking to (one at a time, on the ground under everyone). */
@@ -4779,15 +4877,17 @@ export class TownScene extends Phaser.Scene {
   }
 
   private walkTo(target: Tile): boolean {
-    if (this.knockedOut || this.stunned || this.charging) return false;
+    if (this.knockedOut || this.stunned || this.charging) return wlog('dropped:', this.knockedOut ? 'knocked out' : this.stunned ? 'stunned' : 'charging'), false;
     const path = this.grid.findPath(this.player.heading, target);
-    if (!path) return false;
+    if (!path) return wlog('dropped: no path'), false;
     this.setBuildingAlert(null); // leaving the door we were at
     this.player.walk(path);
     return true;
   }
 
   private arrived(tile: Tile): void {
+    this.walkGoal = null;
+    this.budgetSnaps = 0;
     const gate = this.gateOn(tile.col, tile.row);
     if (gate) return this.travel(gate);
     if (this.pending?.npc) {
@@ -5214,7 +5314,14 @@ export class TownScene extends Phaser.Scene {
   private entranceClick(p: Phaser.Input.Pointer): boolean {
     if (!onMap(p, this.game.canvas) || this.watching || this.knockedOut) return false;
     if (p.wasTouch) return this.touchHoldTile === null;
-    return (p.leftButtonReleased() || p.rightButtonReleased()) && Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) <= 8;
+    return (releasedLeft(p) || releasedRight(p)) && this.isClick(p);
+  }
+
+  /** A mouse release that is a click, not a drag: within 8 px of its press; a press the scene never saw (its input was
+   *  off, another scene or a panel had it) is a click too, there's nothing to measure against (before, a stale press
+   *  elsewhere on the screen made every release a "drag" until a press the scene saw). */
+  private isClick(p: Phaser.Input.Pointer): boolean {
+    return this.pressAt.t !== p.downTime || Math.hypot(p.x - this.pressAt.x, p.y - this.pressAt.y) <= 8;
   }
 
   /** The Warren Gate (the Slums): "Warren Gate" over it on hover; a click walks up to it (its panel opens there). */
@@ -5376,7 +5483,7 @@ export class TownScene extends Phaser.Scene {
     box.on('pointerover', () => label.show(y0 + ART_TOP - 2));
     box.on('pointerout', () => label.show(null));
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
+      if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, this.game.canvas)) return;
       this.toLanternPost(index);
     });
   }

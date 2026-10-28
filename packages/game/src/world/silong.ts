@@ -13,7 +13,7 @@ import { Telegraphs } from './telegraph';
 import { type SilongSfx, playSet, playSilong } from '../audio/sound';
 import { BuildingLabel } from '../ui/labels';
 import type { PidoMoment } from '../ui/silong';
-import { onMap } from './clicks';
+import { onMap, releasedLeft, releasedRight } from './clicks';
 import { slice } from '../assets/packs';
 import { LABEL_DEPTH } from './depth';
 
@@ -167,7 +167,7 @@ export class SilongView {
       zone.on('pointerover', () => label.show(t.y - 34));
       zone.on('pointerout', () => label.show(null));
       zone.on('pointerup', (p: Phaser.Input.Pointer) => {
-        if ((!p.leftButtonReleased() && !p.wasTouch) || !onMap(p, scene.game.canvas)) return;
+        if ((!releasedLeft(p) && !p.wasTouch) || !onMap(p, scene.game.canvas)) return;
         hooks.ramon();
       });
       this.ramonZone = zone;
@@ -536,7 +536,7 @@ export class SilongView {
     gate.setInteractive({ pixelPerfect: true, cursor: 'pointer' });
     this.hooks.own(gate);
     gate.on('pointerup', (ptr: Phaser.Input.Pointer) => {
-      if ((!ptr.leftButtonReleased() && !ptr.rightButtonReleased() && !ptr.wasTouch) || !onMap(ptr, this.scene.game.canvas)) return;
+      if ((!releasedLeft(ptr) && !releasedRight(ptr) && !ptr.wasTouch) || !onMap(ptr, this.scene.game.canvas)) return;
       this.hooks.toExit(tiles);
     });
     if (!animate || reducedMotion()) return;

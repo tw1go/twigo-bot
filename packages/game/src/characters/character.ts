@@ -8,6 +8,7 @@ import { floatNumber } from '../world/damage-number';
 import type { Tile } from '../world/grid';
 import { type BigPiece, type Outfit, bigHat, bigTop, headTop, litHat, sheetKey } from './doll';
 import { FAINT_ANCHOR, FAINT_CELL, FAINT_DOWN_MS, FAINT_SHADOW, type FaintPose, faintOf, wantFaint } from './faint';
+import { walkWhileWaiting } from './step-gate';
 import type { AuraTier, TitleData } from '@mikazuki/shared';
 import { type AuraTrace, WeaponAura, traceAura } from '../fx/weaponAura';
 import { type BubbleArt, EmotePop, LevelUpPop, NameTag, QuestMarker, SpeechBubble } from '../ui/labels';
@@ -24,6 +25,8 @@ export const KO_FADE_MS = 1500;
 const KO_BACK_MS = 300;
 /** A knocked-out player's name tag, dimmed. */
 const KO_TAG_ALPHA = 0.6;
+/** A leap or move lands by its time plus this whatever happens to its tween (`busy` never outlives it). */
+export const BUSY_GUARD_MS = 500;
 
 /** A character drawn from flat sheets instead of a paper doll: the animation key per animation and direction (made
  *  by the caller), how many empty rows sit above the head in the cell, and the directions drawn. */
@@ -120,7 +123,15 @@ export class Character {
   nextStep: (() => Tile | null) | null = null;
   /** Called as each step to a neighbouring tile begins (the town tells the server). */
   onStep: ((to: Tile) => void) | null = null;
+  /** Whether the next step may be announced now (the town: a token in the server's step budget). No: the walk waits at
+   *  the tile centre and asks again next frame, never a step the server would refuse (28 Oct 2026: a refused step
+   *  snapped the whole walk away). */
+  canStep: (() => boolean) | null = null;
+  /** Called as a leap (`leapTo`) lands: the town walks where a click asked meanwhile. */
+  onLanded: (() => void) | null = null;
   private announced: Tile | null = null;
+  /** Waiting for a step token since (performance.now()), or null. */
+  private waitSince: number | null = null;
   /** Walking speed, tiles per second. */
   speed = SPEED;
   /** The ground's share of it where they stand (the Palengke's shallow flood: 0.7), or null: full speed everywhere. */
@@ -457,6 +468,7 @@ export class Character {
     if (!this.path.length) this.takeNextStep();
     if (this.path.length) {
       let budget = (this.speed * (this.speedAt?.(Math.floor(this.col), Math.floor(this.row)) ?? 1) * deltaMs) / 1000;
+      let waiting = false;
       while (budget > 0 && (this.path.length || this.takeNextStep())) {
         const next = this.path[0];
         const tx = next.col + 0.5;
@@ -466,6 +478,14 @@ export class Character {
         const dist = Math.hypot(dx, dy);
         if (next.col !== this.stepFrom.col || next.row !== this.stepFrom.row) this.dir = dirForStep(next.col - this.stepFrom.col, next.row - this.stepFrom.row);
         if (next !== this.announced) {
+          // A new step: only with a token for it (`canStep`); none, wait here (at the tile centre) and ask again next
+          // frame (characters/step-gate.ts).
+          if (this.canStep && !this.canStep()) {
+            this.waitSince ??= performance.now();
+            waiting = true;
+            break;
+          }
+          this.waitSince = null;
           this.announced = next;
           this.onStep?.(next);
         }
@@ -482,7 +502,8 @@ export class Character {
           budget = 0;
         }
       }
-      this.play('walk');
+      // (Waiting for a token: the walk cycle goes on for a moment; a longer wait stands still until it comes.)
+      this.play(waiting && !walkWhileWaiting(this.waitSince, performance.now()) ? 'idle' : 'walk');
       this.stepDust();
       if (!this.path.length) this.arrive();
     }
@@ -782,18 +803,27 @@ export class Character {
     const to = { col: tile.col + 0.5, row: tile.row + 0.5 };
     const dir = this.dir;
     this.busy = true;
+    let landed = false;
+    const land = () => {
+      if (landed) return;
+      landed = true;
+      guard.remove();
+      this.lift = 0;
+      this.pose(to.col, to.row, dir, false);
+      this.busy = false;
+      this.onLanded?.();
+    };
+    // (Landed by its time + a margin whatever happens to the tween: `busy` never outlives the leap.)
+    const guard = this.scene.time.delayedCall(ms + BUSY_GUARD_MS, land);
     this.scene.tweens.addCounter({
       from: 0, to: 1, duration: ms,
       onUpdate: (t) => {
+        if (landed) return;
         const v = t.getValue() ?? 0;
         this.lift = Math.round(arc * 4 * v * (1 - v));
         this.pose(from.col + (to.col - from.col) * v, from.row + (to.row - from.row) * v, dir, false);
       },
-      onComplete: () => {
-        this.lift = 0;
-        this.pose(to.col, to.row, dir, false);
-        this.busy = false;
-      },
+      onComplete: land,
     });
   }
 

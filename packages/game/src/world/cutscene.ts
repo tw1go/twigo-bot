@@ -123,17 +123,18 @@ class Player {
       void loadImages(h.scene, this.looks.flatMap((o) => stillFiles(h.M.characters, o, 'idle', 'se').concat(stillFiles(h.M.characters, o, 'idle', 'sw'))));
     }
     h.away(true);
-    h.follow(false);
     document.addEventListener('keydown', this.keys, true);
-    // A scene with no camera of its own plays where its moment is (beside the NPC you talked to); watched again from
-    // elsewhere, it looks at its first NPC instead.
-    if (!this.cs.steps.some((s) => s.camera !== undefined)) {
-      const first = this.cs.steps.map((s) => s.say ?? s.face ?? s.anim ?? s.bubble ?? s.walk ?? s.hop ?? s.nod).find((x) => x && x !== 'player' && x !== 'narrator');
-      const c = first ? this.actor(first) : null;
-      const me = h.player.tile;
-      if (c && Math.max(Math.abs(c.tile.col - me.col), Math.abs(c.tile.row - me.row)) > 6) h.scene.cameras.main.centerOn(c.sprite.x, c.sprite.y - BODY_PX);
-    }
+    // (Everything from here in the try: whatever throws, `finish` runs and the scene lets go of you: away(false).)
     try {
+      h.follow(false);
+      // A scene with no camera of its own plays where its moment is (beside the NPC you talked to); watched again from
+      // elsewhere, it looks at its first NPC instead.
+      if (!this.cs.steps.some((s) => s.camera !== undefined)) {
+        const first = this.cs.steps.map((s) => s.say ?? s.face ?? s.anim ?? s.bubble ?? s.walk ?? s.hop ?? s.nod).find((x) => x && x !== 'player' && x !== 'narrator');
+        const c = first ? this.actor(first) : null;
+        const me = h.player.tile;
+        if (c && Math.max(Math.abs(c.tile.col - me.col), Math.abs(c.tile.row - me.row)) > 6) h.scene.cameras.main.centerOn(c.sprite.x, c.sprite.y - BODY_PX);
+      }
       for (const step of this.cs.steps) {
         if (this.skipped) break;
         await this.step(step);
