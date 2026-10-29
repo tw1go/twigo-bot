@@ -14418,10 +14418,11 @@
       "aling-conching",
       "mang-pido",
       "tisay",
-      "kuya-jun"
+      "kuya-jun",
+      "mang-berto"
     ],
     "palengkeDialogue": "npcs/palengke-npc-dialogue.json",
-    "palengkeNote": "The Lumang Palengke's four story NPCs (the art folder's npcs/palengke, built from the doll like the town's): the same cell, anchor, directions and file pattern; idle, walk, wave and cheer only. Their spots are palengke.json's npcs; their idle lines are palengkeDialogue, in English here (the art folder's are Tagalog).",
+    "palengkeNote": "The Lumang Palengke's four story NPCs and Mang Berto the grocer (the art folder's npcs/palengke and npcs/palengke-grocer, built from the doll like the town's): the same cell, anchor, directions and file pattern; idle, walk, wave and cheer only. Their spots are palengke.json's npcs; their idle lines are palengkeDialogue, in English here (the art folder's are Tagalog).",
     "rule": "flat pre-baked sheets (never through the paper-doll compositor): one row of cell-sized frames per animation and direction, all 8 directions drawn (no mirroring); name, title and lines come from the dialogue file"
   },
   "quests": {

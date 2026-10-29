@@ -774,6 +774,12 @@ through town and map changes, and a knock-out ends it. Her menu opens from her s
 click on it, from anywhere in the Old Market) or from her dialog's Menu button.
 _Avoid_: food buff, buff (a buff is a class skill), consumable
 
+**Grocery**:
+Mang Berto's cart at the Old Market's entrance (**Mang Berto's Grocery**): the sari-sari store's Healing, Smithing and Travel
+wares (potions, whetstones, Repair Kits, the forge's tools, Return Lanterns) at the store's prices and level rules, nothing
+else. It opens from a click on the cart, from anywhere in the Old Market, or from his dialog's Shop button.
+_Avoid_: shop (the sari-sari store is the shop), vendor, merchant
+
 **Daily order**:
 Once "The Last Regular" is done, Aling Conching asks for one batch of quest items a day (onions, lids, rice scoops…), handed
 in to her like a quest's; it gives XP, Kusing and a free dish. A new one comes after 4 am Manila time, once the last one

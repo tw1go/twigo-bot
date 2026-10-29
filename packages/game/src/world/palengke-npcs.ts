@@ -9,7 +9,7 @@ import { Character, dirForStep } from '../characters/character';
 import type { Outfit } from '../characters/doll';
 import { type CutsceneCast, flatNpcSheets } from './npc-life';
 
-// 🏮 The Lumang Palengke's quest NPCs (maps/palengke.json `npcs`: Aling Conching, Mang Pido, Tisay, Kuya Jun): each a
+// 🏮 The Lumang Palengke's quest NPCs (maps/palengke.json `npcs`: Aling Conching, Mang Pido, Tisay, Kuya Jun, and Mang Berto the grocer): each a
 // Character on its own flat sheets (the art folder's npcs/palengke, manifest npcs.palengkeIds, loaded with the Palengke:
 // assets/queue.ts queueNpcs 'palengke'), idling at its tile and turning to the nearest player, its name over it, clicked
 // like a town NPC (the scene walks you over and asks `talk`), the quest "!" over the name, its portrait in the dialog box
@@ -27,9 +27,9 @@ export interface PalengkeNpc {
 }
 
 /** What the dialog box says under each one's name (the map's `role` is a note for us). */
-const TITLES: Record<string, string> = { 'aling-conching': 'Eatery cook', 'mang-pido': 'Market guard', tisay: "Dry Goods", 'kuya-jun': 'Butcher' };
+const TITLES: Record<string, string> = { 'aling-conching': 'Eatery cook', 'mang-pido': 'Market guard', tisay: "Dry Goods", 'kuya-jun': 'Butcher', 'mang-berto': 'Grocer' };
 /** Each stand-in's colour (their clothes); grey for one not listed. */
-const COLOURS: Record<string, string> = { 'aling-conching': '#C2410C', 'mang-pido': '#6B7F3A', tisay: '#DB2777', 'kuya-jun': '#2563EB' };
+const COLOURS: Record<string, string> = { 'aling-conching': '#C2410C', 'mang-pido': '#6B7F3A', tisay: '#DB2777', 'kuya-jun': '#2563EB', 'mang-berto': '#2D5240' };
 const SKIN = '#E8B98A';
 const INK = '#1E1B3A';
 /** The figure's size (art px), drawn at SCALE: about a character's height. */
@@ -89,8 +89,14 @@ export class PalengkeNpcs implements CutsceneCast {
   private zoom = 1;
   /** A quest's lines for an NPC (the scene's questScript), or null for their own. */
   script: ((id: string) => { lines: string[]; onDone?: () => void } | null) | null = null;
-  /** A button on someone's dialog box (Aling Conching's menu), or none. */
+  /** A button on someone's dialog box (Aling Conching's menu, Mang Berto's shop), or none. */
   action: ((id: string) => { label: string; run: () => void } | undefined) | null = null;
+
+  /** Where an NPC's sprite sorts (a click box put just under it, so a click on them is theirs, not the box's). */
+  spriteDepth(id: string): number | null {
+    const s = this.list.find((x) => x.def.id === id);
+    return s ? s.sprite.depth : null;
+  }
   /** The way between two tiles (the scene's walk grid): how one walks home after a cutscene. */
   pathOf: ((from: Tile, to: Tile) => Tile[] | null) | null = null;
 
