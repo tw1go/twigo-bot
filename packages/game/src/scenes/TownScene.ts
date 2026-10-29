@@ -5455,11 +5455,25 @@ export class TownScene extends Phaser.Scene {
     label.setZoom(this.cameras.main.zoom);
     this.gateLabels.push(label);
     box.setInteractive({ cursor: 'pointer' });
-    box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
-    box.on('pointerout', () => label.show(null));
+    // She wins: the stall's art reaches down over the tile she stands on, and the box (over all of it, above her sprite)
+    // took every hover and click on her. Wherever her sprite is under the pointer (pixel-perfect: the same hit test the
+    // scene's click handler uses) the box gives way: no label, and a click or tap talks to her as a click on any NPC
+    // does (her dialog, with its Menu button). The roof, counter and front edge beside her keep the label and the menu.
+    const onHer = (p: Phaser.Input.Pointer) => this.npcs?.pick(this.input.hitTestPointer(p)) === 'aling-conching';
+    let labelled: boolean | null = null; // (the label only moved when that changes: pointermove is every pixel)
+    const hover = (p: Phaser.Input.Pointer) => {
+      const on = !onHer(p);
+      if (on === labelled) return;
+      labelled = on;
+      label.show(on ? top.y - def.anchor[1] - 2 : null);
+    };
+    box.on('pointerover', hover);
+    box.on('pointermove', hover);
+    box.on('pointerout', () => { labelled = null; label.show(null); });
     this.entranceBoxes.add(box);
     box.on('pointerup', (p: Phaser.Input.Pointer) => {
       if (!this.entranceClick(p)) return;
+      if (onHer(p)) return this.talkTo('aling-conching');
       if (adventure() && adventureData()?.palengke?.dishes) void this.openDishes();
       else toast('Log in to order from Aling Conching.', 2500); // (a guest: her dialog has no Menu button either)
     });
