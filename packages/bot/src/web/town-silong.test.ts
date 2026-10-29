@@ -405,7 +405,9 @@ test("Frost Sweep: bands of 3 rows from the machine's wall covering the room bet
   // (The first drop out of the way in the corner; then P in the third band, Q in the first, both clear of the blocks.)
   play(run, 'b3', 0, 6000, CORNER);
   const open_ = (c: number, r: number) => !f.map.blocked[r][c] && !f.bosses.iceBlocks.has(`${c},${r}`);
-  const spot = (row: number): [number, number] => { for (let c = c0; c <= c1; c++) if (open_(c, row)) return [c, row]; throw new Error(`no open tile on row ${row}`); };
+  // (P and Q keep out of the pockets: a tile beside a standing ice block is sheltered from the sweep, as from the vents.)
+  const sheltered = (c: number, r: number) => [...f.bosses.iceBlocks.keys()].some((k) => { const [bc, br] = k.split(',').map(Number); return Math.abs(bc - c) <= 1 && Math.abs(br - r) <= 1; });
+  const spot = (row: number): [number, number] => { for (let c = c0; c <= c1; c++) if (open_(c, row) && !sheltered(c, row)) return [c, row]; throw new Error(`no open tile on row ${row}`); };
   // (P in the third band, Q in the first, each on the first open tile of its row as the ticks go: a block the drops
   // land under them moves them a tile along.)
   let prow = r0 + 7; // band 2 (rows r0+6..r0+8)
@@ -421,12 +423,25 @@ test("Frost Sweep: bands of 3 rows from the machine's wall covering the room bet
   assert.ok(block, 'an open pair of tiles for the block and R');
   f.bosses.iceBlocks.set(`${block![0]},${block![1]}`, Number.MAX_SAFE_INTEGER);
   f.map.blocked[brow][block![0]] = 1;
-  const R: [number, number] = [block![0] + 1, brow];
+  // R on an open tile beside the block, picked again each tick: the machine drops blocks under players, and one that
+  // lands on R's tile makes it a block (not a pocket), so R steps to the next open neighbour. `Rat`: where R stood as the
+  // sweep started (the pocket tile the assertions are about).
+  const nextTo = (): [number, number] => {
+    for (const [dc, dr] of [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const c = block![0] + dc, r = block![1] + dr;
+      if (c >= c0 && c <= c1 && r >= r0 && r <= r1 && open_(c, r)) return [c, r];
+    }
+    throw new Error('no open tile beside the block');
+  };
+  let R = nextTo();
+  let Rat: [number, number] | null = null;
   let pocketOpen = -1; // (the pockets as the sweep starts, the open ones: out of the bands)
   const ev = playMoving(run, 'b3', 6250, 22_000, (_t, sofar) => {
+    R = nextTo();
     const first = of(sofar, 'boss-move').find((m) => m.move === 'frostSweep');
     if (standable < 0 && first) {
       standable = count();
+      Rat = R;
       pocketOpen = ((first.data?.pockets as [number, number][] | undefined) ?? []).filter(([c, r]) => open_(c, r)).length;
     }
     // P steps up into band 1 right after band 1 has landed.
@@ -450,8 +465,10 @@ test("Frost Sweep: bands of 3 rows from the machine's wall covering the room bet
   assert.equal(seen.size + pocketOpen, standable, 'the whole room but the pockets');
   // R's tile beside the block: in the first band's pockets, in no band, and R is never hit.
   const pockets = (bands[0].data?.pockets as [number, number][]).map((t) => t.join());
-  assert.ok(pockets.includes(R.join()), 'the pocket tile is in the first band\'s data');
-  assert.ok(!seen.has(R.join()), 'in no band');
+  const rAt = Rat as [number, number] | null; // (set in the ticks' callback: TS sees only the null it started as)
+  assert.ok(rAt, 'R stood beside the block as the sweep started');
+  assert.ok(pockets.includes(rAt.join()), `the pocket tile ${rAt.join()} is in the first band's data: ${pockets.join(' ')}`);
+  assert.ok(!seen.has(rAt.join()), 'in no band');
   assert.ok(bands.slice(1).every((m) => m.data?.pockets === undefined), 'the pockets ride on the first band only');
   const rowsOf = (m: (typeof bands)[number]) => new Set((m.shape as { tiles: [number, number][] }).tiles.map((t) => t[1]));
   assert.ok([...rowsOf(bands[0])].every((r) => r < r0 + 3) && [...rowsOf(bands[bands.length - 1])].every((r) => r >= r0 + 3 * (bands.length - 1)), 'from the north wall down, the last taking what is left');
