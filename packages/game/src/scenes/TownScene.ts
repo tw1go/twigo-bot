@@ -69,7 +69,7 @@ import { showJackpot } from '../ui/jackpot';
 import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
-import { setShopPreview, showShop } from '../ui/shop';
+import { GROCER, setShopPreview, showShop } from '../ui/shop';
 import { showMail } from '../ui/mail';
 import { onUnreadMail, setUnreadMail } from '../net/mail';
 import { InspectWindow } from '../ui/inspect';
@@ -861,6 +861,7 @@ export class TownScene extends Phaser.Scene {
     this.warrenGateLabel();
     this.hatchLabel();
     this.eateryLabel();
+    this.grocerLabel();
     this.lanternPostLabel();
     // Your house, just built: hidden in the ground until the arrival has settled, then it rises.
     const built = this.justBuilt ? this.hood?.houses.find((h) => h.mine) : null;
@@ -4272,10 +4273,12 @@ export class TownScene extends Phaser.Scene {
     setNpcDialogArt({ box: box ? { url: asset(box.file), slice: box.nineSlice } : null, frame: frame ? { url: asset(frame.file), slice: frame.nineSlice } : null });
     const npcs = new PalengkeNpcs(this, this.M, this.objects, list, () => adventure()?.quests.done ?? [], (obj) => this.tint >= 0 && obj.setTint(this.tint));
     npcs.pathOf = (from, to) => this.grid.findPath(from, to); // (home again after a cutscene walked them off)
-    // Aling Conching's menu, from her dialog box (members: a guest has no Kusing).
+    // Aling Conching's menu and Mang Berto's shop, from their dialog boxes (members: a guest has no Kusing).
     npcs.action = (id) =>
       id === 'aling-conching' && adventure() && adventureData()?.palengke?.dishes
         ? { label: '🍲 Menu', run: () => void this.openDishes() }
+        : id === 'mang-berto' && adventure() // (the store's Healing, Smithing and Travel: ui/shop.ts GROCER)
+          ? { label: '🛒 Shop', run: () => showShop(GROCER) }
         : id === 'kuya-jun' && countOf(adventure()?.bag ?? [], RAMON.note) // (Mang Ramon's note, from the Cellar's B2)
           ? { label: "📜 Mang Ramon's note", run: () => void this.link?.send({ t: 'ramon-give' }) }
           : id === 'mang-pido' && this.needsPracticeKey() // (another Practice Cellar Key: a practice run not cleared)
@@ -5436,6 +5439,37 @@ export class TownScene extends Phaser.Scene {
       if (!this.entranceClick(p)) return;
       if (adventure() && adventureData()?.palengke?.dishes) void this.openDishes();
       else toast('Log in to order from Aling Conching.', 2500); // (a guest: her dialog has no Menu button either)
+    });
+  }
+
+  /** Mang Berto's cart (the Old Market's entrance, the kariton nearest his tile): "Mang Berto's Grocery" on hover, a
+   *  click or tap opens his shop at once from anywhere on the map (ui/shop.ts GROCER: the store's Healing, Smithing and
+   *  Travel); a guest is told to log in. His dialog's Shop button stays. The box sorts just under his sprite, so a click
+   *  on him is his (his dialog), not the cart's: his sprite is pixel-perfect and Phaser hands a click to the topmost. */
+  private grocerLabel(): void {
+    if (this.area !== 'palengke') return;
+    const grocer = this.map.npcs?.find((n) => n.id === 'mang-berto');
+    if (!grocer) return;
+    const near = (o: MapObject) => Math.max(Math.abs(o.col - grocer.tile[0]), Math.abs(o.row - grocer.tile[1]));
+    const o = this.map.objects.filter((x) => x.id === 'palengke-kariton' && near(x) <= 4).sort((a, b) => near(a) - near(b))[0];
+    const def = o && (this.M.props[o.id] as PropDef | undefined);
+    if (!o || !def) return;
+    const lift = this.objects.heights.at(o.col, o.row) * LEVEL_PX;
+    const top = tileToScreen(o.col, o.row);
+    top.y -= lift;
+    const under = this.npcs instanceof PalengkeNpcs ? this.npcs.spriteDepth('mang-berto') : null;
+    const box = this.add.zone(top.x - def.anchor[0] + def.size[0] / 2, top.y - def.anchor[1] + def.size[1] / 2, def.size[0], def.size[1]).setDepth(under != null ? under - 1 : LABEL_DEPTH - 2);
+    const label = new BuildingLabel(this, "Mang Berto's Grocery", top.x);
+    label.setZoom(this.cameras.main.zoom);
+    this.gateLabels.push(label);
+    box.setInteractive({ cursor: 'pointer' });
+    box.on('pointerover', () => label.show(top.y - def.anchor[1] - 2));
+    box.on('pointerout', () => label.show(null));
+    this.entranceBoxes.add(box);
+    box.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (!this.entranceClick(p)) return;
+      if (adventure()) showShop(GROCER);
+      else toast('Log in to buy from Mang Berto.', 2500); // (a guest: his dialog has no Shop button either)
     });
   }
 

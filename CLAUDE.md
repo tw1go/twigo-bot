@@ -207,6 +207,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - The Palengke's NPCs (21 Oct 2026): `npcs/palengke-npc-dialogue.json` = the art folder's npcs/palengke one with its idle lines
   in English (no Tagalog in the game: Mac) and portraits pointing at `npcs/`; the manifest's npcs `palengkeIds`,
   `palengkeDialogue`, `palengkeNote`; their sheets' rows appended to `npcs/_sheets.csv`.
+  Mang Berto the grocer (29 Oct 2026): the art folder's npcs/palengke-grocer sheets in `npcs/` (+ `_sheets.csv` rows), his
+  `palengkeIds` entry, his spot in `maps/palengke.json` `npcs` (273,100) by the kariton at (271,98) and his lines in
+  `palengke-npc-dialogue.json` (written here); his shop is ui/shop.ts `GROCER` (the store's Healing, Smithing and Travel),
+  opened from his dialog's Shop button or the cart (TownScene `grocerLabel`).
 - Ang Silong (20 Oct 2026): `classes/dungeons.json` `silong` (the art folder's silong.json as it is), `maps/silong-b1..b3.json`
   (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`

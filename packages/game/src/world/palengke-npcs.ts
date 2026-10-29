@@ -89,8 +89,14 @@ export class PalengkeNpcs implements CutsceneCast {
   private zoom = 1;
   /** A quest's lines for an NPC (the scene's questScript), or null for their own. */
   script: ((id: string) => { lines: string[]; onDone?: () => void } | null) | null = null;
-  /** A button on someone's dialog box (Aling Conching's menu), or none. */
+  /** A button on someone's dialog box (Aling Conching's menu, Mang Berto's shop), or none. */
   action: ((id: string) => { label: string; run: () => void } | undefined) | null = null;
+
+  /** Where an NPC's sprite sorts (a click box put just under it, so a click on them is theirs, not the box's). */
+  spriteDepth(id: string): number | null {
+    const s = this.list.find((x) => x.def.id === id);
+    return s ? s.sprite.depth : null;
+  }
   /** The way between two tiles (the scene's walk grid): how one walks home after a cutscene. */
   pathOf: ((from: Tile, to: Tile) => Tile[] | null) | null = null;
 
