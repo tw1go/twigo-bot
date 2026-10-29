@@ -58,6 +58,21 @@
         "It's quiet here at Butcher Row. Too quiet.",
         "Bring me iron and I can fix it."
       ]
+    },
+    "mang-berto": {
+      "name": "Mang Berto",
+      "title": "the market's last grocer",
+      "portrait": "npcs/npc-mang-berto-portrait.png",
+      "lines": [
+        "Potions, whetstones, lanterns. Fresh as I can get them.",
+        "Going in deep? Buy two of everything.",
+        "The Slums store charges the same. I checked.",
+        "A Return Lantern home is cheaper than walking back hurt.",
+        "My cart has survived three floods and one Scale.",
+        "Conching feeds you, I keep you standing.",
+        "No agimats here. Those you earn out there.",
+        "Pido says I talk to the vegetables. They listen."
+      ]
     }
   }
 }
