@@ -1756,8 +1756,12 @@
       #reward .bk-ex-card.bk-ex-cant { opacity: 0.7; }
       #reward .bk-ex-name { font-weight: 700; font-size: calc(13px * var(--text)); }
       #reward .bk-ex-price { display: flex; align-items: center; gap: 4px; font-size: calc(13px * var(--text)); }
-      #reward .bk-ex-row { display: flex; gap: 4px; width: 100%; }
-      #reward .bk-ex-amount { min-width: 0; padding: 4px 6px; }
+      /* (The amount over the Buy button, each the card's width: four cards share the box, so a row of both overflowed. More
+         specific than .bk-amount's 70 px minimum, which comes later in this sheet.) */
+      #reward .bk-ex-row { display: flex; flex-direction: column; gap: 4px; width: 100%; min-width: 0; }
+      #reward .bk-ex-card .bk-ex-amount { width: 100%; min-width: 0; flex: none; padding: 4px 6px; text-align: center; box-sizing: border-box; }
+      #reward .bk-ex-card .bk-button { width: 100%; padding: 6px 4px; }
+      #reward .bk-ex-card { min-width: 0; }
       #reward .bk-ex-sellrow { align-items: center; flex-wrap: wrap; }
       #reward .bk-ex-step { flex: 0 0 auto; min-width: 34px; padding-left: 0; padding-right: 0; }
       #reward .bk-ex-worth { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
