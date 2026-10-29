@@ -1121,7 +1121,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `palengkeIds`, `palengkeDialogue`; loaded with the Palengke: queueNpcs 'palengke'; npc-life.ts `flatNpcSheets`, shared
   with the town's), idling and turning to the nearest player within 5 tiles, its name, the quest marker, its portrait,
   its own lines from npcs/palengke-npc-dialogue.json (English here: the art folder's are Tagalog, a repo change) when
-  there's no quest to talk about; one without sheets: the old drawn stand-in; Aling Conching stands inside her stall), TownScene
+  there's no quest to talk about; one without sheets: the old drawn stand-in; Aling Conching stands inside her stall; her stall's click box gives way wherever her sprite is under the pointer, so a hover or click on her is hers, TownScene `eateryLabel` `onHer`, 29 Oct 2026: the box over the whole art had taken them), TownScene
   `handInScript` (give lines on a first talk, report lines then the rewards, the same NPC's next quest said straight on;
   `handingIn` keeps giveLines from toasting it), give lines of quests that start without a talk as toasts with the giver's
   name, "New quest: X. Talk to Y." for the rest. Not yet: the trail to an NPC, Tisay moving after Q7 shows on the next
