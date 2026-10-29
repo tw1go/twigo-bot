@@ -308,6 +308,19 @@ const potionKeyOf = (S: StatsData, heals: 'hp' | 'mp') => `potion-${potionCooldo
 
 /** A dodged hit's word over the player (a Step Back's window). */
 const DODGE_COLOUR = '#A5F3FC';
+/** The chat's welcome line once per login in a tab (sessionStorage, as the title's intro card): who it was said to. */
+const WELCOMED_KEY = 'mk_welcomed';
+/** Whether the welcome line is due for `who` (not said to them in this tab yet); says so for the next page. No storage:
+ *  due (as before: every page). A new tab, or the game closed and opened again, says it again; map changes don't. */
+function welcomeDue(who: string): boolean {
+  try {
+    if (sessionStorage.getItem(WELCOMED_KEY) === who) return false;
+    sessionStorage.setItem(WELCOMED_KEY, who);
+  } catch {
+    /* no storage */
+  }
+  return true;
+}
 
 /** The tile a Lantern Post is drawn on: a 2 × 2 post's front tile (palengkeTownMap), else its own. */
 function postDrawnAt(post: LanternPost): [number, number] {
@@ -2740,7 +2753,7 @@ export class TownScene extends Phaser.Scene {
         else chat.notice(`${name} isn't here right now.`); // (gone, or in another area: chat reaches every area)
       };
     }
-    const feed = new SystemFeed();
+    const feed = new SystemFeed(member?.nickname ?? null); // (this tab's kept lines are theirs)
     this.feed = feed;
     // A quest's rewards as it's completed: "Gained" lines, like loot.
     onAdventure((_s, change) => {
@@ -3481,7 +3494,8 @@ export class TownScene extends Phaser.Scene {
           this.player.place({ col: m.spawn[0], row: m.spawn[1] });
           this.cameras.main.centerOn(this.player.sprite.x, this.player.sprite.y - 24);
         }
-        if (!arrived) chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`, true);
+        // (Once per login in this tab: a map change is a page load, so `arrived` alone said it on every map.)
+        if (!arrived && welcomeDue(member?.nickname ?? 'guest')) chat.system(`Welcome to Mikazuki town${member ? `, ${member.nickname}` : ''}! Be kind and respectful in chat: everyone here is a neighbour.`, true);
         arrived = true;
         // After a reconnect, stay where you are rather than back at the spawn point.
         const t = this.player.tile;

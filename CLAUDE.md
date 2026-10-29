@@ -647,7 +647,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - System feed (`ui/system-feed.ts`, bottom right, hidden ≤760 px; every line and banner is also posted in Discord at
   `TOWN_FEED_CHANNEL_ID`, gathered ~3 s per post, no pings: bot `web/town-feed.ts`, tested): digs and bets from the Discord commands (bot
   `web/town-feed.ts` `feed()`, called in `commands/dig.ts` after the reveal and `commands/gamble.ts`), coloured by
-  rarity / win / lose / bust; last 10 kept in memory. Dev: `/__system?kind=dig&tone=rare&text=…`.
+  rarity / win / lose / bust; last 10 kept in memory. What the feed shows, your own "Gained …" lines included, is kept per
+  browser tab (sessionStorage `mk_feed`: who, at, rows; 29 Oct 2026) and put back on the next page, so a map change (a page
+  load) keeps them: the welcome's `history` then adds only the server lines newer than the newest restored server line
+  (none left in it: all of them; no server line restored: above yours). Another login, a new tab or 30 quiet minutes start
+  clean; phones still only toast and keep nothing. The chat's welcome line is said once per login in a tab
+  (sessionStorage `mk_welcomed` = who; TownScene `welcomeDue`), not on every map change. Dev: `/__system?kind=dig&tone=rare&text=…`.
 - Banners (`ui/announce.ts`, top centre): jackpot wins (bot `games/jackpot.ts` → `announce`, gold with casino lights) and
   `/notice` (amber; e.g. maintenance; shown to arrivals for 30 min). Dev: `/__announce?kind=jackpot|notice&title=&text=`.
 - News (`ui/news.ts`, the megaphone beside Settings, manifest `ui.newsIcon`; toggles): tabs Announcements / Patch notes,
