@@ -353,28 +353,8 @@ export function rankOf(userId: string): number | null {
   return Object.values(accounts).filter((a) => totalOf(a) > mine).length + 1;
 }
 
-// Member-to-member gifting (/give): each member can send up to DAILY_GIVE_LIMIT per day (resets at midnight).
-export const DAILY_GIVE_LIMIT = 20;
-
-/** Kowens this member has already given today. */
-export function givenToday(userId: string): number {
-  const account = accounts[userId];
-  return account?.giveDay === today() ? (account.giveSentToday ?? 0) : 0;
-}
-
-/** Moves Kowens between members, respecting balance and the daily limit. */
-export function give(fromId: string, toId: string, amount: number): { ok: true } | { ok: false; reason: 'balance' | 'limit' } {
-  if (balance(fromId) < amount) return { ok: false, reason: 'balance' };
-  if (givenToday(fromId) + amount > DAILY_GIVE_LIMIT) return { ok: false, reason: 'limit' };
-  const from = accounts[fromId];
-  from.giveSentToday = givenToday(fromId) + amount;
-  from.giveDay = today();
-  from.balance -= amount;
-  (accounts[toId] ??= { balance: 0 }).balance += amount;
-  save();
-  garnishHook?.(toId, amount); // gifts to someone in debt help pay it off
-  return { ok: true };
-}
+// (Member-to-member gifting, /give, went on 29 Oct 2026: Kowens pass between players only as Kowen Vouchers traded. The
+// accounts' giveDay / giveSentToday fields stay in the data, unread.)
 
 /** A member's eligible voice minutes in the week starting `week`: the current week's, or the one kept from before it. */
 const voiceMinutesIn = (a: Account, week: string): number =>

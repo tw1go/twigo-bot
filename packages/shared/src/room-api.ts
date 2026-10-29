@@ -531,7 +531,6 @@ export interface TownPlayerInfo {
   /** Days without activity, once they're losing Kowens for it. */
   inactiveDays: number | null;
   /** The viewer's gifting: how many more Kowens they can give today, of the daily limit, and their wallet. */
-  give: { left: number; limit: number; wallet: number; inDebt: boolean };
   /** What they don't show the viewer (CONTEXT.md Who can see): its numbers come as 0 / null. */
   hidden?: { balance?: true; status?: true };
 }

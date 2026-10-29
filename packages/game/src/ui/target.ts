@@ -7,8 +7,8 @@ import { fakeLogin } from '../session';
 import { coinIcon } from './reward';
 
 // 👤 The picked player (left click someone in town): their name in a long box at the top of the screen. Clicking the
-// box opens a menu — Give Kowens, Balance, Status — each read from the bot by the player's town id (GET /town/player;
-// giving: POST /town/give, /give's rules), and Diss / Praise / Judge (POST /town/verdict, 1 Kowen like the commands:
+// box opens a menu — Balance, Status — each read from the bot by the player's town id (GET /town/player;
+// Balance and Status), and Diss / Praise / Judge (POST /town/verdict, 1 Kowen like the commands:
 // you say the line in town). The box goes when they leave, on Escape, or with a click anywhere outside it (a drag to
 // peek doesn't count; clicking someone else picks them instead). Clicking a name in the chat opens the same box and
 // menu right beside that name instead (selectAt); a press anywhere else closes it. Under it, Invite to party (net/party.ts:
@@ -16,8 +16,8 @@ import { coinIcon } from './reward';
 // "Too far to trade" otherwise; the server checks again by its own positions), and Add friend (net/friends.ts: Request
 // sent, Accept friend request, or Friends ✓ as it stands) beside Whisper (the chat on a whisper to them). DOM text only.
 
-type View = 'give' | 'balance' | 'status';
-const VIEWS: [View, string][] = [['give', 'Give Kowens'], ['balance', 'Balance'], ['status', 'Status']];
+type View = 'balance' | 'status';
+const VIEWS: [View, string][] = [['balance', 'Balance'], ['status', 'Status']];
 const VERDICTS: [TownVerdictMode, string, string][] = [
   ['diss', 'Diss', 'Roast them'],
   ['praise', 'Praise', 'Hype them up'],
@@ -220,11 +220,10 @@ export class TargetBox {
       },
       true,
     );
-    // Your Kowens changed (in town or in Discord): an open menu reloads its numbers (what you can give), unless you're
-    // typing an amount or a gift is on its way.
+    // Your Kowens changed (in town or in Discord): an open menu reloads its numbers, unless one is on its way.
     window.addEventListener('mk-wallet', () => {
       if (this.menu.hidden || !this.target || this.busy || this.panel.contains(document.activeElement)) return;
-      this.show(this.view ?? 'give');
+      this.show(this.view ?? 'balance');
     });
     // The menu's size changes as its numbers load: keep it beside the name.
     new ResizeObserver(() => this.place()).observe(this.root);
@@ -410,7 +409,7 @@ export class TargetBox {
       this.box.setAttribute('aria-expanded', 'true');
       this.tradeSent = null;
       this.drawTrade();
-      this.show(this.view ?? 'give');
+      this.show(this.view ?? 'balance');
     } else this.closeMenu();
   }
 
@@ -465,34 +464,6 @@ export class TargetBox {
         row('Jackpot', plural(i.jackpotTickets, 'ticket', 'tickets')),
         row('Activity', i.inactiveDays ? `Inactive ${i.inactiveDays} days` : 'Active', i.inactiveDays ? 'tg-warn' : ''),
       );
-    } else {
-      const g = i.give;
-      const max = Math.min(g.left, g.wallet);
-      const amount = el('input', 'tg-amount');
-      amount.type = 'number';
-      amount.min = '1';
-      amount.max = String(Math.max(1, max));
-      amount.step = '1';
-      amount.inputMode = 'numeric';
-      amount.placeholder = 'Kowens';
-      amount.setAttribute('aria-label', 'Kowens to give');
-      const send = el('button', 'tg-give', 'Give');
-      const blocked = g.inDebt ? "You can't give while you have a loan." : g.left <= 0 ? "You've given all you can today. It resets at midnight." : g.wallet <= 0 ? 'You have no Kowens in your wallet.' : null;
-      amount.disabled = send.disabled = !!blocked || this.busy;
-      const go = () => {
-        const n = Number(amount.value);
-        if (!Number.isInteger(n) || n < 1) return this.render({ text: 'Type how many Kowens to give.', ok: false });
-        void this.give(n);
-      };
-      send.addEventListener('click', go);
-      amount.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        go();
-      });
-      const line = el('div', 'tg-give-row');
-      line.append(amount, send);
-      out.push(line, el('div', 'tg-note', blocked ?? `You can give ${kowens(g.left)} more today (up to ${g.limit}).`));
     }
     if (message) out.push(el('div', `tg-note ${message.ok ? 'tg-good' : 'tg-bad'}`, message.text));
     this.panel.replaceChildren(...out);
@@ -507,17 +478,7 @@ export class TargetBox {
     this.done(p, res, "Couldn't send it. Try again in a moment.");
   }
 
-  private async give(amount: number): Promise<void> {
-    const p = this.target;
-    if (!p || this.busy) return;
-    this.busy = true;
-    this.render();
-    const res = fakeLogin() ? fakeGive(p, amount) : await post('/town/give', { to: p.id, amount });
-    this.busy = false;
-    this.done(p, res, "Couldn't give. Try again in a moment.");
-  }
-
-  /** After giving or a verdict: the new numbers and what happened. */
+  /** After a verdict: the new numbers and what happened. */
   private done(p: TownPlayer, res: TownGiveResponse | null, failed: string): void {
     if (this.target !== p) return;
     if (!res) {
@@ -540,7 +501,6 @@ export class TargetBox {
 
 // ── Dev: made-up numbers for whoever is picked (no bot behind the dev server) ──
 
-const fakeGiven = { today: 0 };
 function fakeInfo(p: TownPlayer): TownPlayerInfo {
   const n = parseInt(p.id.slice(0, 6), 16) || 7;
   const wallet = Number(new URLSearchParams(location.search).get('kowens') ?? 1250);
@@ -548,7 +508,7 @@ function fakeInfo(p: TownPlayer): TownPlayerInfo {
     name: p.nickname,
     title: p.title,
     status: (['online', 'idle', 'busy'] as const)[n % 3],
-    wallet: 40 + (n % 900) + fakeGiven.today,
+    wallet: 40 + (n % 900),
     vault: n % 2 ? 120 : null,
     rank: 1 + (n % 30),
     bakodUntil: n % 3 === 0 ? Date.now() + 20 * 3600_000 : null,
@@ -556,12 +516,6 @@ function fakeInfo(p: TownPlayer): TownPlayerInfo {
     loan: n % 4 === 0 ? 22 : null,
     jackpotTickets: n % 6,
     inactiveDays: null,
-    give: { left: 20 - fakeGiven.today, limit: 20, wallet: wallet - fakeGiven.today, inDebt: false },
   };
 }
 
-function fakeGive(p: TownPlayer, amount: number): TownGiveResponse {
-  if (amount > 20 - fakeGiven.today) return { ok: false, message: `You can only give ${kowens(20 - fakeGiven.today)} more today (resets at midnight).`, player: fakeInfo(p) };
-  fakeGiven.today += amount;
-  return { ok: true, message: `You gave ${kowens(amount)} to ${p.nickname}.`, player: fakeInfo(p) };
-}

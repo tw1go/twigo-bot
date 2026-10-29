@@ -2109,9 +2109,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens
-  Give Kowens (/give rules), Balance, Status (as /balance and /status) and Diss / Praise / Judge (/diss etc. lines,
+  Balance, Status (as /balance and /status; Give Kowens went on 29 Oct 2026: Kowens pass between players only as Kowen Vouchers) and Diss / Praise / Judge (/diss etc. lines,
   1 Kowen, 5 s cooldown; the sender says it as a bubble + tagged chat line). Bot `GET /town/player?id=`, `POST
-  /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
+  /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
   `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
   (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
   Also Invite to party and Trade (below). Under the box, the buffs on them as icons (`TargetBox.setBuffs`; hover: name,
