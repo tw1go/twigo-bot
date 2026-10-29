@@ -1101,6 +1101,21 @@
     "defRate": 0.25,
     "dropRate": 0.5
   },
+  "exchangeNote": "Repo addition (29 Oct 2026, the owner): Kowen Vouchers bought at the Bank for Kusing and used for Kowens; selling Kowens for Kusing; the only way Kowens pass between players is a voucher traded. Every number here (CONTEXT.md Kowen Voucher, Exchange).",
+  "exchange": {
+    "where": "bank",
+    "kusingPerKowenBuy": 500000,
+    "kusingPerKowenSell": 400000,
+    "vouchers": [
+      { "id": "kowen-voucher-10", "name": "10 Kowen Voucher", "kowens": 10, "icon": "item-kowen-voucher-10" },
+      { "id": "kowen-voucher-25", "name": "25 Kowen Voucher", "kowens": 25, "icon": "item-kowen-voucher-25" },
+      { "id": "kowen-voucher-50", "name": "50 Kowen Voucher", "kowens": 50, "icon": "item-kowen-voucher-50" },
+      { "id": "kowen-voucher-100", "name": "100 Kowen Voucher", "kowens": 100, "icon": "item-kowen-voucher-100" }
+    ],
+    "voucher": { "tradeable": true, "bound": false, "stack": 99, "sellPrice": 0, "minLevel": 1, "maxBuyPerClick": 99 },
+    "sellKowens": { "min": 1, "needsCharacter": true },
+    "weeklyLimit": null
+  },
   "gearBudget": "best set (dark orange, 2 agimats, +20) about 1.75x damage or 1.5x HP vs plain white gear; check with check_budget.py",
   "enhancement": {
     "placeholder": true,

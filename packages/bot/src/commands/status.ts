@@ -1,6 +1,6 @@
 import { EmbedBuilder, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import type { Command } from '../types.js';
-import { INACTIVE_GRACE_DAYS, DAILY_GIVE_LIMIT, daysInactive, fencedUntil, givenToday, lastSteal } from '../credits/store.js';
+import { INACTIVE_GRACE_DAYS, daysInactive, fencedUntil, lastSteal } from '../credits/store.js';
 import { bailFor, canBail, jailList, jailedUntil } from '../games/jail.js';
 import { kowen } from '../kowens.js';
 import { ticketsOf } from '../games/jackpot.js';
@@ -59,7 +59,6 @@ export const status: Command = {
           name: '⏱️ Cooldowns',
           value: [
             stealReady > Date.now() ? `🥷 \`/steal\` ready ${at(stealReady)}` : '🥷 `/steal` ready now',
-            `🎁 \`/give\`: **${DAILY_GIVE_LIMIT - givenToday(id)}/${DAILY_GIVE_LIMIT}** left today`,
           ].join('\n'),
         },
         {

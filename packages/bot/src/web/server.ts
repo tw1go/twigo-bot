@@ -37,8 +37,9 @@ import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
+import { buyVoucherFor, sellKowensFor, useVoucherFor } from './town-exchange.js';
 import { buyFromShop, setShopEvents, townShop } from './town-shop.js';
-import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
+import { type PlayerDeps, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
 import { bailFromTown, townOutpost } from './town-outpost.js';
 import { digInTown, townDigItems } from './town-mine.js';
@@ -135,10 +136,10 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; members)
 //   GET  /town/bank     wallet, vault and loans (members)
 //   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; members)
+//   POST /town/exchange/buy-voucher { voucherId, amount } | /sell-kowens { kowens } | /use-voucher { voucherId, amount }: the Bank's exchange (web/town-exchange.ts; from the game's page only; members)
 //   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (members)
 //   POST /town/shop     { id, quantity } redeem a reward, or buy HP/MP Potions (Kusing) or whetstones and Repair Kits (from the game's page only; members)
 //   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (members)
-//   POST /town/give     { to, amount } give Kowens to a player in town (from the game's page only; members)
 //   POST /town/verdict  { to, mode: diss|praise|judge } on a player in town, 1 Kowen (from the game's page only; members)
 //   GET  /town/outpost  the Tanod outpost: who's in jail and how Tanod Patrol works (members)
 //   POST /town/bail     { id } bail someone out (yourself or a friend), /bail's rules (from the game's page only; members)
@@ -607,6 +608,29 @@ export function startWebServer(client: Client): void {
         }
         return send(res, 200, JSON.stringify(await buyFromTown(client, userId, count)));
       }
+      // The Bank's exchange (web/town-exchange.ts): vouchers bought for Kusing, Kowens sold for Kusing, a voucher used for its Kowens.
+      if (req.method === 'POST' && (path === '/town/exchange/buy-voucher' || path === '/town/exchange/sell-kowens' || path === '/town/exchange/use-voucher')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { voucherId?: unknown; amount?: unknown; kowens?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → refused below
+        }
+        if (!body || typeof body !== 'object') return send(res, 400, '{"error":"invalid body"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const r = path === '/town/exchange/buy-voucher' ? buyVoucherFor(userId, body.voucherId, body.amount)
+          : path === '/town/exchange/sell-kowens' ? sellKowensFor(userId, body.kowens)
+          : useVoucherFor(userId, body.voucherId, body.amount);
+        if (r.ok) {
+          town?.items(userId); // the combat bag and Kusing
+          town?.wallet(userId); // the HUD's Kowens
+        }
+        return send(res, 200, JSON.stringify(r));
+      }
       if (path === '/town/bank' && (req.method === 'GET' || req.method === 'POST')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
@@ -655,12 +679,12 @@ export function startWebServer(client: Client): void {
         if (bought.ok) town?.items(userId); // the combat bag and Kusing, if it was a combat item
         return send(res, 200, JSON.stringify(bought));
       }
-      if ((req.method === 'GET' && path === '/town/player') || (req.method === 'POST' && (path === '/town/give' || path === '/town/verdict'))) {
+      if ((req.method === 'GET' && path === '/town/player') || (req.method === 'POST' && path === '/town/verdict')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
         if (req.method === 'POST' && !fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
         const userId = sessionUser(req);
         if (!userId) return send(res, 401, '{"error":"not logged in"}');
-        let body: { to?: unknown; amount?: unknown; mode?: unknown } | null = null;
+        let body: { to?: unknown; mode?: unknown } | null = null;
         if (req.method === 'POST') {
           try {
             body = JSON.parse((await readBody(req)) || 'null');
@@ -673,14 +697,9 @@ export function startWebServer(client: Client): void {
         const target = typeof playerId === 'string' ? town?.memberOf(playerId) : null;
         if (!target) return send(res, 404, '{"error":"not in town"}');
         if (req.method === 'GET') return send(res, 200, JSON.stringify(await playerInfo(userId, target, playerDeps)));
-        if (path === '/town/verdict') {
-          const mode = body?.mode;
-          if (mode !== 'diss' && mode !== 'praise' && mode !== 'judge') return send(res, 400, '{"error":"invalid mode"}');
-          return send(res, 200, JSON.stringify(await verdictInTown(client, userId, target, mode, playerDeps)));
-        }
-        const amount = body?.amount;
-        if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > 1_000_000) return send(res, 400, '{"error":"invalid amount"}');
-        return send(res, 200, JSON.stringify(await giveInTown(client, userId, target, amount, playerDeps)));
+        const mode = body?.mode;
+        if (mode !== 'diss' && mode !== 'praise' && mode !== 'judge') return send(res, 400, '{"error":"invalid mode"}');
+        return send(res, 200, JSON.stringify(await verdictInTown(client, userId, target, mode, playerDeps)));
       }
       if ((req.method === 'GET' && path === '/town/outpost') || (req.method === 'POST' && path === '/town/bail')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');

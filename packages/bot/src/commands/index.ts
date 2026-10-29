@@ -7,7 +7,6 @@ import { flex } from './flex.js';
 import { gamble } from './gamble.js';
 import { getCredits } from './get-credits.js';
 import { gift } from './gift.js';
-import { give } from './give.js';
 import { jackpot } from './jackpot.js';
 import { jail } from './jail.js';
 import { dig } from './dig.js';
@@ -33,6 +32,6 @@ import { town } from './town.js';
 import { playWeb } from './play-web.js';
 
 // Register new commands here.
-const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, rogue, jackpot, leaderboard, jail, redeem, gift, give, dig, inventory, sell, request, status, bail, race, loan, flex, vault, potion, claim, preregisterCommand, playWeb, notice, town];
+const all: Command[] = [ping, twigo, twigoHelp, diss, praise, judge, getCredits, balanceCommand, gamble, steal, rogue, jackpot, leaderboard, jail, redeem, gift, dig, inventory, sell, request, status, bail, race, loan, flex, vault, potion, claim, preregisterCommand, playWeb, notice, town];
 
 export const commands = new Collection<string, Command>(all.map((c) => [c.data.name, c]));

@@ -2,12 +2,15 @@ import type { TownBankAction, TownBankActionResponse, TownBankResponse } from '@
 import { api } from '../net/endpoints';
 import { playSound } from '../audio/sound';
 import { fakeLogin } from '../session';
+import { devWallet, devWalletSet, onAdventure } from '../net/adventure';
+import { renderExchange } from './exchange-tab';
 import { coinIcon, el, followWallet, showPopup } from './reward';
 
-// 🏦 The bank (left click the bank), in the reward box with three tabs: Main (wallet and vault side by side, and a
-// summary that links to the other tabs), Vault (store and take out) and Loan (what you owe and paying it back, or
-// borrowing from the Tanod Bank, and loans you gave). Every action goes
-// through the bot (POST /town/bank) with the same rules as /vault and /loan. Lending to members stays in Discord.
+// 🏦 The bank (left click the bank), in the reward box with four tabs: Main (wallet and vault side by side, and a
+// summary that links to the other tabs), Vault (store and take out), Loan (what you owe and paying it back, or
+// borrowing from the Tanod Bank, and loans you gave) and Exchange (Kowen Vouchers for Kusing, Kowens sold for Kusing:
+// ui/exchange-tab.ts). Every action goes through the bot (POST /town/bank, /town/exchange/*) with the same rules as
+// /vault and /loan. Lending to members stays in Discord.
 
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
@@ -23,7 +26,7 @@ function timeLeft(ms: number): string {
 }
 
 async function load(): Promise<TownBankResponse | null> {
-  if (fakeLogin()) return structuredClone(fake);
+  if (fakeLogin()) return structuredClone({ ...fake, wallet: devWallet() }); // (the pretend wallet the exchange shares)
   const res = await api('/town/bank', { credentials: 'same-origin' }).catch(() => null);
   return res?.ok ? ((await res.json()) as TownBankResponse) : null;
 }
@@ -64,14 +67,15 @@ const amountOf = (input: HTMLInputElement) => {
   return Number.isInteger(n) && n >= 1 ? n : null;
 };
 
-type Tab = 'main' | 'vault' | 'loan';
-const TABS: [Tab, string][] = [['main', 'Main'], ['vault', 'Vault'], ['loan', 'Loan']];
+type Tab = 'main' | 'vault' | 'loan' | 'exchange';
+const TABS: [Tab, string][] = [['main', 'Main'], ['vault', 'Vault'], ['loan', 'Loan'], ['exchange', 'Exchange']];
 
 export function showBank(): void {
   const main = el('section', 'bk-panel');
   const vault = el('section', 'bk-panel');
   const loan = el('section', 'bk-panel');
-  const panels: Record<Tab, HTMLElement> = { main, vault, loan };
+  const exchange = el('section', 'bk-panel');
+  const panels: Record<Tab, HTMLElement> = { main, vault, loan, exchange };
   const note = el('div', 'bk-note', 'Loading…');
   note.setAttribute('role', 'status');
 
@@ -110,12 +114,12 @@ export function showBank(): void {
   }
   show('main');
   const wrap = el('div', 'bk-body');
-  wrap.append(bar, main, vault, loan, note);
+  wrap.append(bar, main, vault, loan, exchange, note);
 
   let busy = false;
-  const tell = (message: string) => {
+  const tell = (message: string, ok = false) => {
     note.textContent = message;
-    note.classList.add('bk-refused');
+    note.classList.toggle('bk-refused', !ok);
   };
 
   const run = async (action: TownBankAction, amount?: number) => {
@@ -143,7 +147,11 @@ export function showBank(): void {
     return b;
   };
 
+  let last: TownBankResponse | null = null;
+  const drawExchange = () => last && renderExchange(exchange, { wallet: last.wallet, tell, done: () => void load().then((x) => x && !busy && render(x)) });
   const render = (b: TownBankResponse) => {
+    last = b;
+    drawExchange();
     // Main: wallet and vault, and a summary line per tab.
     const card = (label: string, amount: string, sub: string, icon: HTMLElement | null) => {
       const c = el('div', 'bk-card');
@@ -253,6 +261,8 @@ export function showBank(): void {
   };
 
   const closed = showPopup({ title: 'Bank', body: [wrap], button: 'Close', celebrate: false, sound: 'door' });
+  const offAdventure = onAdventure(() => !busy && drawExchange()); // (Kusing picked up or spent, the bag's room)
+  void closed.then(offAdventure);
   followWallet(closed, () => !busy && void load().then((b) => b && !busy && render(b)));
   void load().then((b) => {
     if (!b) return void (note.textContent = "Couldn't load the bank. Try again in a moment.");
@@ -276,7 +286,11 @@ const fake: TownBankResponse = {
 };
 
 function fakeAct(action: TownBankAction, amount?: number): TownBankActionResponse {
-  const done = (ok: boolean, message: string) => ({ ...structuredClone(fake), ok, message });
+  fake.wallet = devWallet();
+  const done = (ok: boolean, message: string) => {
+    devWalletSet(fake.wallet);
+    return { ...structuredClone(fake), ok, message };
+  };
   const v = fake.vault;
   const refreshVault = () => {
     if (!fake.vault) return;

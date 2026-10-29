@@ -79,6 +79,7 @@ import { type LootGot,
   takeFromBag,
 } from '@mikazuki/shared';
 import { api } from './endpoints';
+import { type TownExchangeResponse, buyVouchers, kusingForKowens, sellKowensRefusal, useVouchers } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 
 // ⚔️ Your class, quests and equipment in the game (the bot keeps them: web/adventure.ts; /me brings them, POST
@@ -829,4 +830,45 @@ function fakeAct(body: TownQuestAction | TownEquipAction | DevQuestAction): Town
     : body.action === 'wear-cosmetic' ? wearCosmetic(data, s, body.item, body.place)
     : unwearCosmetic(data, s, body.place);
   return r.ok ? { ok: true, message: r.message, adventure: s } : no(r.message);
+}
+
+// ── The Bank's exchange (CONTEXT.md Exchange, Kowen Voucher; shared exchange.ts; bot web/town-exchange.ts) ──
+
+export type ExchangeKind = 'buy-voucher' | 'sell-kowens' | 'use-voucher';
+
+/** Dev: the pretend wallet the exchange and the pretend bank share (?kowens=; the HUD's Kowens don't follow it). */
+let devKowens = Number(new URLSearchParams(location.search).get('kowens') ?? 1250);
+export const devWallet = (): number => devKowens;
+export const devWalletSet = (n: number): void => void (devKowens = n);
+
+/** Buy vouchers (Kusing → the bag), sell Kowens (→ Kusing) or use vouchers (→ Kowens): POST /town/exchange/<kind>; the
+ *  bag and Kusing come back by the town's `items` message, the wallet by the HUD's reload. Dev: the shared rules on the
+ *  pretend state and wallet. */
+export async function exchangeAct(kind: ExchangeKind, body: { voucherId?: string; amount?: number; kowens?: number }): Promise<TownExchangeResponse | null> {
+  if (fakeLogin()) {
+    const s = state;
+    if (!s || !data) return { ok: false, message: 'No character yet.' };
+    const c = { bag: structuredClone(s.bag), kusing: s.kusing };
+    if (kind === 'buy-voucher') {
+      const r = buyVouchers(data, c, body.voucherId ?? '', body.amount ?? 0, devUid);
+      if (r.ok) set({ ...s, bag: c.bag, kusing: c.kusing });
+      return { ok: r.ok, message: r.message };
+    }
+    if (kind === 'use-voucher') {
+      const r = useVouchers(data, c, body.voucherId ?? '', body.amount ?? 0);
+      if (!r.ok) return r;
+      set({ ...s, bag: c.bag });
+      devKowens += r.kowens;
+      return { ok: true, message: r.message, kowens: r.kowens };
+    }
+    const why = sellKowensRefusal(data.stats, body.kowens, devKowens, !!s.cls);
+    if (why) return { ok: false, message: why };
+    const n = body.kowens as number;
+    const kusing = kusingForKowens(data.stats, n);
+    devKowens -= n;
+    set({ ...s, kusing: s.kusing + kusing });
+    return { ok: true, message: `Sold ${n.toLocaleString()} ${n === 1 ? 'Kowen' : 'Kowens'} for ${kusing.toLocaleString()} Kusing.` };
+  }
+  const res = await api(`/town/exchange/${kind}`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+  return res?.ok ? ((await res.json()) as TownExchangeResponse) : null;
 }

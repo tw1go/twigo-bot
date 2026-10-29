@@ -120,7 +120,10 @@ export function devTown(): Plugin {
       // Each player's items (the page's copy, sent with /__items): loot, potions, the shop and ?give= change them here.
       const items = loadItemData();
       const gear = new Map<string, TownItems>();
-      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, cosmetics: {}, bag: [], kusing: 0, pet: null }).get(name)!;
+      // (A fresh name starts with a stack of each Kowen Voucher, so the Bank's Exchange tab and the bag's Use can be tried:
+      // ?kusing=60000000&kowens=500.)
+      const starterVouchers = () => (stats.exchange?.vouchers ?? []).map((v) => makeItem(items, v.id, { count: 1 }, devUid)).filter((i): i is NonNullable<typeof i> => !!i);
+      const gearOf = (name: string) => gear.get(name) ?? gear.set(name, { equipped: {}, cosmetics: {}, bag: starterVouchers(), kusing: 0, pet: null }).get(name)!;
       /** The pet each player has out (its pet id), and when they last changed it (the swap cooldown). */
       const petOf = (name: string) => petIdOf(items, gear.get(name)?.pet);
       const petChanges = new Map<string, number>();

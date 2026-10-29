@@ -358,6 +358,10 @@ export type TownBankAction = 'deposit' | 'withdraw' | 'borrow' | 'repay';
 /** POST /town/bank { action, amount } → the bank afterwards, whether it worked, and what to tell the member. */
 export type TownBankActionResponse = TownBankResponse & { ok: boolean; message: string };
 
+/** POST /town/exchange/buy-voucher | sell-kowens | use-voucher (web/town-exchange.ts): whether it worked and what to say;
+ *  a use: the Kowens it paid. The bag and Kusing come by the town's `items` message, the wallet by the HUD's reload. */
+export type TownExchangeResponse = { ok: boolean; message: string; kowens?: number };
+
 /** The rewards shop: what /redeem sells, as the viewer sees it. */
 export interface TownShopResponse {
   kowens: number;
@@ -527,7 +531,6 @@ export interface TownPlayerInfo {
   /** Days without activity, once they're losing Kowens for it. */
   inactiveDays: number | null;
   /** The viewer's gifting: how many more Kowens they can give today, of the daily limit, and their wallet. */
-  give: { left: number; limit: number; wallet: number; inDebt: boolean };
   /** What they don't show the viewer (CONTEXT.md Who can see): its numbers come as 0 / null. */
   hidden?: { balance?: true; status?: true };
 }

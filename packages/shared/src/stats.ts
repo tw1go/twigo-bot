@@ -37,6 +37,18 @@ export interface MobStats {
 }
 
 /** classes/stats.json: the parts the rules read (the file has more: gear, affixes, enhancement… for later). */
+/** stats.json `exchange`: the Bank's Kowen Vouchers (each its Kowens; its price kowens × kusingPerKowenBuy) and selling Kowens
+ *  (kusingPerKowenSell each). Every number of the exchange lives here. */
+export interface ExchangeData {
+  where: string;
+  kusingPerKowenBuy: number;
+  kusingPerKowenSell: number;
+  vouchers: { id: string; name: string; kowens: number; icon: string }[];
+  voucher: { tradeable: boolean; bound: boolean; stack: number; sellPrice: number; minLevel: number; maxBuyPerClick: number };
+  sellKowens: { min: number; needsCharacter: boolean };
+  weeklyLimit: number | null;
+}
+
 export interface StatsData {
   levelCap: number;
   classless: StatBlock;
@@ -81,6 +93,8 @@ export interface StatsData {
   regen: { inCombat: { hp: number; mpPerSec: string }; outOfCombatAfterSec: number; outOfCombatPctPerSec: number };
   rarity: { nameColour: Record<string, { affix: string | null; slots: number }> };
   mobBehaviour: MobBehaviour;
+  /** The Bank's exchange (CONTEXT.md Kowen Voucher, Exchange; a repo addition): Kowen Vouchers for Kusing, Kowens sold for Kusing. */
+  exchange?: ExchangeData;
 }
 
 /** stats.json mobBehaviour: how the mobs live (the guide's "Mob behaviour"). Kinds in its lists are camelCase ('tinCan'). */

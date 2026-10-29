@@ -15,6 +15,7 @@ import { hotbarDragItem, pickForHotbar, potionCooldownKey } from './hotbar';
 import { showRename } from './rename';
 import { openBox } from './pet-tab';
 import { openCube } from './pet-cube';
+import { useVoucherPopup, voucherFor } from './voucher';
 import { type ForgePopup, confirmCombine, confirmDestroy, confirmDisassemble, confirmDisassembleMany, confirmSell, confirmSellMany, forgeFromBag, mountForge, RETAIN_WHERE } from './forge';
 import { fragmentsPerWhetstone } from '@mikazuki/shared';
 import { inTrade, tradeBlocked, tradeDrag, tradePut, trading } from './trade';
@@ -513,6 +514,9 @@ export class Inventory {
         cell.draggable = true;
         cell.addEventListener('dragstart', (e) => e.dataTransfer?.setData('application/x-mk-pet', it.uid));
         cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && this.equipment?.sendOutPet(it.uid));
+      } else if (def && voucherFor(def.id)) {
+        // A Kowen Voucher: used by a double-click (how many, then its Kowens).
+        cell.addEventListener('dblclick', () => !this.forge.isOpen && !trading() && void useVoucherPopup(it));
       } else if (def?.kind === 'consumable' && def.id === RETURN_LANTERN) {
         // A Return Lantern does nothing from the bag: it says where it's used.
         cell.addEventListener('dblclick', () => toast(def.useAt ?? 'Use it at a Lantern Post.', 2400));
@@ -581,6 +585,8 @@ export class Inventory {
       row.append(this.action('Open', 'iv-flex', () => void openBox(it)));
     } else if (def?.kind === 'pet') {
       row.append(this.action('Send out', 'iv-flex', () => this.equipment?.sendOutPet(it.uid)));
+    } else if (def && voucherFor(def.id)) {
+      row.append(this.action('Use', 'iv-flex', () => void useVoucherPopup(it)));
     } else if (def?.kind === 'potion') {
       parts.push(el('div', 'iv-about', 'Drag it onto any hotbar slot, or press Put on hotbar and tap a slot. Use it in the Slums.'));
       // (A touch screen can't drag: picked here, a hotbar slot tapped next.)
@@ -675,6 +681,7 @@ export class Inventory {
     if (def && !isGearDef(def) && def.kind === 'consumable' && !def.forge && !def.opens && !isCube(it)) {
       const where = def.useAt ?? 'Use it where it’s for';
       if (def.id === RETURN_LANTERN) items.push(['Use', () => toast(where, 2400)]);
+      else if (voucherFor(def.id)) items.push(['Use', () => void useVoucherPopup(it)]); // (a Kowen Voucher: its Kowens)
       else {
         off.add(items.length);
         items.push([where, () => {}]);

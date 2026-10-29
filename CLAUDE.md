@@ -290,6 +290,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   and `nena-binoculars` (kind `quest`) with their pictures from the art folder's items/consumables and items/quest.
 - `items/items.json`: `warren-ticket`, `return-lantern`, `agimat-pliers`, `temper-stone`, `temper-stone-filled` (prices in
   `price: { kowens }`, the Smithing tab). `mobs/mobs.json`: `barong-barong`.
+- `classes/stats.json` `exchange` (+ `exchangeNote`; 29 Oct 2026, the owner: the Bank's Kowen Vouchers and selling Kowens:
+  kusingPerKowenBuy 500,000, kusingPerKowenSell 400,000, the four vouchers) and `items/items.json` `kowen-voucher-10|25|50|100`
+  (their icons the art folder's items/consumables as they are).
 - `ui/events/halloween/manananggal-64.png` (manifest `ui.eventHalloween.manananggal64`, 19 Oct 2026): the reunite pop-up's
   picture, frame 0 of the upper half's idle-se centred in 64 × 64; a stand-in until the art folder has its own.
 - `ui/ui-golem-head.png` (manifest `ui.golemHead`): the golem timer's head, cut from frame 0 of the golem's idle-se
@@ -683,8 +686,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
   max per draw), chance, players, last draw; bot `GET/POST /town/jackpot` shares `buyTickets` with `/jackpot` and posts
   town buys to the feed and the games channel. Dev uses a pretend booth.
-- Bank (`ui/bank.ts`, left click the bank), three tabs: Main (wallet and vault cards, summary rows linking to the
-  tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
+- Bank (`ui/bank.ts`, left click the bank), four tabs: Main (wallet and vault cards, summary rows linking to the
+  tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave), and Exchange
+  (CONTEXT.md Exchange, Kowen Voucher; 29 Oct 2026: `ui/exchange-tab.ts`: Buy Kowen Vouchers, a card a voucher with how
+  many and Buy, greyed with the reason; Sell Kowens from the wallet with − / + / Max, a confirm over 10; shared
+  `exchange.ts` the rules, stats.json `exchange` every number; bot `web/town-exchange.ts` `POST /town/exchange/buy-voucher |
+  sell-kowens | use-voucher`, one save each, selling refused while a loan is owed, a voucher's Kowens through the credits
+  store's `add` so a late loan's garnish applies, one use at a time a member, every one in the bot's log; the bag's Use on
+  a voucher (`ui/voucher.ts` `useVoucherPopup`: how many, then 'mk-voucher-used' → TownScene `voucherUsed`: "+N Kowens" in
+  Kowen gold over you and a Gained line); Kowens are never given any more: /give and the town's Give Kowens went that day,
+  the gifter's /gift, the CMS, member loans, the board's pay, the arena's bets and robbing stay; dev: a fresh name's bag
+  has a stack of each voucher, `?kusing=60000000&kowens=500`); bot `GET/POST /town/bank` (`web/town-bank.ts`, same stores and rules as `/vault`
   and `/loan`; town borrowing is posted in the games channel). Lending to members stays in Discord. Dev: a pretend
   bank (`&vault=0`, `&loan=1`).
 - Sari-sari store (`ui/shop.ts`, building id `sari-sari-store`, was the rewards shop; left click the store): what `/redeem` sells, tabs Items / Potions / Bags (+ Cosmetics: Cosmetics, below; + Healing / Smithing: Items, above), a grid
@@ -2122,9 +2134,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Player menu (`ui/target.ts`): left click (or tap) someone → their name and level ("Lv 12", kept up to date by `level-up`: `OtherPlayers.setLevel`, `levelChanged`) in a long box top centre (or click their name
   in the chat: the box opens right beside it with the menu open, `selectAt`; a click elsewhere closes it; no ×: a click
   outside the box closes it too, a drag to peek doesn't); clicking it opens
-  Give Kowens (/give rules), Balance, Status (as /balance and /status) and Diss / Praise / Judge (/diss etc. lines,
+  Balance, Status (as /balance and /status; Give Kowens went on 29 Oct 2026: Kowens pass between players only as Kowen Vouchers) and Diss / Praise / Judge (/diss etc. lines,
   1 Kowen, 5 s cooldown; the sender says it as a bubble + tagged chat line). Bot `GET /town/player?id=`, `POST
-  /town/give`, `POST /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
+  /town/verdict` (`web/town-player.ts`): players are looked up by their town id via
   `Town.memberOf` (Discord ids never reach the page). Gifts post in the games channel and pop up for the receiver
   (`gift`); verdicts post in the town chat channel, pinging the target. Dev fakes the numbers and verdicts locally.
   Also Invite to party and Trade (below). Under the box, the buffs on them as icons (`TargetBox.setBuffs`; hover: name,

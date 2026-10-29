@@ -76,7 +76,6 @@ export const twigoHelp: Command = {
           '`/redeem` — 🧱 Bakod, 🪏 Shovel, 🗝️ Master Key, 📢 Megaphone (`/m message` in the web town\'s chat runs it across everyone\'s screen), 🔐 Vault, 🧪 potions, 🎒 bags',
           `💇 **Parlor** (web town, beside the sari-sari store): a new look for **${LOOK_COST}** Kowens, or show another of your titles (free)`,
           '`/potion use|list` — 🧪 Kalawang (rust a Bakod) · 🫥 Tago (no busts 30 min) · 🍀 Swerte (better digs) · 🍵 Marites (hints). In the web town: drink them from your bag (Misc tab)',
-          '`/give @someone amount` — give a friend Kowens (max 20 per day)',
           '`/vault deposit|withdraw|view` — 🔐 store up to 30% of your Kowens, safe from /steal & bail (Vault from `/redeem`, 50)',
           '`/request task reward` — post a quest; the reward is held until you mark it complete 📜',
           '`/loan take|offer|pay|status` — borrow from the 🏦 Tanod Bank or a friend (+10%, due in 3 days)',

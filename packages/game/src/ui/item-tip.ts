@@ -1,4 +1,5 @@
 import { type LootGot, type EquipPlace, type EquipSlot, type Item, type StatName, affixTier, agimatBrightness, cosmeticFits, wornItems, derivedStats, itemTotals, placesFor, agimatSlots, agimatValue, wordList, baseStats, canEquip, enhancedBase, gearKind, gearMismatch, isGearDef, itemAura, itemName, lineText, lineValue, pickupLine, requirements, statLabel, timeLeftText } from '@mikazuki/shared';
+import { gold, voucherFor } from './voucher';
 import { petTipLines } from './pet-tab';
 import { adventure, classInfo, itemData } from '../net/adventure';
 import { type Rarity, RARITY_TEXT, isRarity, itemArt, itemArtUrl, placeholderArt } from './item-art';
@@ -114,7 +115,13 @@ export function itemTipFor(item: Item, owner?: { cls: string | null }): HTMLElem
       parts.push(el('div', 'eq-tip-meta', 'Bound'));
       return parts;
     }
-    if (def.about) parts.push(el('div', 'eq-tip-about', def.about));
+    const voucher = voucherFor(def.id);
+    if (voucher) {
+      // (A Kowen Voucher: "Use: get N Kowens. Tradeable.", its Kowens in Kowen gold.)
+      const about = el('div', 'eq-tip-about');
+      about.append('Use: get ', gold(voucher.kowens), ' Kowens. Tradeable.');
+      parts.push(about);
+    } else if (def.about) parts.push(el('div', 'eq-tip-about', def.about));
     // A quest item (CONTEXT.md): what it can't do, in grey; a bound one (the Practice Warren Ticket) says so.
     if (def.kind === 'quest') parts.push(el('div', 'eq-tip-meta', "Quest item: it can't be sold, traded, dropped or banked"));
     else if (item.bound) parts.push(el('div', 'eq-tip-meta', "Bound: it can't be sold, traded or dropped"));

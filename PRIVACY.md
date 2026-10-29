@@ -31,7 +31,6 @@ The bot only handles the minimum it needs to work.
 | Time of your last `/steal` | You use `/steal` | To enforce the cooldown | Yes, with your Kowens |
 | When you became a rogue, your last steal attempt as a rogue, and when you were robbed and protected | You use `/rogue` or the house menu, steal as a rogue, or are robbed | To decide who may steal and who can be robbed. Other members see whether your house is protected or marked, and whether you're a rogue, in the neighbourhood | Yes, with your Kowens |
 | Your lifetime and this week's voice minutes | You're counted for voice Kowens | To show the `/leaderboard` and pay weekly voice rewards | Yes, with your Kowens (the weekly count resets every Monday) |
-| How many Kowens you gave today | You use `/give` | To enforce the daily limit | Yes, with your Kowens (resets daily) |
 | Mine Wars rewards you received each night | The gifter pays out a 9 PM Mine Wars | So nobody is paid twice for the same night | Yes |
 | When your Bakod (fence) ends | You redeem a Bakod | To block `/steal` against you | Yes, with your Kowens |
 | How many room finds you claimed today | You use `/claim` | To enforce the daily limit | Yes (today's count only) |
