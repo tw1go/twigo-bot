@@ -1,6 +1,6 @@
 import type { TownShopBuyResponse, TownShopItem, TownShopResponse } from '@mikazuki/shared';
 import { api } from '../net/endpoints';
-import { playSound } from '../audio/sound';
+import { type Sfx, playSound } from '../audio/sound';
 import { bagSlots, combatWareAbout, combatWares, cosmeticShopItem, cosmeticWares, countOf, isGearDef, pocketUsed, stackLimit } from '@mikazuki/shared';
 import { fakeLogin, fakeName } from '../session';
 import { adventure, anyDef, devTicketPrice, itemData, onAdventure } from '../net/adventure';
@@ -24,7 +24,7 @@ import { halloweenShopEvents } from './halloween';
 const plural = (n: number, one: string, many: string) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
 const kowens = (n: number) => plural(n, 'Kowen', 'Kowens');
 
-type Tab = 'items' | 'potions' | 'bags' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetics';
+export type Tab = 'items' | 'potions' | 'bags' | 'healing' | 'smithing' | 'dungeons' | 'travel' | 'pets' | 'cosmetics';
 const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['items', 'Items', ['fence', 'shovel', 'key', 'megaphone', 'rename', 'classchange', 'vault']],
   ['potions', 'Potions', ['potion']],
@@ -36,6 +36,16 @@ const TABS: [Tab, string, TownShopItem['kind'][]][] = [
   ['pets', 'Pets', ['pets']],
   ['cosmetics', 'Cosmetics', ['cosmetic']],
 ];
+/** What a shop shows: its title, which of TABS (in TABS' order; the first is where it opens) and the sound as it opens.
+ *  Without them it's the sari-sari store. Buying is the same wherever it's opened from (the same POST /town/shop and
+ *  the shared combatWares), so prices, tier gates and room rules match. */
+export interface ShopOptions {
+  title?: string;
+  tabs?: Tab[];
+  sound?: Sfx;
+}
+/** Mang Berto's cart in the Old Market: the store's Healing, Smithing and Travel tabs (CONTEXT.md Grocery). A cart has no door. */
+export const GROCER: ShopOptions = { title: "Mang Berto's Grocery", tabs: ['healing', 'smithing', 'travel'], sound: 'click' };
 /** The Cosmetics tab's sub-tabs (a cosmetic's place; All: every piece, then the Sets). */
 type Sub = 'all' | 'head' | 'body' | 'weapon';
 const SUBS: [Sub, string][] = [
@@ -82,7 +92,8 @@ async function buy(id: string, quantity: number): Promise<TownShopBuyResponse | 
   return res?.ok ? ((await res.json()) as TownShopBuyResponse) : null;
 }
 
-export function showShop(): void {
+export function showShop(opts: ShopOptions = {}): void {
+  const tabList = opts.tabs ? TABS.filter(([t]) => opts.tabs!.includes(t)) : TABS;
   const wallet = el('div', 'sh-wallet');
   const bar = el('div', 'bk-tabs sh-tabs');
   bar.setAttribute('role', 'tablist');
@@ -97,7 +108,7 @@ export function showShop(): void {
   wrap.append(wallet, bar, subBar, grid, detail, note);
 
   let shop: TownShopResponse | null = null;
-  let tab: Tab = 'items';
+  let tab: Tab = tabList[0][0];
   let sub: Sub = 'all';
   /** Worn previews by the ids worn ('loading' while their layers load). */
   const previews = new Map<string, HTMLCanvasElement | 'loading' | null>();
@@ -136,7 +147,7 @@ export function showShop(): void {
   }
 
   const tabs = new Map<Tab, HTMLButtonElement>();
-  for (const [t, label] of TABS) {
+  for (const [t, label] of tabList) {
     const b = el('button', 'bk-tab', label);
     b.setAttribute('role', 'tab');
     b.addEventListener('click', () => {
@@ -147,8 +158,8 @@ export function showShop(): void {
     });
     b.addEventListener('keydown', (e) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-      const i = TABS.findIndex(([x]) => x === tab);
-      tab = TABS[(i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length][0];
+      const i = tabList.findIndex(([x]) => x === tab);
+      tab = tabList[(i + (e.key === 'ArrowRight' ? 1 : tabList.length - 1)) % tabList.length][0];
       picked = null;
       render();
       tabs.get(tab)!.focus();
@@ -330,7 +341,7 @@ export function showShop(): void {
     if (res.ok && it.currency !== 'kusing') window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens (and shovels)
   };
 
-  const closed = showPopup({ title: 'Sari-sari store', body: [wrap], button: 'Close', celebrate: false, sound: 'door', closeX: true });
+  const closed = showPopup({ title: opts.title ?? 'Sari-sari store', body: [wrap], button: 'Close', celebrate: false, sound: opts.sound ?? 'door', closeX: true });
   followWallet(closed, () => !busy && void load().then((s) => s && !busy && ((shop = s), render())));
   // Kusing (loot picked up while it's open) and the combat bag's room follow the adventure state.
   const off = onAdventure((a) => {
