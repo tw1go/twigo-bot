@@ -70,13 +70,19 @@ export class SystemFeed {
     const restored = this.restored;
     this.restored = null;
     if (restored && !more) {
-      let from = 0; // (how many of `lines` are already shown)
-      let found = false;
-      for (let i = restored.length - 1; i >= 0 && !found; i--) {
-        const k = keyOf(restored[i]);
-        for (let j = lines.length - 1; j >= 0; j--) if (keyOf(lines[j]) === k) { from = j + 1; found = true; break; }
+      // Where the server's list carries on from what's shown: the longest tail of the restored server lines found as a
+      // run in `lines` (the latest such run), and everything after it is newer. A run, not one line: a line repeating
+      // the newest restored one's text (a second "X won 20 Kowens…") would otherwise count as already shown. Nothing
+      // found: the server has forgotten them all, every line is newer.
+      let from = 0;
+      const keys = lines.map(keyOf);
+      const tail = restored.map(keyOf);
+      search: for (let len = Math.min(tail.length, keys.length); len >= 1; len--) {
+        const want = tail.slice(-len);
+        for (let j = keys.length - len; j >= 0; j--) {
+          if (want.every((k, i) => keys[j + i] === k)) { from = j + len; break search; }
+        }
       }
-      if (restored.length && !found) from = 0;
       if (!restored.length) {
         const first = this.root.firstElementChild;
         const older: Row[] = [];
