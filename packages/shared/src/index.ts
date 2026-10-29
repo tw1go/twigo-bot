@@ -25,3 +25,4 @@ export * from './combat-wares.js';
 export * from './pets.js';
 export * from './mail.js';
 export * from './resume.js';
+export * from './exchange.js';

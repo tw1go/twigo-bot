@@ -914,6 +914,50 @@
       "note": "repo-only: the Lantern Posts' travel item; price a placeholder (the sari-sari store's Travel tab)"
     },
     {
+      "id": "kowen-voucher-10",
+      "name": "10 Kowen Voucher",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Use: get 10 Kowens. Tradeable.",
+      "icon": "items/consumables/item-kowen-voucher-10-16.png",
+      "showcase": "items/consumables/item-kowen-voucher-10.png",
+      "large": "items/consumables/item-kowen-voucher-10-64.png",
+      "note": "repo-only (29 Oct 2026, the owner): bought at the Bank for Kusing (stats.json exchange), used from the bag for its Kowens; tradeable, never sold"
+    },
+    {
+      "id": "kowen-voucher-25",
+      "name": "25 Kowen Voucher",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Use: get 25 Kowens. Tradeable.",
+      "icon": "items/consumables/item-kowen-voucher-25-16.png",
+      "showcase": "items/consumables/item-kowen-voucher-25.png",
+      "large": "items/consumables/item-kowen-voucher-25-64.png",
+      "note": "repo-only (29 Oct 2026, the owner): bought at the Bank for Kusing (stats.json exchange), used from the bag for its Kowens; tradeable, never sold"
+    },
+    {
+      "id": "kowen-voucher-50",
+      "name": "50 Kowen Voucher",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Use: get 50 Kowens. Tradeable.",
+      "icon": "items/consumables/item-kowen-voucher-50-16.png",
+      "showcase": "items/consumables/item-kowen-voucher-50.png",
+      "large": "items/consumables/item-kowen-voucher-50-64.png",
+      "note": "repo-only (29 Oct 2026, the owner): bought at the Bank for Kusing (stats.json exchange), used from the bag for its Kowens; tradeable, never sold"
+    },
+    {
+      "id": "kowen-voucher-100",
+      "name": "100 Kowen Voucher",
+      "kind": "consumable",
+      "rarity": "white",
+      "about": "Use: get 100 Kowens. Tradeable.",
+      "icon": "items/consumables/item-kowen-voucher-100-16.png",
+      "showcase": "items/consumables/item-kowen-voucher-100.png",
+      "large": "items/consumables/item-kowen-voucher-100-64.png",
+      "note": "repo-only (29 Oct 2026, the owner): bought at the Bank for Kusing (stats.json exchange), used from the bag for its Kowens; tradeable, never sold"
+    },
+    {
       "id": "pet-box-fork-of-jord",
       "name": "Fork of Jord's Pet Box",
       "kind": "consumable",
