@@ -70,6 +70,7 @@ import { showBank } from '../ui/bank';
 import { showOutpost } from '../ui/outpost';
 import { showBoard } from '../ui/board';
 import { setShopPreview, showShop } from '../ui/shop';
+import { KOWEN_GOLD } from '../ui/voucher';
 import { showMail } from '../ui/mail';
 import { onUnreadMail, setUnreadMail } from '../net/mail';
 import { InspectWindow } from '../ui/inspect';
@@ -905,6 +906,10 @@ export class TownScene extends Phaser.Scene {
     const mailGot = (e: Event) => this.mailGot((e as CustomEvent<{ kowens: number; kusing: number; items: Item[] }>).detail);
     addEventListener('mk-mail-got', mailGot);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-mail-got', mailGot));
+    // A Kowen Voucher used (ui/voucher.ts): "+N Kowens" over you in Kowen gold and a "Gained" line in your feed.
+    const voucherUsed = (e: Event) => this.voucherUsed((e as CustomEvent<{ kowens: number }>).detail.kowens);
+    addEventListener('mk-voucher-used', voucherUsed);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-voucher-used', voucherUsed));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => removeEventListener('mk-renamed', renamed));
     // In the HUD's corner, above its buttons; a map with its own picture (manifest ui.minimapPictures) drawn from it.
     const minimapPicture = this.map.tileset ? this.M.ui.minimapPictures?.[this.map.tileset] : undefined;
@@ -2409,6 +2414,11 @@ export class TownScene extends Phaser.Scene {
     }
     if (got.kowens) toast(`+${got.kowens.toLocaleString()} ${got.kowens === 1 ? 'Kowen' : 'Kowens'} from your mail`, 3000, 'good');
     window.dispatchEvent(new Event('mk-wallet')); // the HUD's Kowens, an open bag
+  }
+
+  private voucherUsed(kowens: number): void {
+    this.player.hitNumber(`+${kowens.toLocaleString()} Kowens`, true, KOWEN_GOLD);
+    this.feed?.mine([{ text: 'Gained ', colour: '#FFFFFF' }, { text: `${kowens.toLocaleString()} ${kowens === 1 ? 'Kowen' : 'Kowens'}`, colour: KOWEN_GOLD }]);
   }
 
   /** The class choice (for a quest's chooseClass objective, given by `giver`). */

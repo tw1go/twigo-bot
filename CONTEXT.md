@@ -392,11 +392,23 @@ that's ever shown; the threshold never is.
 _Avoid_: pity counter, progress bar
 
 **Kowens**:
-The server's money, shared with Discord; bought things in the sari-sari store, never traded in town.
+The server's money, shared with Discord; buys things in the sari-sari store. Never given or traded as such: the one way
+they pass between players is a **Kowen Voucher** traded (the old /give and the town's Give Kowens are gone).
 _Avoid_: credits, coins
 
+**Kowen Voucher**:
+A tradeable item worth a set number of Kowens (10, 25, 50 or 100), bought at the Bank's **Exchange** for Kusing and used
+from the bag for its Kowens. Never bound, never sold back; it can be locked like any item.
+_Avoid_: coupon, token, gift card
+
+**Exchange**:
+The Bank's tab where Kusing becomes Kowens (buying Kowen Vouchers at the buy rate) and Kowens become Kusing (selling
+from the wallet at the sell rate, lower). Its rates and vouchers live in the data (stats.json `exchange`).
+_Avoid_: market, shop
+
 **Kusing**:
-The money mobs drop in the Slums; spent on HP and MP Potions and traded between players.
+The money mobs drop in the Slums; spent on HP and MP Potions and traded between players, and turned into Kowens at the
+Bank's Exchange.
 _Avoid_: gold, coins
 
 **Combat bag**:
