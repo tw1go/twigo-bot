@@ -42,8 +42,8 @@ import { LABEL_DEPTH } from './depth';
 //   and breaking; whoever stood under one slides out beside it: the town's `boss-pull`), Cold Vents (breath-charge
 //   while the floor's red warning shows, fx-silong-safe-pocket on each safe tile round an ice block, then breath and
 //   fx-silong-vent blowing up out of the floor: one per 2 x 2 block of the floor's even grid, as Ice Slick lays its
-//   diamonds), Frost Sweep (its bands' red warnings creeping down the room, fx-silong-frost-roll over each band's tiles
-//   as it lands), Icicle Chase (fx-silong-icicle-fall into each circle, its frame 4 on the hit), Intake (fx-silong-
+//   diamonds), Frost Sweep (its bands' red warnings creeping down the room, the safe pockets outlined until the last band lands,
+//   fx-silong-frost-roll over each band's tiles as it lands), Icicle Chase (fx-silong-icicle-fall into each circle, its frame 4 on the hit), Intake (fx-silong-
 //   intake-whirl spiralling into the fan while it pulls, then fx-silong-fist-slam's ring on the slam), Belt Rush (rush),
 //   Brine Flood (flood, then fx-silong-brine on every flooded tile for its time), Call the Frost (call), its enrage (its
 //   -enraged sheets loaded then, the red eye lamps), and as it falls steam off the frost round you (`melt`, every
@@ -397,15 +397,16 @@ export class SilongView {
         // The floor's red warning is the telegraph's; a pale outline on each safe tile (the pockets round the ice
         // blocks) while it shows. (Mang Pido's moment keeps the breath's name.)
         this.hooks.radio('breath');
-        const pocket = this.art('fx-silong-safe-pocket');
-        for (const t of (d.pockets as [number, number][]) ?? []) {
-          if (pocket) this.keep(m.id, this.fx.play(pocket, at(t), { layer: 'ground', life: m.ms, fadeIn: 200, fadeOut: 300 }), 60);
-          else this.keep(m.id, this.fx.drawFx('ground', (g, tt) => { const p = at(t); g.clear().lineStyle(1, 0xbfe4ff, 0.8 * (0.6 + 0.4 * Math.sin(tt / 150))).strokePoints([new Phaser.Math.Vector2(p.x, p.y - 8), new Phaser.Math.Vector2(p.x + 16, p.y), new Phaser.Math.Vector2(p.x, p.y + 8), new Phaser.Math.Vector2(p.x - 16, p.y)], true); return tt < m.ms; }, m.ms), 60);
-        }
+        this.pockets(m.id, (d.pockets as [number, number][]) ?? [], m.ms);
         return;
       }
-      case 'frostSweep':
-        return; // (each band's own telegraph creeps down the room; the frost rolls over its tiles with its hit)
+      case 'frostSweep': {
+        // Each band's own telegraph creeps down the room (the frost rolls over its tiles with its hit); the first band
+        // carries the pockets (the same shelter as the vents'), outlined until the last band lands.
+        const of = Number(d.of ?? 1);
+        this.pockets(m.id, (d.pockets as [number, number][]) ?? [], m.ms + (of - 1) * Number(d.bandMs ?? 700));
+        return;
+      }
       case 'icicleChase': {
         // The icicle falls into the circle, its frame 4 on the hit.
         const art = this.art('fx-silong-icicle-fall');
@@ -660,6 +661,16 @@ export class SilongView {
     const list = this.timers.get(owner) ?? [];
     list.push(this.scene.time.delayedCall(Math.max(0, ms), fn));
     this.timers.set(owner, list.filter((t) => t.getProgress() < 1));
+  }
+
+  /** The pale outline on each safe tile (the pockets round the ice blocks: Cold Vents', Frost Sweep's) for `life` ms. */
+  private pockets(moveId: string, tiles: [number, number][], life: number): void {
+    const at = (t: [number, number]) => this.mobs.ground(t[0] + 0.5, t[1] + 0.5);
+    const pocket = this.art('fx-silong-safe-pocket');
+    for (const t of tiles) {
+      if (pocket) this.keep(moveId, this.fx.play(pocket, at(t), { layer: 'ground', life, fadeIn: 200, fadeOut: 300 }), 60);
+      else this.keep(moveId, this.fx.drawFx('ground', (g, tt) => { const p = at(t); g.clear().lineStyle(1, 0xbfe4ff, 0.8 * (0.6 + 0.4 * Math.sin(tt / 150))).strokePoints([new Phaser.Math.Vector2(p.x, p.y - 8), new Phaser.Math.Vector2(p.x + 16, p.y), new Phaser.Math.Vector2(p.x, p.y + 8), new Phaser.Math.Vector2(p.x - 16, p.y)], true); return tt < life; }, life), 60);
+    }
   }
 
   private keep(owner: string, h: FxHandle | null, max = 24): void {
