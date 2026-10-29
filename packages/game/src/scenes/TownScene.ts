@@ -2739,7 +2739,7 @@ export class TownScene extends Phaser.Scene {
         else chat.notice(`${name} isn't here right now.`); // (gone, or in another area: chat reaches every area)
       };
     }
-    const feed = new SystemFeed();
+    const feed = new SystemFeed(member?.nickname ?? null); // (this tab's kept lines are theirs)
     this.feed = feed;
     // A quest's rewards as it's completed: "Gained" lines, like loot.
     onAdventure((_s, change) => {
