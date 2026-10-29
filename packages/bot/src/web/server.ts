@@ -37,6 +37,7 @@ import { connectTownFeed, feed } from './town-feed.js';
 import { MAX_TICKETS, buyTickets, entries, lastDraw, nextDraw, pot, raidMoney, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { jailedUntil } from '../games/jail.js';
 import { bankAction, townBank } from './town-bank.js';
+import { buyVoucherFor, sellKowensFor, useVoucherFor } from './town-exchange.js';
 import { buyFromShop, setShopEvents, townShop } from './town-shop.js';
 import { type PlayerDeps, giveInTown, playerInfo, verdictInTown } from './town-player.js';
 import type { Town } from './town.js';
@@ -135,6 +136,7 @@ import { kvLoad, kvSave } from '../db/db.js';
 //   POST /town/jackpot  { tickets } buy jackpot tickets (from the game's page only; members)
 //   GET  /town/bank     wallet, vault and loans (members)
 //   POST /town/bank     { action: deposit|withdraw|borrow|repay, amount? } (from the game's page only; members)
+//   POST /town/exchange/buy-voucher { voucherId, amount } | /sell-kowens { kowens } | /use-voucher { voucherId, amount }: the Bank's exchange (web/town-exchange.ts; from the game's page only; members)
 //   GET  /town/shop     the rewards shop: what /redeem sells, as the viewer sees it (members)
 //   POST /town/shop     { id, quantity } redeem a reward, or buy HP/MP Potions (Kusing) or whetstones and Repair Kits (from the game's page only; members)
 //   GET  /town/player?id=  another player in town (by town id): /balance and /status for them (members)
@@ -606,6 +608,29 @@ export function startWebServer(client: Client): void {
           return send(res, 400, '{"error":"invalid tickets"}');
         }
         return send(res, 200, JSON.stringify(await buyFromTown(client, userId, count)));
+      }
+      // The Bank's exchange (web/town-exchange.ts): vouchers bought for Kusing, Kowens sold for Kusing, a voucher used for its Kowens.
+      if (req.method === 'POST' && (path === '/town/exchange/buy-voucher' || path === '/town/exchange/sell-kowens' || path === '/town/exchange/use-voucher')) {
+        if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
+        if (!fromGame(req)) return send(res, 403, '{"error":"forbidden"}');
+        const userId = sessionUser(req);
+        if (!userId) return send(res, 401, '{"error":"not logged in"}');
+        let body: { voucherId?: unknown; amount?: unknown; kowens?: unknown } | null = null;
+        try {
+          body = JSON.parse((await readBody(req)) || 'null');
+        } catch {
+          // invalid JSON → refused below
+        }
+        if (!body || typeof body !== 'object') return send(res, 400, '{"error":"invalid body"}');
+        if (!(await isMember(client, userId))) return send(res, 403, '{"error":"members of the server only"}');
+        const r = path === '/town/exchange/buy-voucher' ? buyVoucherFor(userId, body.voucherId, body.amount)
+          : path === '/town/exchange/sell-kowens' ? sellKowensFor(userId, body.kowens)
+          : useVoucherFor(userId, body.voucherId, body.amount);
+        if (r.ok) {
+          town?.items(userId); // the combat bag and Kusing
+          town?.wallet(userId); // the HUD's Kowens
+        }
+        return send(res, 200, JSON.stringify(r));
       }
       if (path === '/town/bank' && (req.method === 'GET' || req.method === 'POST')) {
         if (!loginEnabled()) return send(res, 404, '{"error":"login is off"}');
