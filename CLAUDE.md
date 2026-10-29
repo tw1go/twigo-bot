@@ -211,6 +211,9 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `palengkeIds` entry, his spot in `maps/palengke.json` `npcs` (273,100) by the kariton at (271,98) and his lines in
   `palengke-npc-dialogue.json` (written here); his shop is ui/shop.ts `GROCER` (the store's Healing, Smithing and Travel),
   opened from his dialog's Shop button or the cart (TownScene `grocerLabel`).
+  A click on an NPC and an entrance box together (TownScene `talkOver`): the NPC's when their sprite sorts above every such
+  box under the pointer (the cart's box sits just under Mang Berto), else the box's (Aling Conching's stall box still
+  sits over her: its own fix).
 - Ang Silong (20 Oct 2026): `classes/dungeons.json` `silong` (the art folder's silong.json as it is), `maps/silong-b1..b3.json`
   (built here: `scripts/build-silong.ts`), `items/items.json` `susi-ng-silong` / `practice-susi-ng-silong` / `ramon-note`,
   the manifest's `tiles.silong` (rim and cap borrowed from the Slums': no Silong art), `silong-*` props, `fx-silong-*`

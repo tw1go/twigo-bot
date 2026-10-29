@@ -3899,7 +3899,7 @@ export class TownScene extends Phaser.Scene {
         const wasHold = this.touchHoldTile !== null;
         this.touchHoldTile = null;
         if (wasHold) return; // hold ended: stop walking, no tap action
-        if (over.some((o) => this.entranceBoxes.has(o))) return; // (a dungeon entrance's own tap)
+        if (over.some((o) => this.entranceBoxes.has(o))) return this.talkOver(over); // (a dungeon entrance's own tap, or an NPC's over its box)
         // Quick tap: act on whatever is under the finger (no distance filter — time is the discriminator).
         const lootHit = this.loot?.pick(over);
         if (lootHit) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
@@ -3918,7 +3918,7 @@ export class TownScene extends Phaser.Scene {
       }
       // Mouse: the 8 px drag filter to distinguish a click from a pan (a press the scene never saw: a click).
       if (!this.isClick(p)) return wlog('dropped: a drag');
-      if (over.some((o) => this.entranceBoxes.has(o))) return; // (a dungeon entrance's own click, left or right)
+      if (over.some((o) => this.entranceBoxes.has(o))) return void (releasedLeft(p) && this.talkOver(over)); // (a dungeon entrance's own click, left or right, or an NPC's over its box)
       const lootHit = this.loot?.pick(over);
       if (lootHit && releasedLeft(p)) return this.goToLoot(lootHit.id, { col: lootHit.col, row: lootHit.row });
       const other = this.others.pick(over);
@@ -5373,6 +5373,15 @@ export class TownScene extends Phaser.Scene {
   /** A click or tap on a dungeon entrance that counts: on the canvas itself, a left or right click (players walk with the
    *  right button, so a right click on the hatch is the usual one) or a tap, not a drag to peek, not in a cutscene or
    *  knocked out. */
+  /** A click that landed on an entrance's box and on an NPC's sprite together: theirs when their sprite sorts above every
+   *  such box under the pointer (Mang Berto's cart box sits just under him), else the box's own handler takes it (Phaser
+   *  hands the event to the topmost; the scene then leaves it alone). */
+  private talkOver(over: Phaser.GameObjects.GameObject[]): void {
+    const npc = this.npcs?.pick(over);
+    const depth = npc && this.npcs instanceof PalengkeNpcs ? this.npcs.spriteDepth(npc) : null;
+    if (npc && depth != null && over.every((o) => !this.entranceBoxes.has(o) || (o as Phaser.GameObjects.Zone).depth < depth)) this.talkTo(npc);
+  }
+
   private entranceClick(p: Phaser.Input.Pointer): boolean {
     if (!onMap(p, this.game.canvas) || this.watching || this.knockedOut) return false;
     if (p.wasTouch) return this.touchHoldTile === null;
