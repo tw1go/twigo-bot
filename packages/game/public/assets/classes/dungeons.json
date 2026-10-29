@@ -1547,7 +1547,7 @@
      "bandMs": 700,
      "shape": "tiles",
      "atkMult": 4.0,
-     "rule": "the cold rolls from the machine's wall across the room in bands of 3 rows, each landing 0.7 s after the one before (the first 1.2 s after the warning); each band hits whoever stands in it as it lands. Ice blocks don't shield it and the pockets don't help: cross a band just after it has landed (its tiles are safe again then), or outrun it to the south wall and come back."
+     "rule": "the cold rolls from the machine's wall across the room in bands of 3 rows, each landing 0.7 s after the one before (the first 1.2 s after the warning); each band hits whoever stands in it as it lands. the pocket round each standing ice block (the 8 tiles beside it) is safe, like Cold Vents; otherwise cross a band just after it has landed, or outrun it."
     },
     {
      "id": "icicleChase",

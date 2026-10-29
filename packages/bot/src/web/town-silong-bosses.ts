@@ -25,7 +25,8 @@ import { inShape } from './town-warrens.js';
 //   place of the Freezer Breath: every floor tile of the Ice Plant vents, the only safe ground the 8 tiles round each
 //   standing ice block, its pockets; none standing: two blocks drop first), Belt Rush (both belts fast for a while, a
 //   line down one of them), Frost Sweep (bands of frost rolling from its wall across the room, each landing a moment
-//   after the one before: cross a band once it has landed, or outrun it), Icicle Chase (an icicle on where each player
+//   after the one before; the pockets round the standing ice blocks are safe, as from the vents: else cross a band once
+//   it has landed, or outrun it), Icicle Chase (an icicle on where each player
 //   stands, then the next on where they stand as it lands, three each: keep walking), Intake (from 90%: its fan
 //   reversed draws everyone a tile toward it every half second, a `boss-pull` each, unless an ice block is on the line
 //   between them and the fan, then the ice fist slams the floor round the fan), Brine Flood (from 70%: every Ice Plant floor tile but the pallets flooded for 6 s; its Chill
@@ -327,6 +328,17 @@ export class FloorBosses {
 
   /** Every tile of a boss's room that can be stood on now (not blocked: the machine's body and standing ice blocks
    *  are), belts and pallets included. */
+  /** The shelter from the machine's cold (Cold Vents, Frost Sweep): the 8 tiles round each ice block standing now, inside
+   *  the room and not blocked, as a key set and a tile list (the move's data, for the page's outlines). */
+  private pockets(b: Boss): { pocket: Set<string>; pockets: Tile[] } {
+    const pocket = new Set<string>();
+    for (const k of this.iceBlocks.keys()) {
+      const [c, r] = k.split(',').map(Number);
+      for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if ((dc || dr) && inRect(b.room.rect, c + dc, r + dr) && !this.host.map.blocked[r + dr]?.[c + dc]) pocket.add(key([c + dc, r + dr]));
+    }
+    return { pocket, pockets: [...pocket].map((k) => k.split(',').map(Number) as Tile) };
+  }
+
   private standable(b: Boss): Tile[] {
     const [c0, r0, c1, r1] = b.room.rect;
     const out: Tile[] = [];
@@ -531,12 +543,7 @@ export class FloorBosses {
         }
         // The pockets: the 8 tiles round each ice block standing now (what the warning shows is what's safe, a block
         // that breaks meanwhile too); everything else in the room that can be stood on vents, belts and pallets too.
-        const pocket = new Set<string>();
-        for (const k of this.iceBlocks.keys()) {
-          const [c, r] = k.split(',').map(Number);
-          for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if ((dc || dr) && inRect(b.room.rect, c + dc, r + dr) && !this.host.map.blocked[r + dr]?.[c + dc]) pocket.add(key([c + dc, r + dr]));
-        }
-        const pockets = [...pocket].map((k) => k.split(',').map(Number) as Tile);
+        const { pocket, pockets } = this.pockets(b);
         const tiles = this.standable(b).filter((t) => !pocket.has(key(t)) && !this.iceBlocks.has(key(t)));
         const vented = new Set(tiles.map(key));
         const chill = m.chillStacks ?? 2;
@@ -551,13 +558,16 @@ export class FloorBosses {
       case 'frostSweep': {
         // The cold rolls from the machine's wall (the room's first rows) across the room in bands of `bandRows` rows
         // (the last takes what's left), each its own warning landing `bandMs` after the one before; every standable
-        // tile of its rows (belts too; ice blocks and the body are out). Ice blocks don't shield it: cross a band once
-        // it has landed, or outrun it. It holds until the last band lands.
+        // tile of its rows (belts too; ice blocks and the body are out) but the pockets round the ice blocks standing
+        // as it starts (the same shelter as Cold Vents', a block that breaks meanwhile too; the first band's data
+        // carries them for the page to outline through the whole sweep). Else cross a band once it has landed, or
+        // outrun it. It holds until the last band lands.
         const [, r0, , r1] = b.room.rect;
         const rows = Math.max(1, m.bandRows ?? 3);
         const bandMs = m.bandMs ?? 700;
         const n = Math.max(1, Math.floor((r1 - r0 + 1) / rows));
-        const floor = this.standable(b).filter((t) => !this.iceBlocks.has(key(t)));
+        const { pocket, pockets } = this.pockets(b);
+        const floor = this.standable(b).filter((t) => !this.iceBlocks.has(key(t)) && !pocket.has(key(t)));
         const bands = Array.from({ length: n }, (_, k) => floor.filter(([, r]) => r >= r0 + k * rows && (k === n - 1 || r < r0 + (k + 1) * rows)));
         const base = `${b.mob}:${++this.seq}`;
         const until = now + ms + (n - 1) * bandMs;
@@ -567,7 +577,7 @@ export class FloorBosses {
           if (!band.length) return;
           const set = new Set(band.map(key));
           const k2 = `${base}:${k}`;
-          events.push({ t: 'boss-move', id: b.mob, move: m.id, key: k2, ms: ms + k * bandMs, shape: { kind: 'tiles', tiles: band }, data: { ...(k === 0 ? { anim: 'rush' } : {}), band: k, of: n } });
+          events.push({ t: 'boss-move', id: b.mob, move: m.id, key: k2, ms: ms + k * bandMs, shape: { kind: 'tiles', tiles: band }, data: { ...(k === 0 ? { anim: 'rush', pockets, bandMs } : {}), band: k, of: n } });
           this.pending.push({ boss: b.mob, at: now + ms + k * bandMs, land: (t, players) => this.landHits(b.mob, m.id, k2, players, (p) => set.has(key(p)), mult, t, {}, { band: k, of: n }) });
         });
         return events;

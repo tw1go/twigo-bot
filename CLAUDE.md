@@ -1212,7 +1212,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Cold Vents (28 Oct 2026, the owner, in place of the Freezer Breath, the rework in dungeons.json `lastBoss.reworkNote`:
   every standable tile of the Ice Plant vents but the pocket round each standing ice block, `data.pockets`; its hit and
   `data.chill` 2 on whoever stands on a vented tile, `data.vented`; none standing: a 2-block drop first), Frost Sweep
-  (bands of 3 rows from the north wall, a boss-move each keyed `:k`, landing 0.7 s apart), Icicle Chase (a radius-1
+  (bands of 3 rows from the north wall, a boss-move each keyed `:k`, landing 0.7 s apart; the pockets round the standing ice
+  blocks safe, in the first band's `data.pockets` and outlined through the sweep: 29 Oct 2026, the owner), Icicle Chase (a radius-1
   circle on each player's tile, then the next on where they stand as it lands, 3 each, keyed `:id:k`), Intake (from
   90%: 5 pulls a tile toward the fan every 0.5 s unless an ice block is on the line, `shielded`, then the Fist Slam on
   radius 3; the pulls and the ice blocks' shove are `boss-pull`, applied to the players' tiles in web/town.ts where

@@ -413,26 +413,46 @@ test("Frost Sweep: bands of 3 rows from the machine's wall covering the room bet
   let standable = -1; // (the room's standable tiles as the sweep starts: the blocks standing then are out of it)
   const count = () => { let n = 0; for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (open_(c, r)) n++; return n; };
   let moved = false;
+  // An ice block standing through the sweep, in band 1's rows on the room's east side (clear of P's and Q's spots), and R
+  // beside it in its pocket: the shelter, as from Cold Vents.
+  const brow = r0 + 4;
+  let block: [number, number] | null = null;
+  for (let c = c1 - 2; c > c0; c--) if (open_(c, brow) && open_(c + 1, brow)) { block = [c, brow]; break; }
+  assert.ok(block, 'an open pair of tiles for the block and R');
+  f.bosses.iceBlocks.set(`${block![0]},${block![1]}`, Number.MAX_SAFE_INTEGER);
+  f.map.blocked[brow][block![0]] = 1;
+  const R: [number, number] = [block![0] + 1, brow];
+  let pocketOpen = -1; // (the pockets as the sweep starts, the open ones: out of the bands)
   const ev = playMoving(run, 'b3', 6250, 22_000, (_t, sofar) => {
-    if (standable < 0 && sofar.some((e) => e.t === 'boss-move' && e.move === 'frostSweep')) standable = count();
+    const first = of(sofar, 'boss-move').find((m) => m.move === 'frostSweep');
+    if (standable < 0 && first) {
+      standable = count();
+      pocketOpen = ((first.data?.pockets as [number, number][] | undefined) ?? []).filter(([c, r]) => open_(c, r)).length;
+    }
     // P steps up into band 1 right after band 1 has landed.
     const landed = of(sofar, 'boss-hit').find((h) => h.move === 'frostSweep' && h.data?.band === 1);
     if (landed && !moved) {
       moved = true;
       prow = r0 + 4;
     }
-    return { P: spot(prow), Q: spot(qrow) };
+    return { P: spot(prow), Q: spot(qrow), R };
   });
   const bands = of(ev, 'boss-move').filter((m) => m.move === 'frostSweep');
   assert.ok(bands.length >= 9, `${bands.length} bands`);
   assert.equal(bands[0].data?.anim, 'rush');
   assert.ok(bands.every((m, k) => m.data?.band === k && m.data?.of === bands.length && m.key.endsWith(`:${k}`)));
   for (let k = 1; k < bands.length; k++) assert.equal(bands[k].ms - bands[k - 1].ms, 700);
-  // Between them every standable tile of the room once, none shared.
+  // Between them every standable tile of the room once but the pockets, none shared.
   const seen = new Map<string, number>();
   for (const m of bands) for (const t of (m.shape as { tiles: [number, number][] }).tiles) seen.set(t.join(), (seen.get(t.join()) ?? 0) + 1);
   assert.ok([...seen.values()].every((n) => n === 1), 'none shared');
-  assert.equal(seen.size, standable, 'the whole room');
+  assert.ok(pocketOpen > 0, 'pockets as it started');
+  assert.equal(seen.size + pocketOpen, standable, 'the whole room but the pockets');
+  // R's tile beside the block: in the first band's pockets, in no band, and R is never hit.
+  const pockets = (bands[0].data?.pockets as [number, number][]).map((t) => t.join());
+  assert.ok(pockets.includes(R.join()), 'the pocket tile is in the first band\'s data');
+  assert.ok(!seen.has(R.join()), 'in no band');
+  assert.ok(bands.slice(1).every((m) => m.data?.pockets === undefined), 'the pockets ride on the first band only');
   const rowsOf = (m: (typeof bands)[number]) => new Set((m.shape as { tiles: [number, number][] }).tiles.map((t) => t[1]));
   assert.ok([...rowsOf(bands[0])].every((r) => r < r0 + 3) && [...rowsOf(bands[bands.length - 1])].every((r) => r >= r0 + 3 * (bands.length - 1)), 'from the north wall down, the last taking what is left');
   // They land in order, 0.7 s apart.
@@ -442,6 +462,7 @@ test("Frost Sweep: bands of 3 rows from the machine's wall covering the room bet
   assert.ok(hits.find((h) => h.data?.band === 0)!.hits.some((h) => h.id === 'Q'), 'Q in the first band, hit once');
   assert.equal(hits.filter((h) => h.hits.some((x) => x.id === 'Q')).length, 1);
   assert.ok(hits.filter((h) => h.hits.some((x) => x.id === 'P')).length <= 1, 'P stepped behind band 1 after it landed: a hit at most');
+  assert.ok(hits.every((h) => !h.hits.some((x) => x.id === 'R')), 'R in the pocket beside the block: never hit');
   assert.ok(moved);
 });
 
