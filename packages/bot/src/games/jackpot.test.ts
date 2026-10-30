@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DRAW_CRON, drawMissed, dueDraw, nextDraw } from './jackpot.js';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+// jackpot.ts reads the config, so a made-up one (never the real .env or data/; on CI there is none), as gamble.test.ts.
+const dir = mkdtempSync(join(tmpdir(), 'jackpot-test-'));
+process.env.DATA_DIR = dir;
+process.env.ENV_FILE = join(dir, 'none.env');
+for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMIN_CHANNEL_ID', 'MATCH_CHANNEL_ID', 'MINE_WARS_CHANNEL_ID',
+  'MINE_WARS_ROLE_ID', 'GREETINGS_CHANNEL_ID', 'BANTER_CHANNEL_ID', 'BOOST_CHANNEL_ID', 'EASTER_EGG_CHANNEL_ID', 'EASTER_EGG_MESSAGE_ID',
+  'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
+process.env.TIMEZONE = 'Asia/Manila';
+
+const { DRAW_CRON, drawMissed, dueDraw, nextDraw } = await import('./jackpot.js');
 
 // The jackpot's clock (games/jackpot.ts): draws at 10:00 and 22:00 Manila; the draw due before a moment, and whether
 // it was missed (later than the last run, and the scheduled job's two minutes gone by).
