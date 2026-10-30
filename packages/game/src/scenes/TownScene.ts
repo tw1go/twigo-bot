@@ -163,7 +163,7 @@ import { mountSkillPreview } from '../ui/skill-preview';
 import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
 import { NPC_PLACES } from '../world/npcs';
 import { pick, tileRandom } from '../world/rng';
-import { lagContext, lagSpan, lagEvent, lagReport } from '../net/lag';
+import { lagContext, lagError, lagSpan, lagEvent, lagReport } from '../net/lag';
 
 /** The walking log (`?debug=walk`, or dev): each step and turn sent with the page's step bucket after it, each snap with
  *  its reason, each right press and release on the canvas, and each click dropped on the way with why. */
@@ -293,6 +293,8 @@ const SLIDE_TILES = 2;
 const SMOOTH_FRAMES = 20;
 const SMOOTH_MS = 40;
 const SETTLE_MAX_MS = 15_000;
+/** The wall-clock watchdog's extra wait past SETTLE_MAX_MS before it lifts the cover itself. */
+const COVER_WATCHDOG_MS = 5000;
 /** …and waits this long at most for the server's first word (a slow or unreachable server: on without it). */
 const SERVER_WAIT_MS = 6000;
 /** What lands on a mob (audio/sfx skill-stun / -taunt / -debuff-1…3): a stun, a taunt, any other debuff; one a crowd. */
@@ -585,6 +587,8 @@ export class TownScene extends Phaser.Scene {
   /** Settling: since when (scene ms), frames in a row that ran smoothly, and the server's first word (welcome; on a
    *  battle map its mobs) or no server to wait for. */
   private settleFrom = 0;
+  /** When the loading cover went up (performance.now), for the lag report's "lifted after". */
+  private coverAt = 0;
   private smoothFrames = 0;
   private gotWelcome = false;
   /** This connection's welcome has come (each reconnect waits for its own): till then nothing about where you are or
@@ -615,11 +619,17 @@ export class TownScene extends Phaser.Scene {
     const server = !this.link || this.linkDown || (this.gotWelcome && (!this.battleMap || this.gotMobs)) || time - this.settleFrom > SERVER_WAIT_MS;
     const ready = !streaming && server && !settling() && this.smoothFrames >= SMOOTH_FRAMES;
     this.cover?.waiting([...(streaming ? ['world'] : []), ...(server ? [] : ['server']), ...settlingWhat(), ...(this.smoothFrames < SMOOTH_FRAMES ? ['frames'] : [])]);
-    if (ready || time - this.settleFrom > SETTLE_MAX_MS) this.reveal();
+    if (ready) this.reveal();
+    else if (time - this.settleFrom > SETTLE_MAX_MS) {
+      lagEvent(`the loading cover lifted at its ${SETTLE_MAX_MS / 1000} s cap, still waiting for: ${this.cover?.waitingFor() || '?'}`);
+      this.reveal();
+    }
   }
 
   /** The cover lifts: the title card and the opening zoom, then whatever waited. */
   private reveal(): void {
+    if (this.revealed) return;
+    lagEvent(`the loading cover lifted after ${((performance.now() - this.coverAt) / 1000).toFixed(1)} s`);
     this.revealed = true;
     this.link?.send({ t: 'ready' }); // (Arrival safety: mobs leave you be until now)
     this.cover?.hide();
@@ -988,6 +998,20 @@ export class TownScene extends Phaser.Scene {
     // the title card and the opening zoom (`reveal`).
     this.coverUp();
     this.settleFrom = this.time.now;
+    this.coverAt = performance.now();
+    // The cover never stays for good: lifted by the wall clock too, whatever the game's frames are doing (a frame's
+    // error, a stalled loop); the report says so.
+    const watchdog = setTimeout(() => {
+      if (this.revealed || !this.sys.isActive()) return;
+      lagEvent(`the loading cover lifted by its watchdog after ${(SETTLE_MAX_MS + COVER_WATCHDOG_MS) / 1000} s (the game's frames weren't running it), waiting for: ${this.cover?.waitingFor() || '?'}`);
+      try {
+        this.reveal();
+      } catch (e) {
+        lagError('reveal', e);
+        this.cover?.hide();
+      }
+    }, SETTLE_MAX_MS + COVER_WATCHDOG_MS);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => clearTimeout(watchdog));
     this.afterReveal(1800, () => this.announceRewards()); // once the arrival has settled
     this.afterReveal(2200, tellTicketBack); // (out of a Warrens run that ended before a boss fell)
     this.afterReveal(2200, tellClosed); // (sent back from a map that isn't open yet)
@@ -3100,6 +3124,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'mobs') {
+        if (!this.gotMobs) lagEvent(`server: ${m.mobs.length} mobs`);
         this.gotMobs = true;
         this.mobs?.applySnapshot(m.mobs);
         this.golemTimer(m.riseIn, m.golem ?? null);
@@ -3444,6 +3469,7 @@ export class TownScene extends Phaser.Scene {
         return;
       }
       if (m.t === 'welcome') {
+        lagEvent('server: welcome');
         myId = m.you;
         this.myId = m.you;
         setServerNow(m.now); // (the server's clock: the Kapre's tree)
