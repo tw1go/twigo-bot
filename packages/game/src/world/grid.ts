@@ -317,25 +317,25 @@ export class WalkGrid {
   }
 
   /** The reachable tile closest to `target` (for clicks on blocked tiles), searching outward ring by ring. */
-  nearestReachable(from: Tile, target: Tile): Tile | null {
+  nearestReachable(from: Tile, target: Tile, maxRadius = Math.max(this.cols, this.rows)): Tile | null {
     const reach = this.reachableFrom(from);
-    for (let radius = 0; radius < Math.max(this.cols, this.rows); radius++) {
-      let best: Tile | null = null;
-      let bestD = Infinity;
-      for (let dc = -radius; dc <= radius; dc++) {
-        for (let dr = -radius; dr <= radius; dr++) {
-          if (Math.max(Math.abs(dc), Math.abs(dr)) !== radius) continue;
-          const c = target.col + dc;
-          const r = target.row + dr;
-          if (!this.inBounds(c, r) || !reach[r * this.cols + c]) continue;
-          const d = Math.hypot(dc, dr);
-          if (d < bestD) {
-            best = { col: c, row: r };
-            bestD = d;
-          }
-        }
+    const cols = this.cols;
+    // Ring by ring round the target, each ring's edge only (30 Oct 2026: it looped over each ring's whole square, so a
+    // target with nothing reachable near it cost millions of steps on a big map; the quest trail asked that every step).
+    for (let radius = 0; radius <= maxRadius; radius++) {
+      const found: { tile: Tile | null; d: number } = { tile: null, d: Infinity };
+      const look = (c: number, r: number) => {
+        if (!this.inBounds(c, r) || !reach[r * cols + c]) return;
+        const d = Math.hypot(c - target.col, r - target.row);
+        if (d < found.d) found.tile = { col: c, row: r }, found.d = d;
+      };
+      if (radius === 0) look(target.col, target.row);
+      else {
+        for (let dc = -radius; dc <= radius; dc++) look(target.col + dc, target.row - radius), look(target.col + dc, target.row + radius);
+        for (let dr = 1 - radius; dr < radius; dr++) look(target.col - radius, target.row + dr), look(target.col + radius, target.row + dr);
       }
-      if (best) return best;
+      if (found.tile) return found.tile;
+      if (target.col - radius < 0 && target.row - radius < 0 && target.col + radius >= cols && target.row + radius >= this.rows) return null; // (past the map on every side)
     }
     return null;
   }

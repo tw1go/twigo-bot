@@ -1926,7 +1926,11 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). Quest guidance since 30 Oct 2026 (the owner): the trail leads to any active quest's current
   objective on every outdoor map (ui/quest-marks.ts `trailTarget` / `npcSpot` / `currentObjectives`, shared with the marks;
   TownScene `trailGoal`: an NPC within 2, a zone, the nearest mini boss spot, a field boss, a visit; another map through
-  this map's gate, `MAP_LINKS` BFS; a far goal pathed 60 tiles at a time; never in a run; Settings "Show quest trails",
+  this map's gate, `MAP_LINKS` BFS; a far goal pathed 60 tiles at a time, a reachable tile looked for within `TRAIL_NEAR`
+  12 of the aim and the search capped at `TRAIL_SEARCH_CAP` 6,000, only once the welcome has placed you and from a walkable
+  tile, timed as `quest trail` in the lag report (30 Oct 2026: the grid's `nearestReachable` scanned whole squares a ring,
+  millions of steps for an aim with nothing reachable near it, every step after a teleport; it walks each ring's edge now, with
+  a radius cap); never in a run; Settings "Show quest trails",
   the same `mk_guide_trail`); the markers are red for main quests (manifest `quests.markerColours`, TownScene
   `markerColours`; `quests.colours` stays for text; the main guide sheets the art folder's red ones); the world picture
   draws the Old Market north of the Slums (ui/map, 534 × 279); a hunt icon (the quest pin, world/mobs.ts `refreshHunted`
