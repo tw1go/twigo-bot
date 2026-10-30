@@ -454,11 +454,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   asks GET /auth/wait every 2 s; the code (only for the address the login finished from) goes to POST /auth/exchange for
   the cookie (bot `web/auth.ts`, tested). Android's home screen app uses the website's redirect. First-load numbers:
   `packages/game/APPS-NOTES.md`.
-  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): the game's
-  production build staged into `web/play/` (`scripts/stage.mjs`: the page and assets/, no front page or service worker)
-  in one window; the app's version = the game's (v0.1.N → 0.1.N). Every server call goes through `net/endpoints.ts`
-  (`api()`, `serverUrl`, `townSocket`): relative on the website, https://twigo.dev in the app with its token
-  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<version>, so write
+  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): since
+  1.0.0 (30 Oct 2026) a window on the live game: it bundles only its start page (`web/index.html` + the logo staged by
+  `scripts/stage.mjs`), which opens https://twigo.dev/play/ (or "Can't reach Mikazuki" with Try again) and the first time
+  hands the old bundled page's `mk_app_token` and `mk_window` on in the #hash (endpoints.ts `takeAppHandoff`, first
+  thing in main.ts); `capabilities/default.json` `remote` https://twigo.dev/* only, so Tauri's bridge works on that page
+  (`isDesktopApp`); a game change is the website's version.json reload (ui/version.ts, now in the app too), never a new
+  app. The app's version is its own (tauri.conf.json `version`, Cargo.toml and package.json the same, bumped by hand when
+  packages/desktop changes; `shellVersion()` asks the app). Every server call goes through `net/endpoints.ts`
+  (`api()`, `serverUrl`, `townSocket`): relative on the website and on the app's live page, by address only from a page
+  the server didn't serve (an old app's bundled one); in the app with its token
+  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<the app's version>, so write
   new server fetches with `api()`, never a bare fetch('/…'). `net/desktop.ts` (loaded only in the app: its own chunk):
   login in the system browser → mikazuki://auth?code=… (deep-link + single-instance plugins) → POST /auth/exchange;
   the window (Settings → Display → Window, the app only: `ui/window-settings.ts` + `net/window-mode.ts`, both in the
@@ -471,10 +477,24 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   → it updates itself, asked on start and every minute after until it has told the player (net/desktop.ts
   CHECK_EVERY_MS: an app left open hears of a new version as soon as it's published, about 10 minutes after a deploy) (Tauri's updater reads its `platforms`, signed with the owner's `~/.tauri/mikazuki-updater.key`
   and bound to the version; `npm run desktop:publish -- <ssh-target>` packs, signs and uploads the workflow's artifacts
-  from ~/Downloads): "A new version of Mikazuki is ready" → Update now (download, install, restart; the notice over the
-  title screen), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  from ~/Downloads): "A new version of Mikazuki is ready" → Update now (the app's `install_update` command, lib.rs: the download with `mk-update` progress events, then on Windows the
+  game's window destroyed and waited for before the install, since the updater exits the process from inside the install and an
+  exit with the webview alive could hang the old process, which kept the single-instance mutex and swallowed every launch after:
+  30 Oct 2026; the quiet NSIS installer (`installMode` quiet, per user: never an admin prompt) reopens the app on its `/R`; a Mac
+  swapped and restarted by `app.restart()`; `UPDATING` keeps the app alive while its window is gone; the single-instance plugin's
+  `semver` feature names the mutex by version, so a new version never hands its start to an old copy), Download if that fails.
+  The update in one store (net/update-state.ts, tested: idle | checking | available | downloading | installing | failed;
+  `titleButton`, `within`, `newer`, `progressOf`): BootScene's title screen in the app asks net/desktop.ts `checkUpdate` before
+  Start ("Checking for updates…" disabled, CHECK_WAIT_MS 5 s at most, unsure or slow = Start as ever and the server's 426 still
+  catches a refused version), then "Update" (only the button or Enter, never a click anywhere) while a newer version is known or its
+  install failed, "Updating…" disabled while it runs; `startUpdate` shows the update screen (CONTEXT.md Update screen;
+  ui/update-screen.ts: the logo, "Updating Mikazuki", "v… → v…", the bar with % and MB, "Installing…", "Mikazuki will close and open
+  again by itself"; failed: "The update didn't work", Try again and Download); in the game (net/pwa.ts `inGame`) only the notice
+  ("… It installs the next time you open Mikazuki.", Update now = startUpdate). Dev: `?update=fake` (a fake v9.9.9 downloaded
+  over 3 s, then a reload), `?update=fail` (its download failing half way), on the website or `desktop:dev`; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
   Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or the Desktop app
-  workflow (`.github/workflows/desktop.yml`: after every successful Deploy, on the deployed commit, and by hand; both
+  workflow (`.github/workflows/desktop.yml`: after a successful Deploy only when the app's version is newer than
+  latest.json's (its `decide` job), on the deployed commit, and by hand always; both
   Macs and Windows as artifacts, then its publish job signs with the `TAURI_UPDATER_KEY` secret and uploads to the
   server with the Deploy secrets: `publish.mjs --from=artifacts`; repository variable `DESKTOP_PUBLISH=off` stops it).
   `npm run desktop:dev`: the window on the dev town.

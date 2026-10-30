@@ -4,7 +4,9 @@ dist/
 data/
 .DS_Store
 CLAUDE.local.md
-# The desktop app's build output (packages/desktop): the staged game, Rust's target and Tauri's generated schemas.
-packages/desktop/web/
+# The desktop app's build output (packages/desktop): what stage.mjs copies beside its start page (web/index.html, kept),
+# Rust's target and Tauri's generated schemas.
+packages/desktop/web/*
+!packages/desktop/web/index.html
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/

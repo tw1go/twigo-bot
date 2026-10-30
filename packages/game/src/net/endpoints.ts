@@ -1,17 +1,43 @@
 import { isDesktopApp } from './platform';
 
 // 🌐 Where the server is. The website (and the home screen app) is served by it, so every call stays relative, exactly
-// as before: fetch('/town/…') with the browser's cookie. The desktop app's page is its own (tauri://localhost): it calls
-// https://twigo.dev, signed in with its token (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and
-// saying which app it is (X-Mikazuki-Client: desktop/<version>, for the server's oldest-version check). In dev (npm run
-// desktop:dev) the desktop app talks to the Vite dev server's dev town like the page does, never the live server.
-
-declare const __BUILD__: { version: string };
+// as before: fetch('/town/…') with the browser's cookie. Since its 1.0.0 the desktop app's page is the live game at
+// https://twigo.dev/play/ too (its start page opens it), so its calls are relative as well, signed in with its token
+// (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`; no cookie: the login came back through the system
+// browser) and saying which app it is (X-Mikazuki-Client: desktop/<the app's own version>, for the server's oldest-version
+// check). A page the server didn't serve (an app before 1.0.0 had the game inside it: tauri://localhost) calls
+// https://twigo.dev by address. In dev (npm run desktop:dev) the desktop app talks to the Vite dev server's dev town like
+// the page does, never the live server.
 
 const SERVER = 'https://twigo.dev';
-/** The desktop app outside dev: it talks to the live server by its address. */
-const remote = (): boolean => isDesktopApp() && !import.meta.env.DEV;
+/** The desktop app outside dev: its calls carry its token and its version. */
+const inApp = (): boolean => isDesktopApp() && !import.meta.env.DEV;
+/** A page the server didn't serve (not http or https: an old app's bundled page), which calls the server by address. */
+const remote = (): boolean => inApp() && !/^https?:$/.test(location.protocol);
 const TOKEN_KEY = 'mk_app_token';
+/** What the bundled page kept that the live page takes over once (the start page hands them on in the #hash). */
+const HANDOFF = [TOKEN_KEY, 'mk_window'];
+
+/** The app's own version (tauri.conf.json's, "1.0.0"; not the game's v0.1.N), asked of the app once. 'dev' outside it. */
+let shell: Promise<string> | null = null;
+export const shellVersion = (): Promise<string> =>
+  (shell ??= isDesktopApp() ? import('@tauri-apps/api/app').then((m) => m.getVersion()).catch(() => 'dev') : Promise.resolve('dev'));
+
+/** The live page opened by the app's start page: the old bundled page's login and window setting, handed on once in the
+ *  #hash (mk-handoff, base64 JSON), kept unless this page has its own already, and the #hash tidied away. Called first
+ *  thing (main.ts), before anything reads them. */
+export function takeAppHandoff(): void {
+  if (!isDesktopApp()) return;
+  const m = /(?:^#|&)mk-handoff=([^&]+)/.exec(location.hash);
+  if (!m) return;
+  try {
+    const old = JSON.parse(atob(decodeURIComponent(m[1]))) as Record<string, unknown>;
+    for (const key of HANDOFF) if (typeof old[key] === 'string' && localStorage.getItem(key) === null) localStorage.setItem(key, old[key]);
+  } catch {
+    /* (nothing usable: they log in again) */
+  }
+  history.replaceState(null, '', location.pathname + location.search);
+}
 
 /** The desktop app's session token (kept in the app's own storage), or null. */
 export function appToken(): string | null {
@@ -34,28 +60,30 @@ export function setAppToken(token: string | null): void {
 /** A server path ('/town/shop') as the page should ask for it. */
 export const serverUrl = (path: string): string => (remote() ? `${SERVER}${path}` : path);
 
-/** fetch() for the server's routes: on the website exactly fetch(path, init); in the desktop app, at twigo.dev with its
- *  token and version (no cookies). */
-export function api(path: string, init: RequestInit = {}): Promise<Response> {
-  if (!remote()) return fetch(path, init);
+/** fetch() for the server's routes: on the website exactly fetch(path, init); in the desktop app with its token and the
+ *  app's version (no cookies). */
+export async function api(path: string, init: RequestInit = {}): Promise<Response> {
+  if (!inApp()) return fetch(path, init);
   const headers = new Headers(init.headers);
   const token = appToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  headers.set('X-Mikazuki-Client', `desktop/${__BUILD__.version}`);
-  return fetch(`${SERVER}${path}`, { ...init, headers, credentials: 'omit' });
+  headers.set('X-Mikazuki-Client', `desktop/${await shellVersion()}`);
+  return fetch(serverUrl(path), { ...init, headers, credentials: 'omit' });
 }
 
-/** The town's WebSocket: its URL (from the page's address on the website; wss://twigo.dev/ws in the desktop app) and the
+/** The town's WebSocket: its URL (from the page's address; wss://twigo.dev/ws from an old app's bundled page) and the
  *  subprotocols carrying the desktop app's token (none on the website). */
 export function townSocket(query: URLSearchParams): { url: string; protocols?: string[] } {
-  if (!remote()) {
-    const url = new URL(location.href);
-    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.pathname = '/ws';
-    url.search = query.toString();
-    url.hash = '';
-    return { url: url.toString() };
+  let url: string;
+  if (remote()) url = `wss://twigo.dev/ws?${query}`;
+  else {
+    const here = new URL(location.href);
+    here.protocol = here.protocol === 'https:' ? 'wss:' : 'ws:';
+    here.pathname = '/ws';
+    here.search = query.toString();
+    here.hash = '';
+    url = here.toString();
   }
-  const token = appToken();
-  return { url: `wss://twigo.dev/ws?${query}`, protocols: token ? ['mikazuki', `mk-token.${token}`] : undefined };
+  const token = inApp() ? appToken() : null;
+  return token ? { url, protocols: ['mikazuki', `mk-token.${token}`] } : { url };
 }

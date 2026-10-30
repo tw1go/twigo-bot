@@ -11,8 +11,10 @@ import { onPackMissing } from './assets/packs';
 import { forgetOldFrontRedirect, startHomeScreenApp, tidyCaches } from './net/pwa';
 import { startLag } from './net/lag';
 import { isDesktopApp } from './net/platform';
+import { takeAppHandoff } from './net/endpoints';
 import { setTextSize, textSize } from './ui/text-size';
 
+takeAppHandoff(); // (the desktop app's live page, opened by its start page: the old page's login and window setting, once)
 setTextSize(textSize(), false); // Settings → Text size, before anything is drawn
 
 // The town, open to every member of the Mikazuki server (the bot checks; ?preview from before is simply ignored).

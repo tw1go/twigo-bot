@@ -14,8 +14,15 @@ phone after the first load.
 _Avoid_: phone app, mobile app (it's not from an app store)
 
 **Desktop app**:
-The Windows or Mac download with the game and its art inside, signed in through the system browser.
+The Windows or Mac download that opens the live game in its own window, signed in through the system browser. It has
+its own version, which only changes when the app itself does; a game change reaches it like the website, as a reload.
 _Avoid_: installed app (the home screen app is installed too), client
+
+**Update screen**:
+The desktop app's full screen while it installs a new version of itself: the versions, the download's progress, then
+"Mikazuki will close and open again by itself", or Try again and Download if it fails. A newer version found on the title
+screen locks Start into Update; found in the game, it is only a notice and never restarts anything.
+_Avoid_: installer (the Windows installer runs out of sight), patch (a game change is a reload, not an update of the app)
 
 ## Places
 

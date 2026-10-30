@@ -1,5 +1,6 @@
 // 📱 Which way the game is being played (CONTEXT.md "Ways to play"): the website (a browser tab), the home screen app
-// (the website installed on a phone: a PWA) or the desktop app (Tauri, the game and its art bundled inside).
+// (the website installed on a phone: a PWA) or the desktop app (Tauri: a window on the live game at twigo.dev/play since
+// its 1.0.0; Tauri's bridge is on that page too, capabilities/default.json's remote twigo.dev).
 
 /** Inside the desktop app (Tauri puts its bridge on the window). */
 export const isDesktopApp = (): boolean => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;

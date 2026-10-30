@@ -1,6 +1,8 @@
 # The desktop app's installers (packages/desktop): Windows (msi, exe) and Mac (dmg, Apple silicon and Intel), unsigned.
-# Runs after every successful Deploy (so the app is never ahead of the site) and by hand (Actions → Desktop app → Run
-# workflow). The files come out as the run's artifacts, and the publish job then signs the Windows setup .exe and the
+# Since 1.0.0 the app is a window on the live game (twigo.dev/play), with its own version (tauri.conf.json `version`,
+# bumped by hand when the app itself changes). So after a successful Deploy it builds only when that version is newer than
+# the published one (twigo.dev/downloads/latest.json: the decide job); a game change needs no new app. By hand (Actions →
+# Desktop app → Run workflow) it always builds. The files come out as the run's artifacts, and the publish job then signs the Windows setup .exe and the
 # Mac app (packed as the update) with the updater's key, writes latest.json and uploads them to
 # /opt/twigo-bot/web/downloads on the server (packages/desktop/scripts/publish.mjs, the same as `npm run
 # desktop:publish` on the owner's Mac; older versions there go). Open apps then offer "Update now".
@@ -30,9 +32,42 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  decide:
+    name: A new app version?
     # After a Deploy only if it succeeded (the site has the same commit); by hand always.
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.v.outputs.build }}
+      semver: ${{ steps.v.outputs.semver }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          sparse-checkout: packages/desktop/src-tauri/tauri.conf.json
+          sparse-checkout-cone-mode: false
+      - id: v
+        name: The app's version against the published one
+        shell: bash
+        env:
+          BY_HAND: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          semver=$(node -p "require('./packages/desktop/src-tauri/tauri.conf.json').version")
+          live=$(curl -sf https://twigo.dev/downloads/latest.json | node -p "(JSON.parse(require('fs').readFileSync(0, 'utf8')).version || '0.0.0').replace(/^v/, '')" 2>/dev/null || echo 0.0.0)
+          newer=$(node -p "const n = (v) => v.split('.').map(Number); const [a, b] = [n('$semver'), n('$live')]; let r = false; for (let i = 0; i < 3; i++) if (a[i] !== b[i]) { r = a[i] > b[i]; break; } r")
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+          if [ "$BY_HAND" = "true" ] || [ "$newer" = "true" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            echo "Building the app $semver (published: $live)."
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+            echo "The app's version $semver isn't newer than the published $live: nothing to build."
+          fi
+
+  build:
+    needs: decide
+    if: needs.decide.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -45,14 +80,11 @@ jobs:
             name: windows
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 45
-    outputs:
-      semver: ${{ steps.version.outputs.semver }}
     steps:
       - uses: actions/checkout@v4
         with:
           # The deployed commit (a workflow_run's checkout would be main's tip, which may have moved on).
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 0 # (the game's version counts the commits on main)
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -67,20 +99,16 @@ jobs:
       # build fails on Windows runners (node-gyp can't use their Visual Studio); esbuild's binary comes from its platform
       # package either way.
       - run: npm ci --no-audit --no-fund --ignore-scripts
-      - name: Stage the game (its production build) into the app
+      - name: Stage the start page into the app
         run: node packages/desktop/scripts/stage.mjs
-      - name: The game's version, for the app
-        id: version
-        shell: bash
-        run: echo "semver=$(node -e "console.log(require('./packages/desktop/web/play/version.json').version.replace(/^v/,'').replace(/\+$/,''))")" >> "$GITHUB_OUTPUT"
       - uses: tauri-apps/tauri-action@v0
         with:
           projectPath: packages/desktop
           tauriScript: npx tauri
-          args: ${{ matrix.args }} --config '{"version":"${{ steps.version.outputs.semver }}","build":{"beforeBuildCommand":""}}'
+          args: ${{ matrix.args }} --config '{"build":{"beforeBuildCommand":""}}'
       - uses: actions/upload-artifact@v4
         with:
-          name: mikazuki-${{ matrix.name }}-${{ steps.version.outputs.semver }}
+          name: mikazuki-${{ matrix.name }}-${{ needs.decide.outputs.semver }}
           path: |
             packages/desktop/src-tauri/target/**/release/bundle/dmg/*.dmg
             packages/desktop/src-tauri/target/**/release/bundle/msi/*.msi
@@ -89,7 +117,7 @@ jobs:
 
   publish:
     name: Sign and publish
-    needs: build
+    needs: [decide, build]
     # A Mac: publish.mjs opens the .dmg (hdiutil) to pack the app as the update.
     runs-on: macos-latest
     timeout-minutes: 15
@@ -105,7 +133,7 @@ jobs:
       - run: npm ci --no-audit --no-fund --ignore-scripts # (for `npx tauri signer`)
       - uses: actions/download-artifact@v4
         with:
-          pattern: mikazuki-*-${{ needs.build.outputs.semver }}
+          pattern: mikazuki-*-${{ needs.decide.outputs.semver }}
           path: artifacts
       - name: Keys
         env:
@@ -123,4 +151,4 @@ jobs:
       - name: Publish
         env:
           DEPLOY_TARGET: ${{ secrets.DEPLOY_TARGET }}
-        run: node packages/desktop/scripts/publish.mjs "$DEPLOY_TARGET" "${{ needs.build.outputs.semver }}" --from=artifacts
+        run: node packages/desktop/scripts/publish.mjs "$DEPLOY_TARGET" "${{ needs.decide.outputs.semver }}" --from=artifacts

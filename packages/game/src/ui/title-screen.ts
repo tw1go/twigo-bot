@@ -93,7 +93,7 @@ export function playIntro(M: Manifest): Promise<void> {
 /** What the title screen offers: Start (logged in, or login off), the Discord login (logged out; `problem`: why the
  *  last try didn't work), or in the desktop app with no server answering, Try again (`trying`: asking it now). */
 export type TitleOffer =
-  | { kind: 'start'; staff?: string } // (`staff`: maintenance is on, you may go in anyway: its note)
+  | { kind: 'start'; staff?: string; update?: 'checking' | 'update' | 'updating' } // (`staff`: maintenance is on, you may go in anyway: its note; `update`: the desktop app's own new version, net/update-state.ts titleButton: Checking for updates… / Update, which runs the update screen instead of starting / Updating…: nothing starts an old version)
   | { kind: 'guest'; problem: string | null }
   | { kind: 'offline'; trying?: boolean }
   | { kind: 'maintenance'; note: string; trying?: boolean }; // (the CMS's maintenance mode: no way in; Try again)
@@ -122,6 +122,8 @@ export class TitleScreen {
   onLogin: () => void = () => {};
   /** Try again (the server didn't answer: the desktop app). */
   onRetry: () => void = () => {};
+  /** Update (the desktop app knows a newer version of itself: the update screen). */
+  onUpdate: () => void = () => {};
 
   constructor(
     private readonly M: Manifest,
@@ -187,7 +189,11 @@ export class TitleScreen {
     const button = offer.kind === 'start' ? document.createElement('button') : document.createElement('a');
     button.className = 'ts-button';
     const label = document.createElement('span');
-    label.textContent = offer.kind === 'start' ? 'Start' : offer.kind === 'offline' || offer.kind === 'maintenance' ? 'Try again' : 'Log in with Discord';
+    const updating = offer.kind === 'start' ? offer.update : undefined;
+    label.textContent =
+      offer.kind === 'start' ? (updating === 'checking' ? 'Checking for updates…' : updating === 'update' ? 'Update' : updating === 'updating' ? 'Updating…' : 'Start')
+      : offer.kind === 'offline' || offer.kind === 'maintenance' ? 'Try again'
+      : 'Log in with Discord';
     button.append(label);
     if (button instanceof HTMLAnchorElement) {
       button.href = '/auth/login';
@@ -210,6 +216,7 @@ export class TitleScreen {
     } else {
       button.type = 'button';
       if ((offer.kind === 'offline' || offer.kind === 'maintenance') && offer.trying) button.disabled = true;
+      if (updating === 'checking' || updating === 'updating') button.disabled = true;
       button.addEventListener('click', (e) => {
         e.stopPropagation();
         this.start();
@@ -223,7 +230,12 @@ export class TitleScreen {
     const upkeep = offer.kind === 'maintenance' || (offer.kind === 'start' && !!offer.staff);
     hint.className = problem ? 'ts-hint ts-problem' : upkeep ? 'ts-hint ts-upkeep' : 'ts-hint';
     hint.textContent =
-      offer.kind === 'start' ? (offer.staff ? `🚧 Maintenance is on (staff only): ${offer.staff}` : 'or click anywhere')
+      offer.kind === 'start' ?
+        updating === 'checking' ? 'Making sure you have the newest version'
+        : updating === 'update' ? 'A newer version of Mikazuki is ready'
+        : updating === 'updating' ? 'Mikazuki is updating'
+        : offer.staff ? `🚧 Maintenance is on (staff only): ${offer.staff}`
+        : 'or click anywhere'
       : offer.kind === 'offline' ? (offer.trying ? 'Connecting…' : "Can't reach the Mikazuki server. Check your connection.")
       : offer.kind === 'maintenance' ? (offer.trying ? 'Checking…' : `🚧 Under maintenance: ${offer.note}`)
       : (offer.problem ?? 'Members of the Mikazuki server only');
@@ -278,17 +290,20 @@ export class TitleScreen {
     );
   }
 
-  private start(): void {
+  /** `anywhere`: a click off the button (it never starts an update: only the button and Enter do). */
+  private start(anywhere = false): void {
     if (this.offer?.kind === 'maintenance') return void (this.offer.trying || this.onRetry());
     if (this.offer?.kind === 'offline' && !this.offer.trying) return this.onRetry();
     if (this.closing || this.offer?.kind !== 'start') return;
+    // The desktop app updating itself: Update runs the update screen; checking or updating, nothing starts.
+    if (this.offer.update) return void (this.offer.update === 'update' && !anywhere && this.onUpdate());
     this.closing = true;
     this.onStart();
   }
 
   private readonly clicked = (e: MouseEvent) => {
     if (e.composedPath().some((n) => n === this.sound || n === this.exit || (n instanceof Element && n.classList.contains('ts-button')))) return;
-    this.start(); // (a guest's click anywhere does nothing: only the button logs in; offline, it tries again)
+    this.start(true); // (a guest's click anywhere does nothing: only the button logs in; offline, it tries again)
   };
 
   private readonly keyed = (e: KeyboardEvent) => {
