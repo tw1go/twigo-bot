@@ -15,6 +15,9 @@ import { RARITY_COLOUR } from '../ui/item-art';
 import { LABEL_DEPTH } from './depth';
 import { floatNumber } from './damage-number';
 import { DEBUFF_MARKS, STUN_MARK, tintOf } from '../combat/utility-looks';
+import { currentObjectives } from '../ui/quest-marks';
+import { heldOf, onAdventure, questItemMob } from '../net/adventure';
+import { objectiveCount } from '@mikazuki/shared';
 
 // Mini bosses (classes/leveling.json; each zone's `miniBosses` spots in the map): their mob's art at miniBoss.scale (its
 // kind's mobs.json numbers scaled with it: shadow, top, eye), one fixed look by id, "Jus Tin Lv 4" always over it in
@@ -203,6 +206,9 @@ export interface Mob {
   faces: string | null;
   /** Its kind as the server has it (a Scrapling's art is the golem's: `zone.mob`). */
   kind: string;
+  /** The quest icon over it while one of your quests hunts its kind (CONTEXT.md Hunt icon), and the sheet it's from. */
+  hunt?: Phaser.GameObjects.Sprite | null;
+  huntFile?: string;
   /** A Warrens boss: every hit blocked for now (Crab Tain's Hunker). */
   blockAll: boolean;
   /** Its glow over it (manifest `glow`: Biikko Kalabasa's candle), its flicker's alpha and when that changes next. */
@@ -262,6 +268,10 @@ export class Mobs {
     this.stats = (scene.cache.json.get('stats') as StatsData | undefined) ?? null;
     this.roam = this.stats?.mobBehaviour.wanderTiles ?? 3;
     this.barMs = this.stats ? mobBarMs(this.stats) : 5000;
+    // The hunt icons: which kinds your quests want now (onAdventure calls back at once), again as your quests change
+    // (never every frame); let go with the scene.
+    const offHunt = onAdventure(() => this.refreshHunted());
+    this.scene.events.once('shutdown', offHunt);
     // Each zone's art loads only once you come near it (`near`); its mobs are made then (those the server has told of
     // meanwhile where it says they are). Art already in (a reload) makes them now.
     for (const zone of map.mobZones ?? []) {
@@ -889,6 +899,8 @@ export class Mobs {
         for (const h of m.markFx?.values() ?? []) h.kill(0);
         m.markFx?.clear();
         m.label?.text.destroy();
+        m.hunt?.destroy();
+        m.hunt = null;
       };
       m.bar?.destroy();
       m.bar = null;
@@ -1355,6 +1367,74 @@ export class Mobs {
   }
 
   /** Where its art's top is now (world y): the cell's top, or mobs.json `top` (the golem's head, well under its cell's). */
+  /** The mob kinds your own active quests hunt now (CONTEXT.md Hunt icon): a kill's kind, a collect's (the mob its item
+   *  drops from), a mini boss objective's (its mini bosses, `crown`); each with the quest's type (main's wins). One ready
+   *  to report, or a collect with its items in hand, hunts nothing. */
+  private hunted = new Map<string, { type: 'main' | 'side'; crown: boolean }>();
+
+  /** Whether the hunt icons show at all (always, for now: a Settings switch would go here). */
+  private huntIconsOn(): boolean {
+    return true;
+  }
+
+  private refreshHunted(): void {
+    this.hunted.clear();
+    if (!this.huntIconsOn()) return;
+    for (const { q, o, ready } of currentObjectives()) {
+      if (ready) continue;
+      let kind: string | undefined;
+      let crown = false;
+      if (o.type === 'kill') kind = o.mob;
+      else if (o.type === 'miniBoss') [kind, crown] = [o.mob, true];
+      else if (o.type === 'collect' && heldOf(o.item) < objectiveCount(o)) kind = questItemMob(o.item);
+      if (!kind) continue;
+      const key = `${kind}:${crown ? 'mini' : 'kill'}`;
+      if (!this.hunted.has(key)) this.hunted.set(key, { type: q.type, crown }); // (main's first: it keeps the key)
+    }
+    // The pin sheets the icons are cut from, loaded as they're first wanted.
+    const P = this.M.guide?.pin;
+    if (!P) return;
+    const load = this.scene.load;
+    const files = new Set([...this.hunted.values()].map((h) => P.file.replace('{type}', h.type)));
+    let queued = false;
+    for (const f of files) {
+      if (this.scene.textures.exists(f)) continue;
+      queueSheet(load, this.scene.textures, f, P.frame[0], P.frame[1]);
+      queued = true;
+    }
+    if (queued && !load.isLoading()) load.start();
+  }
+
+  /** The hunt icon over a mob: the quest pin (manifest guide.pin: the target for a kill or collect, the crown for a mini
+   *  boss; the quest's colour) bobbing at the pin's pace, centred over it, above its name when that shows; hidden while
+   *  it's dead, asleep or hidden, gone once the hunt is done (refreshHunted). */
+  private placeHunt(m: Mob): void {
+    const P = this.M.guide?.pin;
+    const want = P ? this.hunted.get(`${m.kind}:${m.mini ? 'mini' : 'kill'}`) : undefined;
+    if (!want || m.dead || m.asleep || m.hidden || m.dormant) {
+      m.hunt?.setVisible(false);
+      return;
+    }
+    const file = P!.file.replace('{type}', want.type);
+    if (!this.scene.textures.exists(file)) return void m.hunt?.setVisible(false);
+    if (m.hunt && m.huntFile !== file) {
+      m.hunt.destroy();
+      m.hunt = null;
+    }
+    if (!m.hunt) {
+      const key = `hunt:${file}:${want.crown ? 'mini' : 'kill'}`;
+      if (!this.scene.anims.exists(key)) {
+        const first = want.crown ? 2 : 0;
+        this.scene.anims.create({ key, frames: this.scene.anims.generateFrameNumbers(file, { start: first, end: first + 1 }), frameRate: P!.fps, repeat: -1 });
+      }
+      m.hunt = this.scene.add.sprite(0, 0, file, want.crown ? 2 : 0).setOrigin(P!.anchor[0] / P!.frame[0], P!.anchor[1] / P!.frame[1]).setDepth(LABEL_DEPTH - 0.5);
+      m.hunt.play(key);
+      m.huntFile = file;
+    }
+    const name = m.label?.text.visible ? m.label.text.getBounds().top - 2 : Infinity;
+    m.hunt.setPosition(Math.round(m.sprite.x - m.lunge.x), Math.round(Math.min(this.top(m) - 4, name))).setVisible(true);
+  }
+
   private top(m: Mob): number {
     return m.sprite.y + ((m.data?.top ?? 0) - m.cell.anchor[1]) * (m.data?.scale ?? 1);
   }
@@ -1389,6 +1469,7 @@ export class Mobs {
       }
       this.syncGlow(m);
       if (m.ripple) this.drawRipple(m);
+      if (m.dead || m.asleep) m.hunt?.setVisible(false);
       if (m.dead) continue;
       if (!this.server && !m.path.length && now >= m.restUntil) {
         this.wander(m);
@@ -1424,6 +1505,7 @@ export class Mobs {
           m.label.show(this.top(m) + (m.radius ? -10 : 4));
         }
       }
+      this.placeHunt(m);
     }
   }
 
@@ -1620,7 +1702,8 @@ export class Mobs {
         const r = row();
         const i = r.indexOf(k);
         const name = m.label?.text.visible ? m.label.text.getBounds().top - 10 : Infinity;
-        return { x: x + (i - (r.length - 1) / 2) * 22, y: Math.min(this.top(m) - 12, name) };
+        const icon = m.hunt?.visible ? m.hunt.getBounds().top - 8 : Infinity; // (over the hunt icon when that shows)
+        return { x: x + (i - (r.length - 1) / 2) * 22, y: Math.min(this.top(m) - 12, name, icon) };
       };
       // (A sheet that plays once loops its frames for as long as the mark lasts.)
       const frames = art.frames ?? 1;

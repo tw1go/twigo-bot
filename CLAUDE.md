@@ -1916,7 +1916,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   second. The quest trail (`world/quest-trail.ts`, TownScene `trailGoal` / `trailTick`, 4 times a second): a guided
   hunt not yet reached, in town to the Slums gate, in the Slums to its zone's nearest tile or nearest mini boss spot
   (none once inside, or within 6 of the spot); the walk grid's path, its first 40 tiles; ground layer, a brightness
-  wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). The quest map (`ui/quest-map.ts`, keybind
+  wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). Quest guidance since 30 Oct 2026 (the owner): the trail leads to any active quest's current
+  objective on every outdoor map (ui/quest-marks.ts `trailTarget` / `npcSpot` / `currentObjectives`, shared with the marks;
+  TownScene `trailGoal`: an NPC within 2, a zone, the nearest mini boss spot, a field boss, a visit; another map through
+  this map's gate, `MAP_LINKS` BFS; a far goal pathed 60 tiles at a time; never in a run; Settings "Show quest trails",
+  the same `mk_guide_trail`); the markers are red for main quests (manifest `quests.markerColours`, TownScene
+  `markerColours`; `quests.colours` stays for text; the main guide sheets the art folder's red ones); the world picture
+  draws the Old Market north of the Slums (ui/map, 534 × 279); a hunt icon (the quest pin, world/mobs.ts `refreshHunted`
+  / `placeHunt`, on `onAdventure`) over every live mob a quest of yours hunts, the crown over the mini bosses. The quest map (`ui/quest-map.ts`, keybind
   `questMap` = Tab, rebindable: Tab left keybinds.ts's reserved keys, main.ts still stops its focus moves): hold to see
   the world map (`ui/world-map.ts`, shared with the Map menu) with you and every quest mark (CONTEXT.md Quest mark;
   `ui/quest-marks.ts`, the M map draws them too, at its icon scale): hunts on the Slums' and the Old Market's zones (a

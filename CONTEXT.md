@@ -755,6 +755,12 @@ over their head: "!" or "…"), the giver of a quest on offer too. Shown on the 
 on the minimap one off its edge is held at the edge, the way to it.
 _Avoid_: waypoint, objective marker; not the head marker over an NPC (that's on the NPC in the world)
 
+**Hunt icon**:
+The small quest pin over every live monster of a kind one of your active quests is hunting (a kill, a collect whose
+item it drops, a mini boss objective's mini bosses: the crown), in the quest's marker colour, until that objective is
+done. Your own quests only.
+_Avoid_: quest marker (that's over an NPC), target icon
+
 **Lesson**:
 A one-time walkthrough of a new player's firsts (potions onto the hotbar, wearing each quest piece in place of
 training gear once it fits, combining fragments, enhancing, spending stat and skill points, betting on the first Mosang
