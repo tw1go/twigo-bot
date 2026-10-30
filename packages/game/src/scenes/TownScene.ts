@@ -163,7 +163,7 @@ import { mountSkillPreview } from '../ui/skill-preview';
 import { STAGE_H, STAGE_W, SkillStage } from '../combat/skill-stage';
 import { NPC_PLACES } from '../world/npcs';
 import { pick, tileRandom } from '../world/rng';
-import { lagContext, lagEvent, lagReport } from '../net/lag';
+import { lagContext, lagSpan, lagEvent, lagReport } from '../net/lag';
 
 /** The walking log (`?debug=walk`, or dev): each step and turn sent with the page's step bucket after it, each snap with
  *  its reason, each right press and release on the canvas, and each click dropped on the way with why. */
@@ -196,6 +196,10 @@ const MAP_LINKS: Record<string, string[]> = { hood: ['town'], town: ['hood', 'sl
 /** The trail's path is searched toward a point at most this far along the straight line (a far goal on a big map), and
  *  stretches on as you walk. */
 const TRAIL_REACH = 60;
+/** How far from the trail's aim a reachable tile is looked for (an aim on a wall, a stall, water), and its path
+ *  search's cap: the trail is a hint, never worth a long search (30 Oct 2026: it froze players after a teleport). */
+const TRAIL_NEAR = 12;
+const TRAIL_SEARCH_CAP = 6000;
 /** How near an NPC the trail stops. */
 const NPC_NEAR = 2;
 /** A walk into a debuff's range (its target too far) is called off after this. */
@@ -5247,17 +5251,22 @@ export class TownScene extends Phaser.Scene {
     trail.update(time);
     if (time < this.trailAt) return;
     this.trailAt = time + TRAIL_MS;
-    const goal = this.trailGoal();
+    // Not before the server has placed you and the town is shown (a teleport's arrival, a reload), nor from a tile you
+    // can't walk from (a bench seat, mid-placement: the grid would work the whole map's reach out again each time).
     const me = this.player.tile;
+    if (!this.welcomed || !this.revealed || !this.grid.walkable(me.col, me.row)) return;
+    const goal = this.trailGoal();
     const key = goal ? `${me.col},${me.row}>${goal.tile.col},${goal.tile.row}:${goal.type}` : '';
     if (key === this.trailFor) return;
     this.trailFor = key;
     if (!goal) return trail.hide();
-    let aim = goal.tile;
-    const far = Math.hypot(aim.col - me.col, aim.row - me.row);
-    if (far > TRAIL_REACH) aim = { col: Math.round(me.col + ((aim.col - me.col) * TRAIL_REACH) / far), row: Math.round(me.row + ((aim.row - me.row) * TRAIL_REACH) / far) };
-    const to = this.grid.walkable(aim.col, aim.row) ? aim : this.grid.nearestReachable(me, aim);
-    const path = to && this.grid.findPath(me, to);
+    const path = lagSpan('quest trail', () => {
+      let aim = goal.tile;
+      const far = Math.hypot(aim.col - me.col, aim.row - me.row);
+      if (far > TRAIL_REACH) aim = { col: Math.round(me.col + ((aim.col - me.col) * TRAIL_REACH) / far), row: Math.round(me.row + ((aim.row - me.row) * TRAIL_REACH) / far) };
+      const to = this.grid.walkable(aim.col, aim.row) ? aim : this.grid.nearestReachable(me, aim, TRAIL_NEAR);
+      return to && this.grid.findPath(me, to, TRAIL_SEARCH_CAP);
+    });
     if (!path || path.length < 2) return trail.hide();
     trail.show(path.slice(1, TRAIL_TILES + 1), goal.type);
   }
