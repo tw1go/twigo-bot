@@ -2,8 +2,8 @@
  "image": "ui-map-world.png",
  "tilePx": 1.6,
  "origin": [
-  402.6,
-  107
+  154.6,
+  94
  ],
  "formula": "x = origin.x + (c - r) * tilePx / 2, y = origin.y + (c + r) * tilePx / 4, with c = col + 0.5 + maps[id].col, r = row + 0.5 + maps[id].row",
  "maps": {
@@ -32,8 +32,8 @@
    ]
   },
   "palengke": {
-   "col": -280,
-   "row": 13,
+   "col": -20,
+   "row": -212,
    "size": [
     280,
     210
@@ -51,8 +51,8 @@
     96
    ],
    "px": [
-    428.2,
-    197.0
+    180.2,
+    184
    ]
   },
   "town": {
@@ -61,8 +61,8 @@
     39
    ],
    "px": [
-    560.2,
-    264.6
+    312.2,
+    251.6
    ]
   },
   "palengke": [
@@ -73,8 +73,8 @@
     ],
     "name": "entrance",
     "px": [
-     290.6,
-     146.2
+     430.6,
+     147.2
     ]
    },
    {
@@ -84,8 +84,8 @@
     ],
     "name": "north (Vegetable Row)",
     "px": [
-     273.8,
-     106.6
+     413.8,
+     107.6
     ]
    },
    {
@@ -95,8 +95,8 @@
     ],
     "name": "west (Eatery Row)",
     "px": [
-     132.2,
-     73.4
+     272.2,
+     74.4
     ]
    },
    {
@@ -106,8 +106,8 @@
     ],
     "name": "south (Fish Market, by the hall)",
     "px": [
-     121.0,
-     125.4
+     261,
+     126.4
     ]
    }
   ]
@@ -129,5 +129,5 @@
   ]
  },
  "labelNote": "repo-only: maps[id].label = the tile where the Map menu writes the map's name (from the mockup; may lie past the map's edge)",
- "palengkeNote": "Repo addition (20 Oct 2026): the Old Market (palengke) sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118). Since 23 Oct 2026 it's drawn into ui-map-world.png (the art folder's ui/map/palengke): the picture grew by 243 px left and 101 px up, so origin and every post's px moved by the same. posts.palengke: its four Lantern Posts (2x2; px at each one's middle)."
+ "palengkeNote": "Repo addition (20 Oct 2026): the Old Market (palengke) sits west of the Slums (its east gate, col 279 rows 103-105, meets the Slums' west gate, col 0 rows 116-118). Since 23 Oct 2026 it's drawn into ui-map-world.png (the art folder's ui/map/palengke): the picture grew by 243 px left and 101 px up, so origin and every post's px moved by the same. posts.palengke: its four Lantern Posts (2x2; px at each one's middle). Since 30 Oct 2026 (the owner: the Tab map had it west): the Old Market is drawn north of the Slums, beyond their row 0, its middle column on the Slums' north gate (maps.palengke col -20, row -212; the Slums' gate to it is row 0, cols 121-123), each map's diamond cut out of the old picture and shifted by whole pixels (the art folder's docs/quest-trails/world-map/move_old_market.py): the picture is 534 x 279, origin [154.6, 94], every post's px recomputed."
 }

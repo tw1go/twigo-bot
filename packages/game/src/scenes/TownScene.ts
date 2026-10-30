@@ -5157,7 +5157,7 @@ export class TownScene extends Phaser.Scene {
     const qm = new QuestMap(
       {
         world: asset(U.mapWorld?.file ?? 'ui/map/ui-map-world.png'),
-        worldSize: U.mapWorld?.size ?? [671, 321],
+        worldSize: U.mapWorld?.size ?? [534, 279],
         layout: asset(U.mapWorld?.layout ?? 'ui/map/map-layout.json'),
         slums: asset('maps/slums.json'),
         town: asset('maps/town.json'),

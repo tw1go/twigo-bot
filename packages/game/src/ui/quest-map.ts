@@ -6,7 +6,7 @@ import { type WorldMap, type WorldMapUrls, loadWorldMap, middleOf, worldPx } fro
 // Town, the Slums and the Old Market together) over the game while its key is held (keybind questMap, Tab by default),
 // or from a touch screen's tracker pin until the next tap. Centred at the biggest whole-number scale that fits (2× or
 // 1×), on the night navy at 70%, no frame and no title; only for looking. On it: you (the Map menu's pin; in the
-// neighbourhood at the Town's way there, in a Warrens run at the Slums' Warren Gate) and every active quest's hunt and
+// neighbourhood at the Town's way there, in a Warrens run at the Slums' Warren Gate, in the Cellar at the Cellar Hatch) and every active quest's hunt and
 // the NPCs it needs (ui/quest-marks.ts); none: "No quests to show on the map right now." Not while typing or while
 // another window or dialog is open.
 
@@ -128,7 +128,7 @@ export class QuestMap {
   }
 
   /** Your pixel on the picture: your tile in the Town, the Slums or the Old Market (drawn in since 23 Oct 2026); in the
-   *  neighbourhood the Town's way there, in a run (the Warrens, the Cellar) the Slums' Warren Gate (where you'd come out). */
+   *  neighbourhood the Town's way there, in a Warrens run the Slums' Warren Gate, in the Cellar the Old Market's Cellar Hatch (where you'd come out). */
   private spot(W: WorldMap): [number, number] | null {
     const at = this.here();
     if (!at) return null;
@@ -136,6 +136,11 @@ export class QuestMap {
     if (at.area === 'hood') {
       const gate = middleOf(W.town.gates?.hood);
       return gate && worldPx(W.layout, 'town', gate[0], gate[1]);
+    }
+    // A run: where you'd come out (the Cellar: the Old Market's Cellar Hatch; the Warrens: the Slums' Warren Gate).
+    if (at.area.startsWith('silong')) {
+      const hatch = W.palengke?.arrive?.silong;
+      return hatch ? worldPx(W.layout, 'palengke', hatch[0], hatch[1]) : null;
     }
     const out = W.slums.arrive?.warrens;
     return out ? worldPx(W.layout, 'slums', out[0], out[1]) : null;

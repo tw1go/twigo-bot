@@ -743,7 +743,8 @@ there; Settings can turn it off. Never inside a dungeon run.
 _Avoid_: path, breadcrumbs, guide line
 
 **Quest map**:
-The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every quest mark. Only for looking.
+The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every quest mark, the Town, the
+Slums and the Old Market as they lie (the Old Market north of the Slums, by its gate). Only for looking.
 _Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and teleporting)
 
 **Quest mark**:
