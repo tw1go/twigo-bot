@@ -10,10 +10,11 @@ import { checkVersionNow, newVersionReady, showVersion } from './ui/version';
 import { onPackMissing } from './assets/packs';
 import { forgetOldFrontRedirect, startHomeScreenApp, tidyCaches } from './net/pwa';
 import { startLag } from './net/lag';
-import { isDesktopApp } from './net/platform';
+import { isDesktopApp, useAppMessageBridge } from './net/platform';
 import { takeAppHandoff } from './net/endpoints';
 import { setTextSize, textSize } from './ui/text-size';
 
+useAppMessageBridge(); // (the desktop app's bridge on the live page: never a local network request, net/platform.ts)
 takeAppHandoff(); // (the desktop app's live page, opened by its start page: the old page's login and window setting, once)
 setTextSize(textSize(), false); // Settings → Text size, before anything is drawn
 

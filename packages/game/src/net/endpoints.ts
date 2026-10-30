@@ -18,10 +18,38 @@ const TOKEN_KEY = 'mk_app_token';
 /** What the bundled page kept that the live page takes over once (the start page hands them on in the #hash). */
 const HANDOFF = [TOKEN_KEY, 'mk_window'];
 
-/** The app's own version (tauri.conf.json's, "1.0.0"; not the game's v0.1.N), asked of the app once. 'dev' outside it. */
+/** The app's own version (tauri.conf.json's, "1.0.0"; not the game's v0.1.N). 'dev' outside it. Every server call
+ *  carries it, so none waits on the app for long: the last version this app said (kept in its storage) at once, while
+ *  the app is asked again in the background; with none kept yet, the app's answer, or 'unknown' after VERSION_WAIT_MS
+ *  (the server lets an unknown version in). */
+const VERSION_KEY = 'mk_app_version';
+const VERSION_WAIT_MS = 1500;
 let shell: Promise<string> | null = null;
-export const shellVersion = (): Promise<string> =>
-  (shell ??= isDesktopApp() ? import('@tauri-apps/api/app').then((m) => m.getVersion()).catch(() => 'dev') : Promise.resolve('dev'));
+export function shellVersion(): Promise<string> {
+  if (shell) return shell;
+  if (!isDesktopApp()) return (shell = Promise.resolve('dev'));
+  const asked = import('@tauri-apps/api/app')
+    .then((m) => m.getVersion())
+    .then((v) => {
+      try {
+        localStorage.setItem(VERSION_KEY, v);
+      } catch {
+        /* (nothing to keep it in) */
+      }
+      return v;
+    });
+  let kept: string | null = null;
+  try {
+    kept = localStorage.getItem(VERSION_KEY);
+  } catch {
+    /* (none) */
+  }
+  if (kept) {
+    void asked.then((v) => (shell = Promise.resolve(v)), () => {});
+    return (shell = Promise.resolve(kept));
+  }
+  return (shell = Promise.race([asked.catch(() => 'unknown'), new Promise<string>((done) => setTimeout(() => done('unknown'), VERSION_WAIT_MS))]));
+}
 
 /** The live page opened by the app's start page: the old bundled page's login and window setting, handed on once in the
  *  #hash (mk-handoff, base64 JSON), kept unless this page has its own already, and the #hash tidied away. Called first
