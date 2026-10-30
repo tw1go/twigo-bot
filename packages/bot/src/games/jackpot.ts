@@ -8,6 +8,9 @@ import { add, balance, take } from '../credits/store.js';
 import { kowen } from '../kowens.js';
 import { announce, townName } from '../web/town-feed.js';
 
+// A draw the bot missed (down at 10:00, or Discord not answering then: 30 Oct 2026, the 10 AM draw) is caught up: the
+// time each draw ran is kept (kv 'jackpot-ran-at', drawn, refunded or empty), and `catchUpJackpot` (at startup and
+// hourly) draws when the latest scheduled draw is past that and tickets wait. The channel is fetched with retries.
 // Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded. The pot also holds raid money: RAID_SHARE of
 // every bet the Tanod confiscates (games/gamble.ts). It goes to the next winner, and rolls over when there's no winner.
@@ -17,6 +20,14 @@ export const DRAW_LABEL = '10 AM & 10 PM';
 export const DRAW_CRON = '0 10,22 * * *';
 /** When the next draw happens. */
 export const nextDraw = () => new Cron(DRAW_CRON, { timezone: config.timezone }).nextRun()!;
+/** The latest scheduled draw at or before `now` (the one that should have run by now). */
+export const dueDraw = (now = new Date()) => new Cron(DRAW_CRON, { timezone: config.timezone }).previousRuns(1, now)[0] ?? null;
+/** A draw the bot missed: the draw due before `now` is later than the last run, and `now` is past it by `graceMs`
+ *  (the scheduled job itself gets that long first). */
+export const drawMissed = (now: Date, ranAt: number, graceMs = 120_000): boolean => {
+  const due = dueDraw(now);
+  return !!due && due.getTime() > ranAt && now.getTime() - due.getTime() >= graceMs;
+};
 const UNDERDOG_BONUS = 10;
 /** The share of a confiscated bet that goes into the pot (rounded down). */
 export const RAID_SHARE = 0.7;
@@ -65,6 +76,17 @@ export interface LastDraw {
 const LAST_KEY = 'jackpot-last.json'; // kv key (its old file name)
 let last: LastDraw | null = kvLoad(LAST_KEY, null);
 export const lastDraw = () => last;
+// When a draw last ran to its end (drawn, refunded or with nobody in it): what a missed draw is measured against. Before
+// this was kept, the last draw's time.
+const RAN_KEY = 'jackpot-ran-at';
+let ranAt: number = kvLoad(RAN_KEY, (last as LastDraw | null)?.at ?? 0);
+export const lastRanAt = () => ranAt;
+function markRan(at = Date.now()): void {
+  ranAt = at;
+  kvSave(RAN_KEY, at);
+}
+/** A draw under way (the scheduled one or a catch-up): the other waits. */
+let drawing = false;
 function saveLast(draw: LastDraw): void {
   last = draw;
   kvSave(LAST_KEY, draw);
@@ -88,11 +110,36 @@ export function buyTickets(userId: string, count: number): { bought: number } | 
 }
 
 export async function drawJackpot(client: Client): Promise<void> {
-  const entries = Object.entries(tickets);
-  if (entries.length === 0) return;
+  if (drawing) return;
+  drawing = true;
+  try {
+    await draw(client);
+  } finally {
+    drawing = false;
+  }
+}
 
-  const channel = await client.channels.fetch(config.gamesChannelId);
-  if (!channel?.isSendable()) throw new Error(`Channel ${config.gamesChannelId} not found or not sendable`);
+/** The games channel, asked for up to `tries` times (Discord not answering at the minute shouldn't cost the draw). */
+async function gamesChannel(client: Client, tries = 3) {
+  let lastErr: unknown = null;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const channel = await client.channels.fetch(config.gamesChannelId);
+      if (channel?.isSendable()) return channel;
+      lastErr = new Error(`Channel ${config.gamesChannelId} not found or not sendable`);
+    } catch (err) {
+      lastErr = err;
+    }
+    if (i < tries - 1) await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+async function draw(client: Client): Promise<void> {
+  const entries = Object.entries(tickets);
+  if (entries.length === 0) return markRan(); // (nothing to draw: this draw is done)
+
+  const channel = await gamesChannel(client); // (fails: the tickets stay, the catch-up tries again within the hour)
 
   const total = pot();
   const ticketsIn = ticketTotal();
@@ -104,6 +151,7 @@ export async function drawJackpot(client: Client): Promise<void> {
     const [[id, n]] = entries;
     add(id, n);
     saveLast({ at: Date.now(), winner: null, pot: n, players: 1 });
+    markRan();
     await channel.send({
       content: `🎰 **Jackpot draw:** only <@${id}> joined this draw, so their **${n}** ${kowen(n)} ${n === 1 ? 'was' : 'were'} refunded. Bring friends next time!`,
       allowedMentions: { parse: [] },
@@ -126,6 +174,7 @@ export async function drawJackpot(client: Client): Promise<void> {
     markFound(winner, 'underdog');
   }
   saveLast({ at: Date.now(), winner, pot: total, players: entries.length });
+  markRan();
 
   // Slot-machine reveal: edit one message through weighted random names, slowing down, landing on the winner.
   // Edits stay ~1s+ apart to respect Discord's rate limits, and edits never ping anyone.
@@ -173,4 +222,14 @@ export async function drawJackpot(client: Client): Promise<void> {
   await message
     .reply({ content: `🎊 Congrats <@${winner}>, you won the jackpot! Check \`/balance\` 🪙`, allowedMentions: { users: [winner] } })
     .catch(() => {});
+}
+
+/** A draw the bot missed (down at the hour, or Discord not answering then): drawn now, with a line in the log; nothing
+ *  to do while the scheduled draws run on time. At startup and hourly (scheduler.ts). */
+export async function catchUpJackpot(client: Client, now = new Date()): Promise<void> {
+  if (!drawMissed(now, ranAt)) return;
+  const due = dueDraw(now)!;
+  if (Object.keys(tickets).length === 0) return markRan(now.getTime()); // (nobody was in it: done)
+  console.log(`[jackpot] the draw due ${due.toISOString()} was missed (last ran ${new Date(ranAt).toISOString()}): drawing now`);
+  await drawJackpot(client);
 }
