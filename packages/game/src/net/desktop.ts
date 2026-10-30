@@ -42,6 +42,11 @@ export function startDesktopApp(): void {
     void toggleFullscreen().catch(() => null);
   });
   startWindow();
+  // The app's own version beside the game's build, bottom right ("v0.1.1090 · app 1.0.1"), so an update can be seen.
+  void shellVersion().then((v) => {
+    const label = document.getElementById('version');
+    if (label && v !== 'dev') label.textContent = `${label.textContent} · app ${v}`;
+  });
   // A login link that opened the app (or came while it was open).
   void getCurrent().then((urls) => urls && void handleLinks(urls)).catch(() => null);
   void onOpenUrl((urls) => void handleLinks(urls)).catch(() => null);
