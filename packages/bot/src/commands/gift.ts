@@ -3,6 +3,7 @@ import type { Command } from '../types.js';
 import { config } from '../config.js';
 import { accountIds, add, balance, take } from '../credits/store.js';
 import { BOOST_CREDITS, boostCount, setBoostCount } from '../games/boosts.js';
+import { MAX_TICKETS, addTickets, nextDraw, ticketWord, ticketsOf } from '../games/jackpot.js';
 import { DIGS_PER_DAY, SHOVELS_PER_DAY, SHOVEL_USES, capacity, resetDigCounters } from '../dig/store.js';
 import { usedSlots } from '../dig/bag.js';
 import { GIFTABLE, giftableById } from '../items/gift.js';
@@ -42,6 +43,13 @@ export const gift: Command = {
         .setDescription(`Set a boost count (monthly = ${BOOST_CREDITS} × count; 0 removes) · 🔒 Only you see`)
         .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
         .addIntegerOption((o) => o.setName('count').setDescription('Number of active boosts').setRequired(true).setMinValue(0).setMaxValue(50)),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('jackpot')
+        .setDescription(`Put free jackpot tickets in the next draw (up to ${MAX_TICKETS} a member) · 🔒 Only you see`)
+        .addUserOption((o) => o.setName('user').setDescription('Who').setRequired(true))
+        .addIntegerOption((o) => o.setName('tickets').setDescription('How many').setRequired(true).setMinValue(1).setMaxValue(MAX_TICKETS)),
     )
     .addSubcommand((s) =>
       s
@@ -206,6 +214,26 @@ export const gift: Command = {
       console.log(`[gift] ${target.id} dig-reset (was ${was.digs} digs, ${was.shovels} shovels)`);
       await interaction.reply({
         content: `⛏️ Reset ${target}'s counters for today: **${was.digs}/${DIGS_PER_DAY}** digs and **${was.shovels}/${SHOVELS_PER_DAY}** shovels bought → **0**. They can dig and buy shovels again today. 🪏\n-# Their shovel's uses and their finds are unchanged.`,
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    if (interaction.options.getSubcommand() === 'jackpot') {
+      // Free tickets in the next draw (e.g. ones a draw made late took from the player): the same cap as buying.
+      const want = interaction.options.getInteger('tickets', true);
+      const room = MAX_TICKETS - ticketsOf(target.id);
+      if (room <= 0) {
+        await interaction.reply({ content: `🎟️ ${target} already holds the most tickets a draw allows (**${MAX_TICKETS}**).`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+        return;
+      }
+      const given = Math.min(want, room);
+      addTickets(target.id, given);
+      console.log(`[gift] ${target.id} +${given} jackpot ticket(s), free (holds ${ticketsOf(target.id)})`);
+      await interaction.reply({
+        content: `🎟️ Gave ${target} **${ticketWord(given)}** for the next draw (<t:${Math.floor(nextDraw().getTime() / 1000)}:R>). They hold **${ticketsOf(target.id)}/${MAX_TICKETS}**.` +
+          (given < want ? ` Only ${given} fit under the max.` : ''),
         flags: MessageFlags.Ephemeral,
         allowedMentions: { parse: [] },
       });

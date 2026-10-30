@@ -115,6 +115,8 @@ then pays everyone and posts a summary (names listed, no pings). A per-night led
 **Gifter:** `/gift kowens user amount [reason]` (negative removes) — only `REWARD_OWNER_ID` can use it.
 `/gift title user title` gives a web game title (equipped; Townfolk puts them back to the default).
 `/gift dig-reset user` sets a member's daily dig and shovel-purchase counters back to 0 (their shovel's uses and finds stay).
+`/gift jackpot user tickets` puts free tickets in the next jackpot draw (the same cap as buying). A draw the bot catches up late
+takes only the tickets bought before it was due; later ones wait for the next draw.
 `/gift item item [quantity] (user | everyone:True)` gives an item (shovels, Master Keys, megaphones, potions, or any dug-up
 item; autocomplete) straight into the bag, ignoring daily shovel limits and bag space; members in the web town get a
 pop-up with its picture (`src/items/gift.ts`).
