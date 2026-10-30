@@ -143,7 +143,7 @@ All in `GAMES_CHANNEL_ID` / wherever the command is used. Jailed members can't p
   rogue. A rogue who has made a steal attempt is **marked**: any rogue can rob them, any number of times (it never protects
   them), while they're a rogue and for 2 days after their last attempt. Kept on the account (schema v17); the update
   started everyone open.
-- `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per draw. Drawn twice a day (10 AM & 10 PM), weighted by tickets;
+- `/jackpot tickets:N` — 1 Kowen per ticket, max 5 per person per draw. Drawn twice a day (10 AM & 10 PM), weighted by tickets; A draw the bot missed (down at the hour, or Discord not answering) is drawn late: at startup, or within the hour.
   fewer than 2 players = refund. 70% of every bet the Tanod confiscates (a `/gamble` or Casino bust, rounded down) goes into
   the pot too and is won with it; it rolls over when nobody wins. `/twigo game:jackpot` draws now.
 - `/race` — Mosang race, only in `GAMBLING_CHANNEL_ID`: 5 of 10 Mosangs (`src/games/race.ts`), 2 min betting via buttons + modal (1–100, one bet each),

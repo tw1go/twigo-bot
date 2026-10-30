@@ -684,6 +684,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
 - Jackpot counter (`ui/jackpot-timer.ts`, "Jackpot draw", top right left of the minimap; on phones under the Kowens and
   shovels): pot + countdown with seconds to the next draw under small casino lights (`GET /town/jackpot` every minute
   and after `mk-wallet`; gold pulse in the last 10 min); click opens the booth. Icon: manifest `ui.jackpotIcon` if added, else the Kowen coin.
+- Jackpot draws (bot `games/jackpot.ts`, `scheduler.ts`: 10 AM and 10 PM Manila; 30 Oct 2026): each run's end is kept (kv
+  `jackpot-ran-at`), the games channel is fetched with retries, and `catchUpJackpot` (15 s after startup and hourly at :07)
+  draws a missed one (the latest scheduled draw past the last run by 2 min, tickets waiting) with a log line; `dueDraw` /
+  `drawMissed` are pure (tested in `games/jackpot.test.ts`).
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
   max per draw), chance, players, last draw; bot `GET/POST /town/jackpot` shares `buyTickets` with `/jackpot` and posts
   town buys to the feed and the games channel. Dev uses a pretend booth.
