@@ -183,8 +183,9 @@ import { kvLoad, kvSave } from '../db/db.js';
 const APP_ORIGINS = new Set(['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost']);
 
 /** The oldest desktop app the server still takes ('' = every one). A newer one is needed after a change old apps can't
- *  follow: older apps get 426 from /me and show the update notice. The app says which it is in X-Mikazuki-Client
- *  ("desktop/v0.1.550"). */
+ *  follow: older apps get 426 from /me and show the update notice. The app says which it is in X-Mikazuki-Client: its
+ *  own version since 1.0.0 ("desktop/1.0.0", tauri.conf.json's, bumped only when the app itself changes; the game is the
+ *  live site's), the game's before ("desktop/v0.1.550"). */
 const MIN_DESKTOP_VERSION = '';
 
 /** Whether an app's X-Mikazuki-Client is older than MIN_DESKTOP_VERSION. */

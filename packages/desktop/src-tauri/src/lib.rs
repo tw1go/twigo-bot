@@ -1,5 +1,7 @@
-// 🖥️ Mikazuki's desktop app: one window with the game's production build inside (frontendDist: ../web, staged by
-// scripts/stage.mjs). The game itself does the rest (packages/game src/net/desktop.ts): it talks to https://twigo.dev,
+// 🖥️ Mikazuki's desktop app: one window on the live game. It opens the bundled start page (frontendDist: ../web, its
+// index.html), which goes on to https://twigo.dev/play/ (capabilities/default.json lets that page, and only twigo.dev, use
+// the app), so a game change is the website's reload, never a new app. The game itself does the rest (packages/game
+// src/net/desktop.ts): it talks to https://twigo.dev,
 // logs in through the system browser (the opener plugin) and gets its login back as a mikazuki://auth link (the
 // deep-link plugin). One copy at a time: a second launch (a login link, on Windows) hands its link to the first. New
 // versions install themselves (the updater and process plugins; the install itself is the `install_update` command below).

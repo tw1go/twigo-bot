@@ -1,10 +1,15 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the game's page may ask of the app: open the browser (logging in, downloads), its login links, the window (full screen, borderless, its size), and updating itself (download, install, restart).",
+  "description": "What the game's page may ask of the app: open the browser (logging in, downloads), its login links, the window (full screen, borderless, its size), and updating itself (download, install, restart). The page is the live game at https://twigo.dev (remote, nothing else) and the bundled start page (local).",
   "windows": [
     "main"
   ],
+  "remote": {
+    "urls": [
+      "https://twigo.dev/*"
+    ]
+  },
   "permissions": [
     "core:default",
     "core:window:allow-set-fullscreen",

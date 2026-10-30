@@ -1,5 +1,4 @@
 import { applyUpdate, checkForUpdate } from '../net/pwa';
-import { isDesktopApp } from '../net/platform';
 
 // The game's version (bottom right, faint), and a notice at the top when a newer one has been deployed: the build
 // publishes version.json (scripts/version.ts), and an open game checks it every minute; the home screen app's service
@@ -16,8 +15,9 @@ export function showVersion(): void {
   label.textContent = __BUILD__.version;
   if (__BUILD__.commit) label.title = `${__BUILD__.version} · ${__BUILD__.commit} · built ${new Date(__BUILD__.built).toLocaleString()}`;
   document.body.append(label);
-  // (The desktop app's own version.json is always its own: it looks at twigo.dev/downloads instead, net/desktop.ts.)
-  if (__BUILD__.version === 'dev' || isDesktopApp()) return;
+  // (The desktop app plays the live game too since its 1.0.0, so it reloads into a new build like the website; the app's
+  // own new versions come from twigo.dev/downloads instead, net/desktop.ts.)
+  if (__BUILD__.version === 'dev') return;
 
   const look = async () => {
     if (told) return;

@@ -1,9 +1,9 @@
 {
   "name": "@mikazuki/desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
-  "description": "The desktop app (Windows, Mac): the game's production build in a Tauri 2 window. See README.md.",
+  "description": "The desktop app (Windows, Mac): the live game at twigo.dev/play in a Tauri 2 window. See README.md.",
   "scripts": {
     "stage": "node scripts/stage.mjs",
     "tauri": "tauri",

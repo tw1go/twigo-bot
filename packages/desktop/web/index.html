@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mikazuki</title>
+    <!-- 🖥️ The desktop app's start page (the only page inside it since 1.0.0): it opens the live game at
+         https://twigo.dev/play/, as the website has it, or says the server can't be reached, with Try again. Once, it hands
+         the old bundled page's login and window setting (this origin's localStorage) to the live page in its #hash
+         (net/endpoints.ts takeAppHandoff reads and tidies it away), so nobody logs in again after the update. -->
+    <style>
+      html, body { margin: 0; height: 100%; background: #1a1b26; color: #e6e9f2; font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+      body { display: grid; place-items: center; user-select: none; }
+      main { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; text-align: center; }
+      img { width: 386px; max-width: 80vw; height: auto; image-rendering: pixelated; }
+      p { margin: 0; color: #a9b1d6; }
+      button { padding: 8px 18px; border: 2px solid #1e1b3a; border-radius: 0; background: #a3e635; color: #1e1b3a; font: 700 15px/1.2 inherit; box-shadow: inset 0 2px 0 #d9f99d, inset 0 -3px 0 #5a8a5e; cursor: pointer; }
+      button:hover { background: #b5ee5a; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="logo.png" alt="Mikazuki" draggable="false" onerror="this.remove()" />
+      <p id="line">Opening Mikazuki…</p>
+      <button id="again" type="button" hidden>Try again</button>
+    </main>
+    <script>
+      const GAME = 'https://twigo.dev/play/';
+      /** How long the server may take to answer before the page says it can't be reached (ms). */
+      const WAIT_MS = 10000;
+      /** What the old bundled page kept that the live page takes over (once). */
+      const HANDOFF = ['mk_app_token', 'mk_window'];
+      const line = document.getElementById('line');
+      const again = document.getElementById('again');
+
+      /** Whether twigo.dev answers at all (no-cors: the answer can't be read from here, only that there is one). */
+      async function reachable() {
+        if (navigator.onLine === false) return false;
+        const stop = new AbortController();
+        const timer = setTimeout(() => stop.abort(), WAIT_MS);
+        try {
+          await fetch(`${GAME}version.json?t=${Date.now()}`, { mode: 'no-cors', cache: 'no-store', signal: stop.signal });
+          return true;
+        } catch {
+          return false;
+        } finally {
+          clearTimeout(timer);
+        }
+      }
+
+      /** The old page's login and window setting, then gone from here (so a later logout on the live page sticks). */
+      function handoff() {
+        const out = {};
+        for (const key of HANDOFF) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value !== null) out[key] = value;
+          } catch {}
+        }
+        return Object.keys(out).length ? out : null;
+      }
+
+      async function open() {
+        line.textContent = 'Opening Mikazuki…';
+        again.hidden = true;
+        if (!(await reachable())) {
+          line.textContent = "Can't reach Mikazuki. Check your internet.";
+          again.hidden = false;
+          again.focus();
+          return;
+        }
+        const old = handoff();
+        let url = GAME;
+        if (old) {
+          url += `#mk-handoff=${encodeURIComponent(btoa(JSON.stringify(old)))}`;
+          for (const key of Object.keys(old)) {
+            try {
+              localStorage.removeItem(key);
+            } catch {}
+          }
+        }
+        location.replace(url);
+      }
+
+      again.addEventListener('click', () => void open());
+      addEventListener('keydown', (e) => e.key === 'Enter' && !again.hidden && void open());
+      void open();
+    </script>
+  </body>
+</html>

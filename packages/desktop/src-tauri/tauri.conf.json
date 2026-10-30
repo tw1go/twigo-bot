@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Mikazuki",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "dev.twigo.mikazuki",
   "build": {
     "frontendDist": "../web",
-    "devUrl": "http://localhost:5173/",
+    "devUrl": "http://localhost:5173/play/",
     "beforeDevCommand": { "script": "npm run dev:game", "cwd": "../.." },
     "beforeBuildCommand": "node scripts/stage.mjs"
   },
@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "Mikazuki",
-        "url": "play/index.html",
+        "url": "index.html",
         "width": 1280,
         "height": 720,
         "minWidth": 800,

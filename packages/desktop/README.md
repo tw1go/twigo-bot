@@ -1,7 +1,9 @@
 # Mikazuki: the desktop app
 
-A small Windows and Mac app with the game inside. It's the same game as twigo.dev/play: the art loads from the app
-itself, and it plays on the same server with everyone else.
+A small Windows and Mac app that opens the game in its own window. It's the same game as twigo.dev/play, loaded from
+the server like the website (the first start downloads about 3.5 MB, then it's cached), and it plays on the same server
+with everyone else. A game change never needs a new app: like the website, it offers **Reload now**. The app itself
+only updates when the app changes (rarely).
 
 ## For players: opening it the first time
 
@@ -37,21 +39,28 @@ the download over the old one.)
 
 ## For the owner: making and sharing a build
 
+- **What's inside**: only the start page (`web/index.html`, with the game's logo staged beside it by `scripts/stage.mjs`).
+  It opens https://twigo.dev/play/, or says "Can't reach Mikazuki. Check your internet." with Try again. The live page
+  may use the app (`capabilities/default.json`: `remote` https://twigo.dev/* only). The first time, it hands the old
+  bundled app's login and window setting to the live page, so nobody logs in again.
+- **The app's version is its own**: `src-tauri/tauri.conf.json` `version` (1.0.0 to start; keep `Cargo.toml` and
+  `package.json` the same). Bump it by hand when the app itself changes: anything in `packages/desktop`, its Rust or its
+  Tauri plugins. A game change needs no bump.
 - `npm run desktop:dev`: the app's window on the dev server's town (http://localhost:5173/play/, the dev town's fake
-  login; it never talks to the live server).
-- `npm run desktop:build`: builds the game, copies its page and `assets/` into `packages/desktop/web/play/`, and builds
-  the app with the game's version (v0.1.N → 0.1.N). On a Mac: `src-tauri/target/release/bundle/dmg/Mikazuki_0.1.N_aarch64.dmg`
-  (and `macos/Mikazuki.app`). Needs Rust (rustup) and the Xcode command line tools.
+  login; it never talks to the live server). `?update=fake` and `?update=fail` on the dev page try the update screen.
+- `npm run desktop:build`: stages the start page and builds the app at its version. On a Mac:
+  `src-tauri/target/release/bundle/dmg/Mikazuki_<v>_aarch64.dmg` (and `macos/Mikazuki.app`, about 7 MB). Needs Rust
+  (rustup) and the Xcode command line tools.
 - Windows and both Macs (Apple silicon and Intel): the **Desktop app** workflow (`.github/workflows/desktop.yml`); the
   installers are the run's artifacts.
 
-Publishing a version happens on its own: after every successful Deploy the Desktop app workflow builds the deployed
-commit and its publish job (a Mac runner) packs the Mac update (`Mikazuki_<v>_universal.app.tar.gz`, from the .dmg),
+Publishing a version happens on its own: after every successful Deploy the Desktop app workflow checks whether the app's
+version is newer than the published one (`latest.json`). Only then does it build the deployed commit, and its publish job (a Mac runner) packs the Mac update (`Mikazuki_<v>_universal.app.tar.gz`, from the .dmg),
 signs it and the Windows setup .exe for the updater with the `TAURI_UPDATER_KEY` secret (the owner's
 `~/.tauri/mikazuki-updater.key`, the whole file), writes `latest.json` and uploads everything to
 `/opt/twigo-bot/web/downloads/` with the Deploy workflow's SSH secrets (deploys never touch that folder), `latest.json`
-last, then removes older versions. About 15 minutes after a deploy, open apps see it as they start: "A new version of
-Mikazuki is ready", Update now; the front page's buttons point at the new files at once. **Actions → Desktop app → Run
+last, then removes older versions. About 15 minutes after that deploy, apps see it: the title screen's button becomes
+**Update**, and an app already in the game gets a notice; the front page's buttons point at the new files at once. **Actions → Desktop app → Run
 workflow** builds (and, unless Publish is unticked, publishes) by hand; the repository variable `DESKTOP_PUBLISH=off`
 turns publishing off.
 

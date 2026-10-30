@@ -14,7 +14,8 @@ phone after the first load.
 _Avoid_: phone app, mobile app (it's not from an app store)
 
 **Desktop app**:
-The Windows or Mac download with the game and its art inside, signed in through the system browser.
+The Windows or Mac download that opens the live game in its own window, signed in through the system browser. It has
+its own version, which only changes when the app itself does; a game change reaches it like the website, as a reload.
 _Avoid_: installed app (the home screen app is installed too), client
 
 **Update screen**:

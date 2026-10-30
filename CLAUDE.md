@@ -454,11 +454,17 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   asks GET /auth/wait every 2 s; the code (only for the address the login finished from) goes to POST /auth/exchange for
   the cookie (bot `web/auth.ts`, tested). Android's home screen app uses the website's redirect. First-load numbers:
   `packages/game/APPS-NOTES.md`.
-  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): the game's
-  production build staged into `web/play/` (`scripts/stage.mjs`: the page and assets/, no front page or service worker)
-  in one window; the app's version = the game's (v0.1.N → 0.1.N). Every server call goes through `net/endpoints.ts`
-  (`api()`, `serverUrl`, `townSocket`): relative on the website, https://twigo.dev in the app with its token
-  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<version>, so write
+  Desktop app (`packages/desktop`, Tauri 2, Windows and Mac, unsigned; its README for players and publishing): since
+  1.0.0 (30 Oct 2026) a window on the live game: it bundles only its start page (`web/index.html` + the logo staged by
+  `scripts/stage.mjs`), which opens https://twigo.dev/play/ (or "Can't reach Mikazuki" with Try again) and the first time
+  hands the old bundled page's `mk_app_token` and `mk_window` on in the #hash (endpoints.ts `takeAppHandoff`, first
+  thing in main.ts); `capabilities/default.json` `remote` https://twigo.dev/* only, so Tauri's bridge works on that page
+  (`isDesktopApp`); a game change is the website's version.json reload (ui/version.ts, now in the app too), never a new
+  app. The app's version is its own (tauri.conf.json `version`, Cargo.toml and package.json the same, bumped by hand when
+  packages/desktop changes; `shellVersion()` asks the app). Every server call goes through `net/endpoints.ts`
+  (`api()`, `serverUrl`, `townSocket`): relative on the website and on the app's live page, by address only from a page
+  the server didn't serve (an old app's bundled one); in the app with its token
+  (Authorization: Bearer; on /ws the subprotocol `mk-token.<token>`) and X-Mikazuki-Client: desktop/<the app's version>, so write
   new server fetches with `api()`, never a bare fetch('/…'). `net/desktop.ts` (loaded only in the app: its own chunk):
   login in the system browser → mikazuki://auth?code=… (deep-link + single-instance plugins) → POST /auth/exchange;
   the window (Settings → Display → Window, the app only: `ui/window-settings.ts` + `net/window-mode.ts`, both in the
@@ -487,7 +493,8 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   ("… It installs the next time you open Mikazuki.", Update now = startUpdate). Dev: `?update=fake` (a fake v9.9.9 downloaded
   over 3 s, then a reload), `?update=fail` (its download failing half way), on the website or `desktop:dev`; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
   Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or the Desktop app
-  workflow (`.github/workflows/desktop.yml`: after every successful Deploy, on the deployed commit, and by hand; both
+  workflow (`.github/workflows/desktop.yml`: after a successful Deploy only when the app's version is newer than
+  latest.json's (its `decide` job), on the deployed commit, and by hand always; both
   Macs and Windows as artifacts, then its publish job signs with the `TAURI_UPDATER_KEY` secret and uploads to the
   server with the Deploy secrets: `publish.mjs --from=artifacts`; repository variable `DESKTOP_PUBLISH=off` stops it).
   `npm run desktop:dev`: the window on the dev town.

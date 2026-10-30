@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { exit } from '@tauri-apps/plugin-process';
 import { type Update, check } from '@tauri-apps/plugin-updater';
-import { api, setAppToken } from './endpoints';
+import { api, setAppToken, shellVersion } from './endpoints';
 import { notifyDownload, notifyUpdate } from '../ui/version';
 import { inGame } from './pwa';
 import { FAKE_VERSION, type UpdateState, fakeUpdate, newer, updateStore, within } from './update-state';
@@ -27,8 +27,6 @@ import { startWindow, toggleFullscreen } from './window-mode';
 //   `install_update` command (lib.rs): the download's progress, "Installing…", then the app closes and reopens by itself
 //   (Windows) or restarts (Mac); a failure leaves Try again and Download (this system's installer in the browser, from
 //   twigo.dev/downloads/latest.json). The server turning this version away (/me's 426) shows the notice too.
-
-declare const __BUILD__: { version: string };
 
 const SERVER = 'https://twigo.dev';
 /** How often an open app asks whether there's a new version (ms). */
@@ -108,6 +106,9 @@ interface Latest {
 let found: Update | null = null;
 let latest: Latest | null = null;
 let asking: Promise<string | null> | null = null;
+/** The app's own version (tauri.conf.json's: the update screen's "v1.0.0 → v1.0.1"), once the app has said it. */
+let appVersion = 'dev';
+void shellVersion().then((v) => (appVersion = v));
 /** The game's logo for the update screen (manifest ui.logoMikazuki, from BootScene). */
 let logoFile: string | undefined;
 export const setUpdateArt = (file?: string): void => void (logoFile = file ? `${import.meta.env.BASE_URL}assets/${file}` : undefined);
@@ -148,7 +149,7 @@ async function askUpdaterAndSite(): Promise<string | null> {
   latest = l;
   if (u) return u.version;
   // No signed release the updater can take, but a newer download: still worth the notice's Download.
-  if (u === undefined && l?.version && newer(l.version, __BUILD__.version) && (isMac() ? l.mac : l.windows)) notifyDownload(l.version, downloadFrom(l));
+  if (u === undefined && l?.version && newer(l.version, await shellVersion()) && (isMac() ? l.mac : l.windows)) notifyDownload(l.version, downloadFrom(l));
   return null;
 }
 
@@ -189,7 +190,7 @@ export function startUpdate(): void {
   if (s.state === 'downloading' || s.state === 'installing') return;
   const version = 'version' in s ? s.version : found?.version;
   if (!version) return;
-  showUpdateScreen(updateStore, { retry: () => startUpdate(), download: downloadFrom(latest), from: __BUILD__.version, logo: logoFile });
+  showUpdateScreen(updateStore, { retry: () => startUpdate(), download: downloadFrom(latest), from: appVersion, logo: logoFile });
   updateStore.set({ state: 'downloading', version, got: 0, total: null });
   const set = (p: UpdateProgress) => updateStore.set(p.state === 'downloading' ? { state: 'downloading', version, got: p.got, total: p.total } : { state: 'installing', version });
   (fakeUpdate() ? fakeInstall(set) : installUpdate(set)).catch((e: unknown) => updateStore.set({ state: 'failed', version, error: e instanceof Error ? e.message : String(e) }));
