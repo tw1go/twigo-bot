@@ -13,7 +13,27 @@ for (const name of ['DISCORD_TOKEN', 'DISCORD_CLIENT_ID', 'ADMIN_ROLE_ID', 'ADMI
   'GAMBLING_CHANNEL_ID', 'GAMES_CHANNEL_ID', 'JAIL_ROLE_ID', 'REWARD_OWNER_ID', 'ROOM_FINDS_CHANNEL_ID']) process.env[name] = 'test';
 process.env.TIMEZONE = 'Asia/Manila';
 
-const { DRAW_CRON, drawMissed, dueDraw, nextDraw } = await import('./jackpot.js');
+const { DRAW_CRON, drawMissed, dueDraw, nextDraw, splitTickets } = await import('./jackpot.js');
+
+test('a draw takes the tickets bought by its due time and keeps the later ones (with their buys) for the next; no buy recorded = before', () => {
+  const due = manila('2026-10-30T10:00:00').getTime();
+  const held = { a: 5, b: 2, c: 3, d: 0 };
+  const bought = {
+    a: [{ n: 1, at: due - 60_000 }, { n: 4, at: due + 180_000 }], // 1 before, 4 after (the 30 Oct case)
+    b: [{ n: 2, at: due + 28_000 }], // all after
+    // c: from before buys were kept
+  };
+  const late = splitTickets(held, bought, due);
+  assert.deepEqual(late.drawn, { a: 1, c: 3 });
+  assert.deepEqual(late.kept, { a: 4, b: 2 });
+  assert.deepEqual(late.keptBuys, { a: [{ n: 4, at: due + 180_000 }], b: [{ n: 2, at: due + 28_000 }] });
+  // On time (until = now): everything held is in.
+  const now = splitTickets(held, bought, due + 600_000);
+  assert.deepEqual(now.drawn, { a: 5, b: 2, c: 3 });
+  assert.deepEqual(now.kept, {});
+  // Buys past what's held (never expected) can't take more than is held.
+  assert.deepEqual(splitTickets({ a: 2 }, { a: [{ n: 5, at: due + 1 }] }, due), { drawn: {}, kept: { a: 2 }, keptBuys: { a: [{ n: 5, at: due + 1 }] } });
+});
 
 // The jackpot's clock (games/jackpot.ts): draws at 10:00 and 22:00 Manila; the draw due before a moment, and whether
 // it was missed (later than the last run, and the scheduled job's two minutes gone by).

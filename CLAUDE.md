@@ -690,7 +690,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `drawMissed` are pure (tested in `games/jackpot.test.ts`).
 - Jackpot booth (`ui/jackpot.ts`, left click the booth): pot, countdown, your tickets (buy 1 or the rest, 1 Kowen each,
   max per draw), chance, players, last draw; bot `GET/POST /town/jackpot` shares `buyTickets` with `/jackpot` and posts
-  town buys to the feed and the games channel. Dev uses a pretend booth.
+  town buys to the feed and the games channel. Dev uses a pretend booth. The draw (`games/jackpot.ts`, tested in
+  `jackpot.test.ts`; 30 Oct 2026): a missed one is caught up (`catchUpJackpot`, at startup and hourly, kv 'jackpot-ran-at')
+  with only the tickets bought before it was due (kv 'jackpot-buys' keeps each buy's time; `splitTickets`), the rest kept
+  for the next draw; `/gift jackpot user tickets` (the gifter) puts free tickets in the next draw (`addTickets`).
 - Bank (`ui/bank.ts`, left click the bank), four tabs: Main (wallet and vault cards, summary rows linking to the
   tabs), Vault (store/take out), Loan (pay / pay all, or borrow from the Tanod Bank; loans you gave), and Exchange
   (CONTEXT.md Exchange, Kowen Voucher; 29 Oct 2026: `ui/exchange-tab.ts`: Buy Kowen Vouchers, a card a voucher with how

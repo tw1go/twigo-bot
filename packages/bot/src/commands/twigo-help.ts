@@ -101,7 +101,7 @@ export const twigoHelp: Command = {
           '`announce:#channel` (+ `announce-ping:True` for @everyone) — post an announcement as the bot',
           '`game:<patrol|jackpot>` — start a Tanod Patrol or draw the jackpot now',
           '`/jail @user minutes reason` — jail someone (`minutes:0` releases)',
-          '`/gift kowens|everyone|boosts|minewars` — gifter only: give/remove Kowens (one member or everyone who has used the bot), fix a boost count, or pay the 9 PM Mine Wars',
+          '`/gift kowens|everyone|boosts|jackpot|minewars` — gifter only: give/remove Kowens (one member or everyone who has used the bot), fix a boost count, put free jackpot tickets in the next draw, or pay the 9 PM Mine Wars',
           '`/gift prereg-panel|launch` — gifter only: post the web game pre-registration panel; at launch, pay every pre-registered member and close sign-ups',
           '`/gift title` — gifter only: give a member a web game title (shown under their name in the town)',
           '`/gift dig-reset` — gifter only: reset a member\'s daily dig and shovel counters so they can go again today',

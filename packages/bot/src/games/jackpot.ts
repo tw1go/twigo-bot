@@ -10,7 +10,8 @@ import { announce, townName } from '../web/town-feed.js';
 
 // A draw the bot missed (down at 10:00, or Discord not answering then: 30 Oct 2026, the 10 AM draw) is caught up: the
 // time each draw ran is kept (kv 'jackpot-ran-at', drawn, refunded or empty), and `catchUpJackpot` (at startup and
-// hourly) draws when the latest scheduled draw is past that and tickets wait. The channel is fetched with retries.
+// hourly) draws when the latest scheduled draw is past that and tickets wait, taking only the tickets bought before it was
+// due (kv 'jackpot-buys' keeps when each was bought): the rest wait for the next draw. The channel is fetched with retries.
 // Jackpot, drawn twice a day: tickets cost 1 Kowen each (up to MAX_TICKETS per person per draw). At draw time a random ticket wins
 // the whole pot. Needs at least 2 players, otherwise everyone is refunded. The pot also holds raid money: RAID_SHARE of
 // every bet the Tanod confiscates (games/gamble.ts). It goes to the next winner, and rolls over when there's no winner.
@@ -36,8 +37,39 @@ export const RAID_SHARE = 0.7;
 const table = tableSync<{ user_id: string; tickets: number }>('jackpot_tickets', ['user_id'], ['tickets']);
 let tickets: Record<string, number> = Object.fromEntries(table.load().map((r) => [r.user_id, r.tickets]));
 
+// When each member's tickets were bought (kv), so a draw made late takes only the tickets bought before it was due and
+// leaves the rest for the next draw (30 Oct 2026: a catch-up draw at 10:46 took tickets bought at 10:03 for the 10 PM one).
+const BUYS_KEY = 'jackpot-buys';
+export type TicketBuy = { n: number; at: number };
+let buys: Record<string, TicketBuy[]> = kvLoad(BUYS_KEY, {});
+
 function save(): void {
   table.save(Object.entries(tickets).filter(([, n]) => n > 0).map(([user_id, n]) => ({ user_id, tickets: n })));
+  kvSave(BUYS_KEY, buys);
+}
+
+/** A draw's tickets: of what everyone holds, the tickets bought at or before `until` (the draw's due time) are `drawn`
+ *  and the later ones `kept` for the next draw with their buys. Tickets with no buy recorded (from before buys were
+ *  kept) count as bought before. */
+export function splitTickets(held: Record<string, number>, bought: Record<string, TicketBuy[]>, until: number): {
+  drawn: Record<string, number>;
+  kept: Record<string, number>;
+  keptBuys: Record<string, TicketBuy[]>;
+} {
+  const drawn: Record<string, number> = {};
+  const kept: Record<string, number> = {};
+  const keptBuys: Record<string, TicketBuy[]> = {};
+  for (const [id, n] of Object.entries(held)) {
+    if (n <= 0) continue;
+    const later = (bought[id] ?? []).filter((b) => b.at > until);
+    const after = Math.min(n, later.reduce((a, b) => a + b.n, 0));
+    if (n - after > 0) drawn[id] = n - after;
+    if (after > 0) {
+      kept[id] = after;
+      keptBuys[id] = later;
+    }
+  }
+  return { drawn, kept, keptBuys };
 }
 
 /** "1 jackpot ticket", "3 jackpot tickets". */
@@ -92,9 +124,10 @@ function saveLast(draw: LastDraw): void {
   kvSave(LAST_KEY, draw);
 }
 
-/** Records bought tickets (caller has already taken the credits). */
-export function addTickets(userId: string, count: number): void {
+/** Records bought tickets (caller has already taken the credits; /gift jackpot gives them free) and when. */
+export function addTickets(userId: string, count: number, at = Date.now()): void {
   tickets[userId] = ticketsOf(userId) + count;
+  (buys[userId] ??= []).push({ n: count, at });
   save();
 }
 
@@ -109,11 +142,12 @@ export function buyTickets(userId: string, count: number): { bought: number } | 
   return { bought: buy };
 }
 
-export async function drawJackpot(client: Client): Promise<void> {
+/** Draws the tickets bought by `until` (now for a draw on time; the due time for one caught up late). */
+export async function drawJackpot(client: Client, until = Date.now()): Promise<void> {
   if (drawing) return;
   drawing = true;
   try {
-    await draw(client);
+    await draw(client, until);
   } finally {
     drawing = false;
   }
@@ -135,15 +169,17 @@ async function gamesChannel(client: Client, tries = 3) {
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
-async function draw(client: Client): Promise<void> {
-  const entries = Object.entries(tickets);
-  if (entries.length === 0) return markRan(); // (nothing to draw: this draw is done)
+async function draw(client: Client, until: number): Promise<void> {
+  const { drawn, kept, keptBuys } = splitTickets(tickets, buys, until);
+  const entries = Object.entries(drawn);
+  if (entries.length === 0) return markRan(); // (nothing bought for this draw: it's done; later buys wait for the next)
 
   const channel = await gamesChannel(client); // (fails: the tickets stay, the catch-up tries again within the hour)
 
-  const total = pot();
-  const ticketsIn = ticketTotal();
-  tickets = {};
+  const ticketsIn = entries.reduce((a, [, n]) => a + n, 0);
+  const total = ticketsIn + raid;
+  tickets = kept;
+  buys = keptBuys;
   save();
 
   if (entries.length < 2) {
@@ -230,6 +266,6 @@ export async function catchUpJackpot(client: Client, now = new Date()): Promise<
   if (!drawMissed(now, ranAt)) return;
   const due = dueDraw(now)!;
   if (Object.keys(tickets).length === 0) return markRan(now.getTime()); // (nobody was in it: done)
-  console.log(`[jackpot] the draw due ${due.toISOString()} was missed (last ran ${new Date(ranAt).toISOString()}): drawing now`);
-  await drawJackpot(client);
+  console.log(`[jackpot] the draw due ${due.toISOString()} was missed (last ran ${new Date(ranAt).toISOString()}): drawing now (tickets bought after it wait for the next)`);
+  await drawJackpot(client, due.getTime());
 }
