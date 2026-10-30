@@ -73,6 +73,11 @@ export class LoadingCover {
     if (this.root.dataset.waiting !== v) this.root.dataset.waiting = v;
   }
 
+  /** What it was last told it waits for ("world frames"), for the lag report. */
+  waitingFor(): string {
+    return this.root.dataset.waiting ?? '';
+  }
+
   /** Gone (a quick fade). */
   hide(): void {
     for (const t of this.timers) clearInterval(t);

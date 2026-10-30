@@ -2323,7 +2323,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Long Animation Frames API's breakdown (the game's frame, layout and paint, its scripts); events round them (`lagEvent`:
   a map entered, someone arriving or leaving, the server quiet over 1.2 s on a battle map then a burst of 5+ messages);
   the header: build, browser, screen, cores, GPU (WEBGL_debug_renderer_info), area, others here. Time a new heavy job with
-  `lagMark` where it yields. The bot's side: `web/stalls.ts` `watchStalls` (server.ts: a 100 ms timer more than 250 ms
+  `lagMark` where it yields. Since 30 Oct 2026 it also keeps errors (`lagError`: uncaught, unhandled promises, and one thrown
+  inside a game frame, which no longer ends Phaser's loop: startLag wraps `game.loop.callback`), the page hidden or shown, the
+  WebGL context lost, and the arrival's steps (server welcome, mobs, "the loading cover lifted after N s", at its 15 s cap with
+  what it still waited for, or by TownScene's wall-clock watchdog 5 s past that if the frames never got there). The bot's side: `web/stalls.ts` `watchStalls` (server.ts: a 100 ms timer more than 250 ms
   late = `[lag] the bot stalled N ms (n players on)` in its log; tested).
 - Checking work: run the dev server and drive headless Chrome over the DevTools protocol (screenshots +
   `window.__town` debug API: `state()`, `teleport()`, `walk()`, `time()`, `view()`, `outfit()`). Use

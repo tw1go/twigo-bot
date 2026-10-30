@@ -56,6 +56,21 @@ export function lagEvent(text: string): void {
   if (events.length > KEEP_EVENTS) events.shift();
 }
 
+/** Errors, each kept once as an event (where, the message, its first stack line), at most ERRORS_KEPT: an error the
+ *  page didn't catch, a promise nobody caught, or one thrown inside a game frame (startLag keeps the loop going). */
+const ERRORS_KEPT = 12;
+const errorsSeen = new Set<string>();
+export function lagError(where: string, e: unknown): void {
+  const err = e instanceof Error ? e : null;
+  const msg = err ? `${err.name}: ${err.message}` : String(e);
+  const key = `${where}|${msg}`;
+  if (errorsSeen.has(key) || errorsSeen.size >= ERRORS_KEPT) return;
+  errorsSeen.add(key);
+  const at = err?.stack?.split('\n').slice(1).find((l) => l.trim())?.trim() ?? '';
+  lagEvent(`ERROR (${where}) ${msg}${at ? ` · ${at.slice(0, 160)}` : ''}`);
+  console.error(e);
+}
+
 /** Where you are now: the area, how many others are there, whether it's a battle map (the server sends all the time). */
 export function lagContext(c: Partial<typeof context>): void {
   context = { ...context, ...c };
@@ -88,6 +103,26 @@ export function startLag(game: Phaser.Game): void {
     const src = game.textures.get(key)?.getSourceImage() as { width?: number; height?: number } | undefined;
     textures.count++;
     textures.px += (src?.width ?? 0) * (src?.height ?? 0);
+  });
+  // What the report can't see from frames alone: errors, the page hidden and shown, the GPU context lost.
+  addEventListener('error', (e) => lagError('page', e.error ?? e.message));
+  addEventListener('unhandledrejection', (e) => lagError('promise', e.reason));
+  document.addEventListener('visibilitychange', () => lagEvent(document.hidden ? 'page hidden' : 'page shown'));
+  game.canvas?.addEventListener('webglcontextlost', () => lagEvent('the GPU dropped the game (WebGL context lost)'));
+  game.canvas?.addEventListener('webglcontextrestored', () => lagEvent('the GPU gave the game back (WebGL context restored)'));
+  // An error thrown inside a game frame ended Phaser's loop for good (its next frame is asked for after the frame): the
+  // town froze while the server's messages still played sounds (30 Oct 2026, the Old Market in the app). Phaser's loop
+  // calls one function a frame, set as it starts (after 'ready'): kept going here, the error noted once.
+  game.events.once('poststep', () => {
+    const loop = game.loop as unknown as { callback: (time: number, delta: number) => void };
+    const step = loop.callback;
+    loop.callback = (time, delta) => {
+      try {
+        step(time, delta);
+      } catch (e) {
+        lagError('frame', e);
+      }
+    };
   });
   game.events.once('ready', () => {
     try {

@@ -1398,9 +1398,11 @@ export class Mobs {
     const files = new Set([...this.hunted.values()].map((h) => P.file.replace('{type}', h.type)));
     let queued = false;
     for (const f of files) {
-      if (this.scene.textures.exists(f)) continue;
+      const had = this.scene.textures.exists(f);
+      // (Always through queueSheet: a picture already there, unpacked as one frame, is cut into its frames then.)
       queueSheet(load, this.scene.textures, f, P.frame[0], P.frame[1]);
-      queued = true;
+      if (!had) queued = true;
+      else if (!this.scene.textures.get(f).has('1')) slice(this.scene.textures, f, P.frame[0], P.frame[1]);
     }
     if (queued && !load.isLoading()) load.start();
   }
@@ -1416,7 +1418,8 @@ export class Mobs {
       return;
     }
     const file = P!.file.replace('{type}', want.type);
-    if (!this.scene.textures.exists(file)) return void m.hunt?.setVisible(false);
+    // (No icon until its sheet has its frames: an animation of none throws inside the frame and ended the game's loop.)
+    if (!this.scene.textures.exists(file) || !this.scene.textures.get(file).has('3')) return void m.hunt?.setVisible(false);
     if (m.hunt && m.huntFile !== file) {
       m.hunt.destroy();
       m.hunt = null;
