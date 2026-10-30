@@ -471,8 +471,12 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   → it updates itself, asked on start and every minute after until it has told the player (net/desktop.ts
   CHECK_EVERY_MS: an app left open hears of a new version as soon as it's published, about 10 minutes after a deploy) (Tauri's updater reads its `platforms`, signed with the owner's `~/.tauri/mikazuki-updater.key`
   and bound to the version; `npm run desktop:publish -- <ssh-target>` packs, signs and uploads the workflow's artifacts
-  from ~/Downloads): "A new version of Mikazuki is ready" → Update now (download, install, restart; the notice over the
-  title screen), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  from ~/Downloads): "A new version of Mikazuki is ready" → Update now (the app's `install_update` command, lib.rs: the download with `mk-update` progress events, then on Windows the
+  game's window destroyed and waited for before the install, since the updater exits the process from inside the install and an
+  exit with the webview alive could hang the old process, which kept the single-instance mutex and swallowed every launch after:
+  30 Oct 2026; the quiet NSIS installer (`installMode` quiet, per user: never an admin prompt) reopens the app on its `/R`; a Mac
+  swapped and restarted by `app.restart()`; `UPDATING` keeps the app alive while its window is gone; the single-instance plugin's
+  `semver` feature names the mutex by version, so a new version never hands its start to an old copy), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
   Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or the Desktop app
   workflow (`.github/workflows/desktop.yml`: after every successful Deploy, on the deployed commit, and by hand; both
   Macs and Windows as artifacts, then its publish job signs with the `TAURI_UPDATER_KEY` secret and uploads to the

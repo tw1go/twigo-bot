@@ -35,7 +35,7 @@
     "copyright": "twigo",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "windows": {
-      "nsis": { "installerIcon": "icons/icon.ico" }
+      "nsis": { "installerIcon": "icons/icon.ico", "installMode": "currentUser" }
     }
   },
   "plugins": {
@@ -44,7 +44,7 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENGNTFDOTYxODRBN0YwQ0YKUldUUDhLZUVZY2xSejA2WnI4TkV1bG5rbjdBeUVaY1NFNUVLRW1sdHZINjV6YjZHMEM5SDVPQVkK",
       "endpoints": ["https://twigo.dev/downloads/latest.json"],
       "requireSignedVersion": true,
-      "windows": { "installMode": "passive" }
+      "windows": { "installMode": "quiet" }
     }
   }
 }

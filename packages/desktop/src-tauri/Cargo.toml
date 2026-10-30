@@ -24,7 +24,7 @@ tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 # One app at a time: a mikazuki:// login link reaches the window that's already open (on Windows a link starts a
 # second copy otherwise).
-tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-single-instance = { version = "2", features = ["deep-link", "semver"] } # (semver: the mutex is named by version too, so a new version never hands its start over to an old copy still closing)
 
 [profile.release]
 codegen-units = 1

@@ -1,6 +1,8 @@
 import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { exit, relaunch } from '@tauri-apps/plugin-process';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { exit } from '@tauri-apps/plugin-process';
 import { type Update, check } from '@tauri-apps/plugin-updater';
 import { api, setAppToken } from './endpoints';
 import { notifyDownload, notifyUpdate } from '../ui/version';
@@ -16,7 +18,7 @@ import { startWindow, toggleFullscreen } from './window-mode';
 //   (Mac) swaps Full screen and the last other mode.
 // - Updates: on start and every minute after (until it has told the player), twigo.dev/downloads/latest.json (the updater plugin reads its `platforms`, signed by
 //   packages/desktop/scripts/publish.mjs): a newer version shows "A new version of Mikazuki is ready" with Update now,
-//   which downloads it, installs it and restarts the app. If the updater can't (no signed release for this system, a
+//   which downloads it, installs it and restarts the app (the app's own `install_update` command: lib.rs). If the updater can't (no signed release for this system, a
 //   failed download), the notice's Download opens this system's installer in the browser instead. The server turning
 //   this version away (/me's 426) shows it too.
 
@@ -110,19 +112,27 @@ const downloadFrom = (latest: Latest | null) => () => void openUrl((isMac() ? la
  *  no network). */
 const askUpdater = (): Promise<Update | null | undefined> => check().catch(() => undefined);
 
-/** Downloads and installs an update, saying how far it got, then restarts into it (on Windows the installer closes the
- *  app and opens the new one itself). */
-async function install(update: Update, say: (text: string) => void): Promise<void> {
-  let total = 0;
-  let got = 0;
-  await update.downloadAndInstall((e) => {
-    if (e.event === 'Started') total = e.data.contentLength ?? 0;
-    else if (e.event === 'Progress') {
-      got += e.data.chunkLength;
-      if (total) say(`Downloading the update… ${Math.min(100, Math.floor((got * 100) / total))}%`);
-    } else if (e.event === 'Finished') say('Installing… Mikazuki restarts in a moment.');
+/** What the app's install says as it goes (the `mk-update` event of the app's `install_update` command). */
+export type UpdateProgress = { state: 'downloading'; got: number; total: number | null } | { state: 'installing' };
+
+/** Downloads and installs the update the app has found, through the app's own `install_update` command (lib.rs): it
+ *  reports its progress, and on Windows closes the game's window before the installer runs and the app quits (the
+ *  installer reopens it by itself); on a Mac it swaps the app and restarts it. Rejects with the app's reason. */
+export async function installUpdate(onProgress: (p: UpdateProgress) => void): Promise<void> {
+  const off = await listen<UpdateProgress>('mk-update', (e) => onProgress(e.payload)).catch(() => () => {});
+  try {
+    await invoke('install_update');
+  } finally {
+    off();
+  }
+}
+
+/** The old notice's words for the install's progress. */
+async function install(_update: Update, say: (text: string) => void): Promise<void> {
+  await installUpdate((p) => {
+    if (p.state === 'downloading') say(p.total ? `Downloading the update… ${Math.min(100, Math.floor((p.got * 100) / p.total))}%` : 'Downloading the update…');
+    else say('Installing… Mikazuki will close and open again by itself.');
   });
-  await relaunch();
 }
 
 /** A newer version on twigo.dev/downloads: Update now (the updater), else the notice with Download. True: the player was

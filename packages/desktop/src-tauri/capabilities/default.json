@@ -17,6 +17,7 @@
     "opener:default",
     "deep-link:default",
     "updater:default",
+    "allow-install-update",
     "process:allow-restart",
     "process:allow-exit"
   ]
