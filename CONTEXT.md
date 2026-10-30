@@ -727,7 +727,7 @@ _Avoid_: ignore, mute (that's a moderator's)
 
 **Guided quest**:
 One of the first quests a new player is walked through (marked `guided` in the quests' data): A Weapon for the Town,
-Lata Patrol and Just In Time. It gets the guide arrows and, while it's a hunt, the quest trail.
+Lata Patrol and Just In Time. It gets the guide arrows (every quest gets the quest trail).
 _Avoid_: tutorial quest, starter quest
 
 **Guide arrow**:
@@ -736,8 +736,10 @@ each step of a lesson. One shows at a time, in the quest's colour (violet main, 
 _Avoid_: pointer, hint arrow
 
 **Quest trail**:
-The sparkling line on the ground from you toward a guided quest's hunt: to the Slums gate in town, then to its mob's
-area (or the nearest mini boss spot) in the Slums. It stops once you're there; Settings can turn it off.
+The sparkling line on the ground from you toward your current quest's objective, on every outdoor map: the NPC to talk
+to, a hunt's area (or the nearest mini boss spot), a field boss, or, when it's on another map, this map's gate on the
+way there. Main quests first, then side; with no active quest, an offered main quest's giver. It stops once you're
+there; Settings can turn it off. Never inside a dungeon run.
 _Avoid_: path, breadcrumbs, guide line
 
 **Quest map**:

@@ -275,7 +275,7 @@ function leave(): HTMLElement {
     setTrailOn(trailBox.checked);
     playSound('click');
   });
-  trail.append(trailBox, el('span', undefined, 'Show the quest trail'));
+  trail.append(trailBox, el('span', undefined, 'Show quest trails'));
   // The hotbar lock (ui/hotbar-lock.ts): the same switch as the padlock on the bar.
   const lock = el('label', 'st-row st-check');
   const lockBox = el('input');

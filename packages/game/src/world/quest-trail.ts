@@ -4,14 +4,16 @@ import { tileToScreen } from '../iso';
 import { FX_DEPTH } from './fx-layers';
 import type { Tile } from './grid';
 
-// ✨ The quest trail (CONTEXT.md "Quest trail"): a sparkling line on the ground from you toward a guided quest's hunt
-// (TownScene `trailTick` picks where to and walks the walk grid's path there, its first TRAIL_TILES tiles). One dash
+// ✨ The quest trail (CONTEXT.md "Quest trail"): a sparkling line on the ground from you toward your current quest's
+// objective, on every outdoor map (TownScene `trailGoal` picks where to: an NPC, a hunt's zone, a mini boss spot, a field
+// boss, a visit, or this map's gate toward another map; `trailTick` walks the walk grid's path there, its first
+// TRAIL_TILES tiles). One dash
 // (manifest guide.trail, 12 × 6, brightness steps 0 dim to 3 lit) on every path tile's middle, on the ground layer
 // (under players, mobs and props, like the click marker) at 85%; a brightness wave runs along it toward the goal (every
 // WAVE_MS the lit step moves a tile on, the tiles behind it at 2, 1, then 0) and every SPARK_MS a sparkle (guide.sparkle,
 // 9 × 9, twinkling once) rises 2 to 6 px over a random dash, in front. Going away, it fades out over FADE_MS. Reduced
 // motion: no wave (dim dashes) and a third of the sparkles. A light of its own, never tinted by the night (the
-// fireflies' rule). Settings → Game → "Show the quest trail" (localStorage
+// fireflies' rule). Settings → Game → "Show quest trails" (localStorage
 // mk_guide_trail; on by default) turns it off.
 
 export const TRAIL_TILES = 40;

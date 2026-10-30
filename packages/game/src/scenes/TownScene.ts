@@ -43,8 +43,8 @@ import { mountGuideArrow } from '../ui/guide-arrow';
 import { mountQuestGuide } from '../ui/quest-guide';
 import { mountLessons } from '../ui/lesson-runner';
 import { QuestMap } from '../ui/quest-map';
-import { type QuestMarkArt, npcMarks, placesOn, questMarks } from '../ui/quest-marks';
-import { type SlumsPlaces, loadPlaces } from '../ui/world-map';
+import { type QuestMarkArt, type TrailTarget, npcMarks, placesIn, placesOn, questMarks, trailTarget } from '../ui/quest-marks';
+import { type SlumsPlaces, type WorldMap, loadPlaces, loadWorldMap } from '../ui/world-map';
 import { ChatBox } from '../ui/chat';
 import { StayReward } from '../ui/stay';
 import { MegaphoneBanner } from '../ui/megaphone';
@@ -189,6 +189,15 @@ const EMOTE_ACTIONS = EMOTE_KEYS.map((_, i) => `emote${i + 1}`);
 const WARP_MS = 1000;
 /** The quest trail: how often it looks again (TownScene trailTick), and how near a mini boss spot counts as there. */
 const TRAIL_MS = 250;
+/** The outdoor maps the trail runs on, and how they join (each map's gates to its neighbours: the route to a goal on
+ *  another map goes gate by gate, hood ↔ town ↔ slums ↔ palengke). */
+const TRAIL_AREAS: string[] = ['town', 'slums', 'palengke', 'hood'];
+const MAP_LINKS: Record<string, string[]> = { hood: ['town'], town: ['hood', 'slums'], slums: ['town', 'palengke'], palengke: ['slums'] };
+/** The trail's path is searched toward a point at most this far along the straight line (a far goal on a big map), and
+ *  stretches on as you walk. */
+const TRAIL_REACH = 60;
+/** How near an NPC the trail stops. */
+const NPC_NEAR = 2;
 /** A walk into a debuff's range (its target too far) is called off after this. */
 const DEBUFF_WALK_MS = 10_000;
 const MINI_NEAR = 6;
@@ -727,10 +736,12 @@ export class TownScene extends Phaser.Scene {
     if (this.area === 'palengke') this.npcs = this.makePalengkeNpcs();
     this.makePets();
     this.makeHalloween();
-    // The quest trail (world/quest-trail.ts): only where a guided quest's hunt is led (the Town and the Slums).
-    if (this.M.guide && (this.area === 'town' || this.area === 'slums')) {
+    // The quest trail (world/quest-trail.ts): on every outdoor map (the Town, the Slums, the Old Market, the neighbourhood;
+    // never in a run), to any quest's current objective, through this map's gate when it's elsewhere.
+    if (this.M.guide && TRAIL_AREAS.includes(this.area)) {
       const trail = new QuestTrail(this, this.M.guide, (c, r) => this.objects.heights.lift(c, r));
       this.trail = trail;
+      void loadWorldMap(this.worldMapUrls()).then((w) => (this.world = w)); // (the other maps' zones and NPCs: where a goal is)
       const again = () => (this.trailFor = '__'); // (Settings: looked at again on the next tick)
       addEventListener('mk-guide-trail', again);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -5116,6 +5127,8 @@ export class TownScene extends Phaser.Scene {
   /** When the trail is looked at again, and what it was drawn for (your tile and its goal). */
   private trailAt = 0;
   private trailFor = '';
+  /** The world map's places (every map's zones, NPCs, bosses, gates), once loaded: where a quest's goal is. */
+  private world: WorldMap | null = null;
 
   /** The quest marks' art (the quest map, the Map menu), or null without the guide's art. */
   private questMarkArt(): QuestMarkArt | null {
@@ -5153,46 +5166,75 @@ export class TownScene extends Phaser.Scene {
     return qm;
   }
 
-  /** Where the quest trail leads now: a guided quest's hunt (a kill or mini boss objective not yet reached), in town to
-   *  the Slums gate, in the Slums to its mob's zone (its tile nearest you) or the nearest of its mini boss spots; a guided
-   *  visit (the Tanod's The Market Up North), to this map's gate to its area (from town the Slums gate first); null once
-   *  you're there (inside the zone, within MINI_NEAR of the spot), elsewhere, with no such quest or the trail off. */
+  /** The world map's data as the quest map loads it (ui/quest-map.ts): the trail asks the same. */
+  private worldMapUrls(): { layout: string; slums: string; town: string; palengke: string } {
+    const asset = (file: string) => `${import.meta.env.BASE_URL}assets/${file}`;
+    return { layout: asset(this.M.ui.mapWorld?.layout ?? 'ui/map/map-layout.json'), slums: asset('maps/slums.json'), town: asset('maps/town.json'), palengke: asset('maps/palengke.json') };
+  }
+
+  /** The next map on the way from here to `to` (hood ↔ town ↔ slums ↔ palengke), or null (here, or no way). */
+  private nextMapToward(to: string): string | null {
+    if (to === this.area) return null;
+    const prev = new Map<string, string | null>([[this.area as string, null]]);
+    const queue: string[] = [this.area];
+    while (queue.length) {
+      const at = queue.shift()!;
+      for (const next of MAP_LINKS[at] ?? []) {
+        if (prev.has(next)) continue;
+        prev.set(next, at);
+        queue.push(next);
+      }
+    }
+    if (!prev.has(to)) return null;
+    let step = to;
+    while (prev.get(step) !== this.area) step = prev.get(step)!;
+    return step;
+  }
+
+  /** Where the quest trail leads now (ui/quest-marks.ts trailTarget: the first active quest's current objective with
+   *  somewhere to go, main's first; else an offered main quest's giver): an NPC's spot (a talk, a delivery, the class
+   *  choice), a hunt's zone (its tile nearest you; a collect's, the mob its item drops from), the nearest mini boss spot,
+   *  a field boss's tile (its fight, its bell), a visit's map; on another map, this map's gate on the way there. Null
+   *  once you're there (within NPC_NEAR of the NPC, inside the zone, within MINI_NEAR of the spot or the boss), with no
+   *  such quest, in a run, or with the trail off. */
   private trailGoal(): { tile: Tile; type: 'main' | 'side' } | null {
-    if (!trailOn() || (this.area !== 'town' && this.area !== 'slums')) return null;
-    const s = adventure();
-    const hunt = (s?.quests.active ?? [])
-      .map((p) => ({ p, q: questDef(p.id) }))
-      .map(({ p, q }) => ({ q, o: q?.objectives[p.step], ready: readyToReport(q, p) }))
-      .filter((x) => x.q?.guided && !x.ready && (x.o?.type === 'kill' || x.o?.type === 'miniBoss' || x.o?.type === 'visit'))
-      .sort((a, b) => (a.q!.type === b.q!.type ? 0 : a.q!.type === 'main' ? -1 : 1))[0];
-    if (!hunt) return null;
-    const type = hunt.q!.type;
+    if (!trailOn() || !TRAIL_AREAS.includes(this.area)) return null;
+    const places = this.world ? placesIn(this.world) : placesOn(this.area, this.map as unknown as SlumsPlaces);
+    const target: TrailTarget | null = trailTarget(places);
+    if (!target) return null;
+    const type = target.type;
     const me = this.player.tile;
     const gateTile = (to: string): { tile: Tile; type: 'main' | 'side' } | null => {
       const gate = this.map.gates?.[to as Gate];
       return gate?.length ? { tile: { col: gate[Math.floor(gate.length / 2)][0], row: gate[Math.floor(gate.length / 2)][1] }, type } : null;
     };
-    if (hunt.o!.type === 'visit') return gateTile(hunt.o!.area ?? '') ?? (this.area === 'town' ? gateTile('slums') : null);
-    if (this.area === 'town') {
-      const gate = this.map.gates?.slums;
-      return gate?.length ? { tile: { col: gate[Math.floor(gate.length / 2)][0], row: gate[Math.floor(gate.length / 2)][1] }, type } : null;
+    // On another map: this map's gate toward it.
+    const next = this.nextMapToward(target.map);
+    if (target.map !== this.area) return next ? gateTile(next) : null;
+    const dist = (t: [number, number]) => Math.hypot(t[0] - me.col, t[1] - me.row);
+    switch (target.kind) {
+      case 'visit':
+        return null; // (here: the visit is made)
+      case 'npc':
+        return dist(target.tile) <= NPC_NEAR ? null : { tile: { col: target.tile[0], row: target.tile[1] }, type };
+      case 'tile':
+        return dist(target.tile) <= MINI_NEAR ? null : { tile: { col: target.tile[0], row: target.tile[1] }, type };
+      case 'spots': {
+        const near = [...target.spots].sort((a, b) => dist(a) - dist(b))[0];
+        return !near || dist(near) <= MINI_NEAR ? null : { tile: { col: near[0], row: near[1] }, type };
+      }
+      case 'zone': {
+        const [c0, r0, c1, r1] = target.zone.rect;
+        if (me.col >= c0 && me.col <= c1 && me.row >= r0 && me.row <= r1) return null; // (there)
+        return { tile: { col: Math.min(Math.max(me.col, c0), c1), row: Math.min(Math.max(me.row, r0), r1) }, type };
+      }
     }
-    const zone = this.map.mobZones?.find((z) => z.mob === hunt.o!.mob && !z.dungeon);
-    if (!zone) return null;
-    const [c0, r0, c1, r1] = zone.rect;
-    if (hunt.o!.type === 'kill') {
-      if (me.col >= c0 && me.col <= c1 && me.row >= r0 && me.row <= r1) return null; // (there)
-      return { tile: { col: Math.min(Math.max(me.col, c0), c1), row: Math.min(Math.max(me.row, r0), r1) }, type };
-    }
-    const spots = (zone.miniBosses ?? []).map((b) => ({ col: b.tile[0], row: b.tile[1] }));
-    const dist = (t: Tile) => Math.hypot(t.col - me.col, t.row - me.row);
-    const near = spots.sort((a, b) => dist(a) - dist(b))[0];
-    if (!near || dist(near) <= MINI_NEAR) return null;
-    return { tile: near, type };
   }
 
-  /** The quest trail, a few times a second (never every frame): the walk grid's path from your tile to its goal, its
-   *  first TRAIL_TILES tiles; found again only when your tile or the goal moved. */
+  /** The quest trail, a few times a second (never every frame): the walk grid's path from your tile toward its goal
+   *  (a goal farther than TRAIL_REACH tiles: toward the point that far along the straight line, so a far goal on a big
+   *  map never costs a long search; the trail stretches on as you walk), its first TRAIL_TILES tiles; found again only
+   *  when your tile or the goal moved. */
   private trailTick(time: number): void {
     const trail = this.trail;
     if (!trail) return;
@@ -5205,7 +5247,10 @@ export class TownScene extends Phaser.Scene {
     if (key === this.trailFor) return;
     this.trailFor = key;
     if (!goal) return trail.hide();
-    const to = this.grid.walkable(goal.tile.col, goal.tile.row) ? goal.tile : this.grid.nearestReachable(me, goal.tile);
+    let aim = goal.tile;
+    const far = Math.hypot(aim.col - me.col, aim.row - me.row);
+    if (far > TRAIL_REACH) aim = { col: Math.round(me.col + ((aim.col - me.col) * TRAIL_REACH) / far), row: Math.round(me.row + ((aim.row - me.row) * TRAIL_REACH) / far) };
+    const to = this.grid.walkable(aim.col, aim.row) ? aim : this.grid.nearestReachable(me, aim);
     const path = to && this.grid.findPath(me, to);
     if (!path || path.length < 2) return trail.hide();
     trail.show(path.slice(1, TRAIL_TILES + 1), goal.type);
