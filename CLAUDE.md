@@ -459,7 +459,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `scripts/stage.mjs`), which opens https://twigo.dev/play/ (or "Can't reach Mikazuki" with Try again) and the first time
   hands the old bundled page's `mk_app_token` and `mk_window` on in the #hash (endpoints.ts `takeAppHandoff`, first
   thing in main.ts); `capabilities/default.json` `remote` https://twigo.dev/* only, so Tauri's bridge works on that page
-  (`isDesktopApp`); a game change is the website's version.json reload (ui/version.ts, now in the app too), never a new
+  (`isDesktopApp`), always by its message channel there (platform.ts `useAppMessageBridge`, first in main.ts: Tauri tries each
+  page's first call as a request to http://ipc.localhost, which Edge holds as a local network request from a public site, so
+  every teleport's page stalled 10 s or for good, 30 Oct 2026; that request now fails at once); server calls never wait on the
+  app (`shellVersion`: the version kept in storage, the app asked in the background, 'unknown' after 1.5 s); a game change is the website's version.json reload (ui/version.ts, now in the app too), never a new
   app. The app's version is its own (tauri.conf.json `version`, Cargo.toml and package.json the same, bumped by hand when
   packages/desktop changes; `shellVersion()` asks the app). Every server call goes through `net/endpoints.ts`
   (`api()`, `serverUrl`, `townSocket`): relative on the website and on the app's live page, by address only from a page
