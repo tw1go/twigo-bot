@@ -29,8 +29,9 @@ open Mikazuki: say yes, and you're in.
 pick, or your screen's size) or **Windowed** (a normal window, at a size you pick or drag it to). The app remembers it.
 **F11** on Windows, **Ctrl+Cmd+F** on a Mac, goes full screen and back.
 
-**New versions**: when there's a newer one, the app says **A new version of Mikazuki is ready** at the top. Press
-**Update now**: it downloads and installs by itself, with no installer window. On Windows the game closes for a few
+**New versions**: the app looks as it opens. If there's a newer one, the title screen's button says **Update** instead
+of Start: press it and the update screen shows the download, then installs it by itself, with no installer window. If a
+new one comes out while you play, a small notice says so; it never interrupts you (**Update now** there does it at once). On Windows the game closes for a few
 seconds and opens again on its own; on a Mac it restarts. (If that ever fails, it offers **Download** instead: install
 the download over the old one.)
 

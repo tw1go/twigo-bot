@@ -476,7 +476,16 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   exit with the webview alive could hang the old process, which kept the single-instance mutex and swallowed every launch after:
   30 Oct 2026; the quiet NSIS installer (`installMode` quiet, per user: never an admin prompt) reopens the app on its `/R`; a Mac
   swapped and restarted by `app.restart()`; `UPDATING` keeps the app alive while its window is gone; the single-instance plugin's
-  `semver` feature names the mutex by version, so a new version never hands its start to an old copy), Download if that fails; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
+  `semver` feature names the mutex by version, so a new version never hands its start to an old copy), Download if that fails.
+  The update in one store (net/update-state.ts, tested: idle | checking | available | downloading | installing | failed;
+  `titleButton`, `within`, `newer`, `progressOf`): BootScene's title screen in the app asks net/desktop.ts `checkUpdate` before
+  Start ("Checking for updates…" disabled, CHECK_WAIT_MS 5 s at most, unsure or slow = Start as ever and the server's 426 still
+  catches a refused version), then "Update" (only the button or Enter, never a click anywhere) while a newer version is known or its
+  install failed, "Updating…" disabled while it runs; `startUpdate` shows the update screen (CONTEXT.md Update screen;
+  ui/update-screen.ts: the logo, "Updating Mikazuki", "v… → v…", the bar with % and MB, "Installing…", "Mikazuki will close and open
+  again by itself"; failed: "The update didn't work", Try again and Download); in the game (net/pwa.ts `inGame`) only the notice
+  ("… It installs the next time you open Mikazuki.", Update now = startUpdate). Dev: `?update=fake` (a fake v9.9.9 downloaded
+  over 3 s, then a reload), `?update=fail` (its download failing half way), on the website or `desktop:dev`; /me's 426 (bot `MIN_DESKTOP_VERSION`) → "too old". The front page's
   Windows / Mac buttons read the same latest.json. Builds: `npm run desktop:build` (Mac, needs Rust), or the Desktop app
   workflow (`.github/workflows/desktop.yml`: after every successful Deploy, on the deployed commit, and by hand; both
   Macs and Windows as artifacts, then its publish job signs with the `TAURI_UPDATER_KEY` secret and uploads to the

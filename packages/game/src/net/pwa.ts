@@ -77,6 +77,8 @@ const FRONT_AFTER_MS = 5000; // (once the game has loaded: never in its way)
 
 /** Pressed Start (or came through a gate): from now on a newer build waits for Reload now, never mid-game. */
 let entered = false;
+/** Past the title screen (in the creator or the town): a found update is only a notice then, never a restart. */
+export const inGame = (): boolean => entered;
 export const enteredGame = (): void => void (entered = true);
 
 /** On the title screen (before Start), the device catches up at once: a newer build that's live, or a service worker

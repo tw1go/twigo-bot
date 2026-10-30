@@ -10,6 +10,7 @@ import { resumeStart } from '@mikazuki/shared';
 import { currentArea, freshVisit, markPalengke, markResume, markSlums, markTown, palengkeTownMap, silongTownMap, slumsTownMap } from '../net/hood';
 import { bootHood } from './HouseScene';
 import { isDesktopApp } from '../net/platform';
+import { fakeUpdate, titleButton } from '../net/update-state';
 import { enteredGame } from '../net/pwa';
 
 // Loads the two source-of-truth files and, meanwhile, plays the boot sequence (ui/title-screen.ts): the intro card
@@ -83,12 +84,32 @@ export class BootScene extends Phaser.Scene {
         };
         return;
       }
-      t.setOffer({ kind: 'start', ...(upkeep ? { staff: upkeep.note } : {}) });
+      const staff = upkeep ? { staff: upkeep.note } : {};
+      let unwatch = () => {};
       t.onStart = () => {
+        unwatch();
         if (this.sound.locked) this.sound.unlock(); // (the first gesture: anything waiting on one may play)
         stopTitleMusic();
         void t.close().then(() => this.route(manifest, town, me, debug));
       };
+      // The desktop app (and dev's ?update=fake): no starting an old version of the app (CONTEXT.md Update screen).
+      // Start says "Checking for updates…" until the updater answers (CHECK_WAIT_MS at most: slower or unsure, Start as
+      // ever, and the server's 426 still turns away a version it refuses), then "Update" when a newer version is known
+      // (the update screen; net/update-state.ts titleButton) or Start; "Updating…" while it installs.
+      if (app || fakeUpdate()) {
+        t.setOffer({ kind: 'start', ...staff, update: 'checking' });
+        void import('../net/desktop').then(async (d) => {
+          d.setUpdateArt(manifest.ui.logoMikazuki?.file);
+          t.onUpdate = () => d.startUpdate();
+          await d.checkUpdate();
+          unwatch = d.updateStore.subscribe((u) => {
+            const b = titleButton(u);
+            t.setOffer({ kind: 'start', ...staff, ...(b === 'start' ? {} : { update: b }) });
+          });
+        });
+        return;
+      }
+      t.setOffer({ kind: 'start', ...staff });
     };
     if (through) {
       void ready.then((me) => {

@@ -66,24 +66,18 @@ export function notifyDownload(version: string | null, download: () => void, tex
   showNotice(version ? `${text} (${version})` : text, 'Download', () => download());
 }
 
-/** The desktop app's self-update: "A new version of Mikazuki is ready", Update now → `install` (it reports its progress
- *  in the notice through `say`; the app restarts when done). If it fails, the notice offers `download` instead. */
-export function notifyUpdate(version: string, install: (say: (text: string) => void) => Promise<void>, download: () => void): void {
+/** The desktop app's own new version, found while the player is in the game: "A new version of Mikazuki is ready (v…).
+ *  It installs the next time you open Mikazuki.", Update now → `update` (the update screen, net/desktop.ts startUpdate:
+ *  the player's own choice, never a restart they didn't ask for). `download` is kept for the too-old line's Download. */
+export function notifyUpdate(version: string, update: () => void, download: () => void, text = 'A new version of Mikazuki is ready'): void {
   if (told) return;
   told = true;
-  const n = showNotice(`A new version of Mikazuki is ready (${version})`, 'Update now', (b) => {
-    b.disabled = true;
+  const v = version.startsWith('v') ? version : `v${version}`;
+  const n = showNotice(`${text} (${v}). It installs the next time you open Mikazuki.`, 'Update now', () => {
     n.close.hidden = true;
-    const say = (t: string) => (n.text.textContent = t);
-    say('Downloading the update…');
-    install(say).catch(() => {
-      say("The update didn't work. Download it instead:");
-      n.close.hidden = false;
-      b.disabled = false;
-      b.textContent = 'Download';
-      n.act = () => download();
-    });
+    update();
   });
+  void download;
 }
 
 /** The notice at the top centre: its text, its button, and × (later). `act` can be swapped while it's up. */
