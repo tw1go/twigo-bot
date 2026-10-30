@@ -125,7 +125,7 @@ export class BootScene extends Phaser.Scene {
     // ?area=slums: the Slums, for every member (a guest, or a map that won't load, lands back in town). ?area=warrens:
     // your Scrap Warrens run (maps/warrens.json; the server puts you in it, or sends you back to the Slums).
     const area = currentArea();
-    // ?area=palengke: the Lumang Palengke (west of the Slums: a guest, or a map that won't load, lands back in town too).
+    // ?area=palengke: the Lumang Palengke (north of the Slums: a guest, or a map that won't load, lands back in town too).
     // ?area=silong-b1 (b2, b3): a floor of your Ang Silong run (the server puts you in it, or sends you back up to the
     // Palengke).
     const silong = area.startsWith('silong-');

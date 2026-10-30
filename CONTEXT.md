@@ -727,7 +727,7 @@ _Avoid_: ignore, mute (that's a moderator's)
 
 **Guided quest**:
 One of the first quests a new player is walked through (marked `guided` in the quests' data): A Weapon for the Town,
-Lata Patrol and Just In Time. It gets the guide arrows and, while it's a hunt, the quest trail.
+Lata Patrol and Just In Time. It gets the guide arrows (every quest gets the quest trail).
 _Avoid_: tutorial quest, starter quest
 
 **Guide arrow**:
@@ -736,20 +736,30 @@ each step of a lesson. One shows at a time, in the quest's colour (violet main, 
 _Avoid_: pointer, hint arrow
 
 **Quest trail**:
-The sparkling line on the ground from you toward a guided quest's hunt: to the Slums gate in town, then to its mob's
-area (or the nearest mini boss spot) in the Slums. It stops once you're there; Settings can turn it off.
+The sparkling line on the ground from you toward your current quest's objective, on every outdoor map: the NPC to talk
+to, a hunt's area (or the nearest mini boss spot), a field boss, or, when it's on another map, this map's gate on the
+way there. Main quests first, then side; with no active quest, an offered main quest's giver. It stops once you're
+there; Settings can turn it off. Never inside a dungeon run.
 _Avoid_: path, breadcrumbs, guide line
 
 **Quest map**:
-The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every quest mark. Only for looking.
+The world map shown while you hold its key (Tab) or tap a tracker row's pin: you and every quest mark, the Town, the
+Slums and the Old Market as they lie (the Old Market north of the Slums, by its gate). Only for looking.
 _Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and teleporting)
 
 **Quest mark**:
-Where an active quest sends you, in the quest's colour: a hunt's area (the mob's zone in the Slums or the Old Market,
+Where an active quest sends you, in the quest's marker colour (red for a main quest, yellow for a side one; the
+tracker, log and toasts keep violet for main): a hunt's area (the mob's zone in the Slums or the Old Market,
 with its count; a mini boss's spots; a field boss's spot) and the NPC you're to talk to or bring something to (the sign
 over their head: "!" or "…"), the giver of a quest on offer too. Shown on the quest map, the Map menu and the minimap;
 on the minimap one off its edge is held at the edge, the way to it.
 _Avoid_: waypoint, objective marker; not the head marker over an NPC (that's on the NPC in the world)
+
+**Hunt icon**:
+The small quest pin over every live monster of a kind one of your active quests is hunting (a kill, a collect whose
+item it drops, a mini boss objective's mini bosses: the crown), in the quest's marker colour, until that objective is
+done. Your own quests only.
+_Avoid_: quest marker (that's over an NPC), target icon
 
 **Lesson**:
 A one-time walkthrough of a new player's firsts (potions onto the hotbar, wearing each quest piece in place of

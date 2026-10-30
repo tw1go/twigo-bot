@@ -4,8 +4,8 @@ import { NPC_PLACES } from '../world/npcs';
 import { type MapNpc, type MapZone, type SlumsPlaces, type WorldMap, worldPoint } from './world-map';
 
 // 🎯 Quest marks: where an active quest sends you, on the world map's picture (the quest map, ui/quest-map.ts, and the
-// Map menu, ui/map-menu.ts) and on the minimap (ui/minimap.ts, the map you're on), in the quest's colour (violet main,
-// yellow side; a zone or an NPC two quests share is drawn once, main's):
+// Map menu, ui/map-menu.ts) and on the minimap (ui/minimap.ts, the map you're on), in the quest's marker colour (red
+// main, yellow side: manifest quests.markerColours; a zone or an NPC two quests share is drawn once, main's):
 //   • a hunt (kill, mini boss, or a quest item a mob drops: the Old Market's collects; one ready to report shows nothing)
 //     on its mob's zone in the Slums or the Old Market: kill / collect the zone as a diamond, filled at 25% with a dashed
 //     1 px edge marching slowly, a kill pin at its middle and under it the zone's name with the count ("Tin Can Alley ·
@@ -87,8 +87,8 @@ const AREA_NAMES: Record<string, string> = { palengke: 'the Old Market' };
 
 const mainFirst = <T extends { type: QuestDef['type'] }>(list: T[]): T[] => list.sort((a, b) => (a.type === b.type ? 0 : a.type === 'main' ? -1 : 1));
 
-/** The active quests with their current objective (main's first). */
-function current(): { q: QuestDef; o: QuestObjectiveDef; count: number; ready: boolean }[] {
+/** The active quests with their current objective (main's first); `ready`: done, to be reported by radio. */
+export function currentObjectives(): { q: QuestDef; o: QuestObjectiveDef; count: number; ready: boolean }[] {
   const s = adventure();
   if (!s) return [];
   const out: { q: QuestDef; o: QuestObjectiveDef; count: number; ready: boolean; type: QuestDef['type'] }[] = [];
@@ -103,7 +103,7 @@ function current(): { q: QuestDef; o: QuestObjectiveDef; count: number; ready: b
 /** The active quests' visits not yet made whose map the Slums has a gate to: a mark on that gate (main's first). */
 export function visitMarks(world: WorldMap): VisitMark[] {
   const out: VisitMark[] = [];
-  for (const { q, o, ready } of current()) {
+  for (const { q, o, ready } of currentObjectives()) {
     const gate = o.type === 'visit' && o.area ? world.slums.gates?.[o.area] : undefined;
     if (!gate?.length || ready || out.some((m) => m.to === o.area)) continue;
     const [c, r] = gate[Math.floor(gate.length / 2)];
@@ -115,7 +115,7 @@ export function visitMarks(world: WorldMap): VisitMark[] {
 /** The active quests' hunts: one a zone (main's when two share one), and the field bosses' fights. */
 export function questMarks(places: QuestPlaces): QuestMark[] {
   const out: QuestMark[] = [];
-  for (const { q, o, count, ready } of current()) {
+  for (const { q, o, count, ready } of currentObjectives()) {
     if (ready) continue;
     // A field boss's fight, or its bell: its tile.
     if (o.type === 'fieldBoss' || o.type === 'bell') {
@@ -147,7 +147,7 @@ export function questMarks(places: QuestPlaces): QuestMark[] {
 }
 
 /** Where an NPC stands now (the last of their `moves` whose quest is done), on whichever map has them. */
-function npcSpot(places: QuestPlaces, id: string): { map: QuestArea; npc: MapNpc; tile: [number, number] } | null {
+export function npcSpot(places: QuestPlaces, id: string): { map: QuestArea; npc: MapNpc; tile: [number, number] } | null {
   const done = adventure()?.quests.done ?? [];
   for (const map of AREAS) {
     const npc = places(map)?.npcs?.find((n) => n.id === id);
@@ -162,7 +162,7 @@ function npcSpot(places: QuestPlaces, id: string): { map: QuestArea; npc: MapNpc
  *  of offered quests; one mark an NPC (main's). */
 export function npcMarks(places: QuestPlaces, nameOf?: (id: string) => string | undefined): NpcMark[] {
   const want: { npc: string; type: QuestDef['type']; symbol: string }[] = [];
-  for (const { q, o } of current()) {
+  for (const { q, o } of currentObjectives()) {
     const npc = o.type === 'talk' || o.type === 'deliver' ? o.npc : o.type === 'chooseClass' ? q.giver : undefined;
     if (npc) want.push({ npc, type: q.type, symbol: o.type === 'talk' ? '!' : '…' });
   }
@@ -175,6 +175,66 @@ export function npcMarks(places: QuestPlaces, nameOf?: (id: string) => string | 
     out.push({ kind: 'npc', map: at.map, type: w.type, npc: w.npc, name: at.npc.name ?? nameOf?.(w.npc) ?? w.npc, tile: at.tile, symbol: w.symbol });
   }
   return out;
+}
+
+/** Where the quest trail should lead (world/quest-trail.ts, TownScene trailGoal): the first active quest's current
+ *  objective (main's first) that has somewhere to go, else the giver of an offered main quest. Not a quest ready to
+ *  report by radio. The same places the marks use, so the trail and the map agree. */
+export type TrailTarget =
+  | { kind: 'npc'; map: QuestArea; type: QuestDef['type']; tile: [number, number] }
+  | { kind: 'zone'; map: QuestArea; type: QuestDef['type']; zone: MapZone }
+  | { kind: 'spots'; map: QuestArea; type: QuestDef['type']; spots: [number, number][] }
+  | { kind: 'tile'; map: QuestArea; type: QuestDef['type']; tile: [number, number] }
+  | { kind: 'visit'; map: string; type: QuestDef['type'] };
+
+export function trailTarget(places: QuestPlaces): TrailTarget | null {
+  const toNpc = (npc: string | undefined, type: QuestDef['type']): TrailTarget | null => {
+    const at = npc ? npcSpot(places, npc) : null;
+    return at ? { kind: 'npc', map: at.map, type, tile: at.tile } : null;
+  };
+  for (const { q, o, ready } of currentObjectives()) {
+    if (ready) continue;
+    const type = q.type;
+    if (o.type === 'talk' || o.type === 'deliver') {
+      const t = toNpc(o.npc, type);
+      if (t) return t;
+      continue;
+    }
+    if (o.type === 'chooseClass') {
+      const t = toNpc(q.giver, type);
+      if (t) return t;
+      continue;
+    }
+    if (o.type === 'visit') {
+      if (o.area) return { kind: 'visit', map: o.area, type };
+      continue;
+    }
+    if (o.type === 'fieldBoss' || o.type === 'bell') {
+      for (const map of AREAS) {
+        const b = places(map)?.boss;
+        if (b?.tile && b.id === o.mob) return { kind: 'tile', map, type, tile: b.tile };
+      }
+      continue;
+    }
+    const mob = o.type === 'kill' || o.type === 'miniBoss' ? o.mob : o.type === 'collect' ? questItemMob(o.item) : undefined;
+    if (!mob) continue;
+    for (const map of AREAS) {
+      const zone = places(map)?.mobZones?.find((z) => z.mob === mob);
+      if (!zone) continue;
+      if (o.type === 'miniBoss') {
+        const spots = (zone.miniBosses ?? []).map((b) => b.tile);
+        if (spots.length) return { kind: 'spots', map, type, spots };
+        continue;
+      }
+      return { kind: 'zone', map, type, zone };
+    }
+  }
+  for (const q of mainFirst([...offeredNow()])) {
+    if (q.type !== 'main') continue;
+    const t = toNpc(q.giver, q.type);
+    if (t) return t;
+  }
+  return null;
 }
 
 /** Draws the marks on a picture stage (its img first: the marks go over it, under whatever is added after): positions at

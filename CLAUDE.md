@@ -234,9 +234,10 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   `gates.palengke` (row 0, cols 121-123; moved from the west edge, col 0 rows 116-118, on 23 Oct 2026, the owner's call)
   and `arrive.palengke` [122, 3], the dead tree at (122,1) removed off that path (the six props cleared off the old west
   path on 20 Oct 2026 stay cleared; copying the art folder's map over again loses all of it);
-  `scripts/terrain/protect-slums.json` keeps the north path. `ui/map/map-layout.json`: `maps.palengke` (col −280, row 13,
-  its `label` [150, 12]: west of the Slums, where the world picture draws it, though its gate is on the Slums' north edge)
-  and `posts.palengke` (its four), `palengkeNote`; since 23 Oct 2026 ui-map-world.png (671 × 321) and
+  `scripts/terrain/protect-slums.json` keeps the north path. `ui/map/map-layout.json`: `maps.palengke` (col −20, row −212 since 30 Oct 2026: north of
+  the Slums beyond their row 0, its middle column on the Slums' north gate, as the game has it; col −280, row 13, west of
+  the Slums, before; its `label` [150, 12]) and `posts.palengke` (its four), `palengkeNote`; ui-map-world.png (534 × 279
+  since 30 Oct 2026, the art folder's docs/quest-trails/world-map, each map's diamond shifted whole pixels; 671 × 321 before) and
   ui-minimap-palengke.png are the art folder's ui/map/palengke ones (the layout's origin and post px moved +[243, 101]
   with the picture).
 - Cutscenes (23 Oct 2026): `quests/cutscenes.json` (the art folder's docs/cutscenes/cutscenes.json: its words in
@@ -1013,7 +1014,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   Machine's ("The Ice Machine, the Heart of the Cellar": dungeons.json silong.lastBoss) and the Tanod's "Caught you!"
   (casino, steal). Not changed: people's, mobs' and dishes' names, the Suki Card, leveling.json's Tanod lines (the art
   folder's; quests.json's English ones are what shows) and the Discord bot's own Taglish lines (banter, greetings).
-- The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map west of the Slums, an area
+- The Lumang Palengke (CONTEXT.md; the art folder's maps/palengke brief): the Lv 21-40 map north of the Slums, an area
   like the Slums (`?area=palengke`, net/hood.ts `palengkeTownMap` / `markPalengke`, BootScene loads maps/palengke.json; the
   bot's and the dev town's room 'palengke', a battle map: its eight mob zones on since 20 Oct 2026, and its field boss the
   Great Scale, below). Its opening time (CONTEXT.md Opening time; palengke.json `opensAt`, shared travel.ts `mapOpensAt` /
@@ -1038,7 +1039,7 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   re-tiles a palengke.json). Minimap: a colour per family, blocked tiles darker. The Market Hall's walls are ordinary props (back walls on
   the tile outside, front walls on their own: you go behind the south and east walls just inside them). String lights
   draw dead; WorldObjects `litSections` is the hook for lighting a section (nothing sets it). Its art packs into
-  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it west of the Slums, drawn
+  `tiles-palengke` / `props-palengke` (scripts/packs.ts), loaded only there. The Map menu shows it north of the Slums (west until 30 Oct 2026), drawn
   into ui-map-world.png (its size from the manifest's `ui.mapWorld.size`; the stage grows to every map, `worldBounds` /
   `shifted`) with its four posts; the quest map pins you on your own tile there. Its minimap lays the manifest's
   `ui.minimapPictures.palengke` over the tile colours (`Minimap` `paintPicture`, smoothed, redrawn on each layout). Its own music (music-palengke); title card "Lumang
@@ -1915,7 +1916,14 @@ where JSON allows. When you add one, add it here (and tell the owner, who copies
   second. The quest trail (`world/quest-trail.ts`, TownScene `trailGoal` / `trailTick`, 4 times a second): a guided
   hunt not yet reached, in town to the Slums gate, in the Slums to its zone's nearest tile or nearest mini boss spot
   (none once inside, or within 6 of the spot); the walk grid's path, its first 40 tiles; ground layer, a brightness
-  wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). The quest map (`ui/quest-map.ts`, keybind
+  wave, sparkles; Settings → Game → Show the quest trail (`mk_guide_trail`). Quest guidance since 30 Oct 2026 (the owner): the trail leads to any active quest's current
+  objective on every outdoor map (ui/quest-marks.ts `trailTarget` / `npcSpot` / `currentObjectives`, shared with the marks;
+  TownScene `trailGoal`: an NPC within 2, a zone, the nearest mini boss spot, a field boss, a visit; another map through
+  this map's gate, `MAP_LINKS` BFS; a far goal pathed 60 tiles at a time; never in a run; Settings "Show quest trails",
+  the same `mk_guide_trail`); the markers are red for main quests (manifest `quests.markerColours`, TownScene
+  `markerColours`; `quests.colours` stays for text; the main guide sheets the art folder's red ones); the world picture
+  draws the Old Market north of the Slums (ui/map, 534 × 279); a hunt icon (the quest pin, world/mobs.ts `refreshHunted`
+  / `placeHunt`, on `onAdventure`) over every live mob a quest of yours hunts, the crown over the mini bosses. The quest map (`ui/quest-map.ts`, keybind
   `questMap` = Tab, rebindable: Tab left keybinds.ts's reserved keys, main.ts still stops its focus moves): hold to see
   the world map (`ui/world-map.ts`, shared with the Map menu) with you and every quest mark (CONTEXT.md Quest mark;
   `ui/quest-marks.ts`, the M map draws them too, at its icon scale): hunts on the Slums' and the Old Market's zones (a

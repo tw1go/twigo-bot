@@ -75,7 +75,7 @@ const ENTRANCE: Record<string, string> = {
 /** What the picture writes for a map's name. */
 const MAP_NAME: Record<string, string> = { slums: 'Slums', town: 'Town', palengke: 'Old Market' };
 /** The picture's own size (ui-map-world.png) when the manifest doesn't say. */
-const PICTURE: [number, number] = [671, 321];
+const PICTURE: [number, number] = [534, 279];
 const FRAME = { normal: 0, hover: 1, here: 2 } as const;
 const ICON_W = 15;
 /** Room round a map's diamond in its tab (the picture's px). */
