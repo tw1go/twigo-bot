@@ -14433,6 +14433,11 @@
     "colours": {
       "main": "#B794F6",
       "side": "#FCDA4A"
+    },
+    "markerColoursNote": "the markers: the head marker over NPCs, the Tab / M map and minimap marks, the guide arrow, the trail, the hunt icon; red main since 30 Oct 2026 (the tracker, log and toasts keep `colours`)",
+    "markerColours": {
+      "main": "#EF4444",
+      "side": "#FCDA4A"
     }
   },
   "palette": {
@@ -26722,7 +26727,7 @@
     }
   },
   "guide": {
-    "note": "The new player guide (ui/guide-arrow.ts, ui/quest-guide.ts, world/quest-trail.ts, ui/quest-map.ts, ui/lessons.ts; the art folder's docs/new-player-guide: guide-assets.json, preview-v1.png). Every piece comes in main (violet) and side (yellow): picked by the quest's type, like quests.colours. Drawn at whole-number scales, nearest neighbour.",
+    "note": "The new player guide (ui/guide-arrow.ts, ui/quest-guide.ts, world/quest-trail.ts, ui/quest-map.ts, ui/lessons.ts; the art folder's docs/new-player-guide: guide-assets.json, preview-v1.png). Every piece comes in main (red, since 30 Oct 2026; violet before) and side (yellow): picked by the quest's type, like quests.markerColours. Drawn at whole-number scales, nearest neighbour.",
     "arrow": {
       "file": "ui/guide/ui-guide-arrow-{type}.png",
       "frame": [

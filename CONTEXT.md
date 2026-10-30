@@ -747,7 +747,8 @@ The world map shown while you hold its key (Tab) or tap a tracker row's pin: you
 _Avoid_: Tab map, world map overlay; not the Map menu (M, with its frame and teleporting)
 
 **Quest mark**:
-Where an active quest sends you, in the quest's colour: a hunt's area (the mob's zone in the Slums or the Old Market,
+Where an active quest sends you, in the quest's marker colour (red for a main quest, yellow for a side one; the
+tracker, log and toasts keep violet for main): a hunt's area (the mob's zone in the Slums or the Old Market,
 with its count; a mini boss's spots; a field boss's spot) and the NPC you're to talk to or bring something to (the sign
 over their head: "!" or "…"), the giver of a quest on offer too. Shown on the quest map, the Map menu and the minimap;
 on the minimap one off its edge is held at the edge, the way to it.

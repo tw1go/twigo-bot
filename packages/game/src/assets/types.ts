@@ -59,6 +59,9 @@ export interface Manifest {
   quests?: {
     file: string;
     colours: Record<'main' | 'side', string>;
+    /** The markers' colours (the head marker, the map marks, the guide arrow, the trail, the hunt icon): red main, yellow
+     *  side; `colours` (violet main) stays for the tracker, log and toasts. */
+    markerColours?: Record<'main' | 'side', string>;
     /** The story's cutscenes (quests/cutscenes.json, played by world/cutscene.ts). */
     cutscenes?: string;
   };

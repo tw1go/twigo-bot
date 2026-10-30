@@ -4,8 +4,8 @@ import { NPC_PLACES } from '../world/npcs';
 import { type MapNpc, type MapZone, type SlumsPlaces, type WorldMap, worldPoint } from './world-map';
 
 // 🎯 Quest marks: where an active quest sends you, on the world map's picture (the quest map, ui/quest-map.ts, and the
-// Map menu, ui/map-menu.ts) and on the minimap (ui/minimap.ts, the map you're on), in the quest's colour (violet main,
-// yellow side; a zone or an NPC two quests share is drawn once, main's):
+// Map menu, ui/map-menu.ts) and on the minimap (ui/minimap.ts, the map you're on), in the quest's marker colour (red
+// main, yellow side: manifest quests.markerColours; a zone or an NPC two quests share is drawn once, main's):
 //   • a hunt (kill, mini boss, or a quest item a mob drops: the Old Market's collects; one ready to report shows nothing)
 //     on its mob's zone in the Slums or the Old Market: kill / collect the zone as a diamond, filled at 25% with a dashed
 //     1 px edge marching slowly, a kill pin at its middle and under it the zone's name with the count ("Tin Can Alley ·

@@ -1310,7 +1310,7 @@ export class TownScene extends Phaser.Scene {
       this.lightMarket();
       // The new player guide: the guide arrow (the quest button, Report) for guided quests.
       if (G) {
-        mountGuideArrow(G, asset, frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, Q.colours);
+        mountGuideArrow(G, asset, frame ? { url: asset(frame.file), slice: frame.nineSlice } : null, this.markerColours());
         mountQuestGuide();
         // The lessons (ui/lessons.ts): a new player's first items, per character, never in a fight.
         const who = this.me?.status === 'ok' ? this.me.me.id : null;
@@ -2259,7 +2259,7 @@ export class TownScene extends Phaser.Scene {
       const symbol = !o || o.type === 'collect' ? null : o.type === 'talk' ? '!' : '…';
       // (Their next quest waiting for your level: a grey "!".)
       const waiting = !symbol && waitingFor(id);
-      this.npcs.setMarker(id, q && symbol ? { symbol, color: this.M.quests.colours[q.quest.type] } : waiting ? { symbol: '!', color: WAITING_GREY } : null);
+      this.npcs.setMarker(id, q && symbol ? { symbol, color: this.markerColours()[q.quest.type] } : waiting ? { symbol: '!', color: WAITING_GREY } : null);
     }
   }
 
@@ -5131,6 +5131,12 @@ export class TownScene extends Phaser.Scene {
   private world: WorldMap | null = null;
 
   /** The quest marks' art (the quest map, the Map menu), or null without the guide's art. */
+  /** The quest markers' colours (manifest quests.markerColours: red main, yellow side; the text colours as a fallback). */
+  private markerColours(): { main: string; side: string } {
+    const Q = this.M.quests;
+    return Q?.markerColours ?? Q?.colours ?? { main: '#EF4444', side: '#FCDA4A' };
+  }
+
   private questMarkArt(): QuestMarkArt | null {
     const G = this.M.guide;
     const Q = this.M.quests;
@@ -5142,7 +5148,7 @@ export class TownScene extends Phaser.Scene {
     const file = this.M.npcs?.dialogue;
     if (file && !this.cache.json.get('npc-dialogue')) void loadPlaces<Names>(asset(file)).then((d) => (fetched = d));
     const names = () => ((this.cache.json.get('npc-dialogue') as Names | undefined) ?? fetched)?.npcs;
-    return { pin: (type) => asset(G.pin.file.replace('{type}', type)), pinFrame: G.pin.frame, pinAnchor: G.pin.anchor, colours: Q.colours, npcName: (id) => names()?.[id]?.name };
+    return { pin: (type) => asset(G.pin.file.replace('{type}', type)), pinFrame: G.pin.frame, pinAnchor: G.pin.anchor, colours: this.markerColours(), npcName: (id) => names()?.[id]?.name };
   }
 
   private makeQuestMap(marks: QuestMarkArt): QuestMap {

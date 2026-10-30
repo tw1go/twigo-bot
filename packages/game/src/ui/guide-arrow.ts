@@ -42,7 +42,7 @@ let tip: HTMLElement | null = null;
 let tipText: HTMLElement | null = null;
 let onTipClose: (() => void) | null = null;
 let showing: 'quest' | 'lesson' | null = null;
-let colours: { main: string; side: string } = { main: '#B794F6', side: '#FCDA4A' };
+let colours: { main: string; side: string } = { main: '#EF4444', side: '#FCDA4A' }; // (manifest quests.markerColours as the town mounts it)
 let timer = 0;
 
 /** Starts the arrow (once a town is up): its art and the item frame for the tip box. */
